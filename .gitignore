@@ -1,0 +1,28 @@
+# Reference clones — upstream source we read, never commit (328MB of third-party code)
+/reference/
+
+# Brainstorming visual-companion artifacts
+/.superpowers/
+
+# macOS
+.DS_Store
+
+# Secrets / credentials — never commit API keys or OAuth tokens
+secrets.yaml
+.env
+.env.*
+*.key
+*-credentials.json
+credentials.json
+token.json
+
+# Node (for any custom Lovelace card build tooling)
+node_modules/
+dist/
+*.log
+
+# Python (for any custom_components dev)
+__pycache__/
+*.pyc
+.venv/
+venv/
