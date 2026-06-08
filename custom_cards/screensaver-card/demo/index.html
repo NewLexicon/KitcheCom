@@ -12,23 +12,47 @@
 <script type="module">
   import { ScreensaverCard } from "../dist/screensaver-card.js";
   const card = document.createElement("screensaver-card");
-  card.setConfig({ media_path: "media", photo_duration: 4, show_clock: true });
-  const fakeTree = { children: [
-    { media_content_id: "a", media_class: "image", can_play: true, can_expand: false },
-    { media_content_id: "b", media_class: "image", can_play: true, can_expand: false },
+  // Exercises shuffle:true + nested recursion (root -> subdir) + ken_burns_intensity:1.
+  // The mock keys browse_media on media_content_id so the subdir returns its OWN
+  // leaves: recursion should surface 4 DISTINCT photos, not just the 2 at root.
+  card.setConfig({ media_path: "media", photo_duration: 3, shuffle: true, ken_burns_intensity: 1 });
+
+  // buildBrowseContentId("media") === "media-source://media_source/local/media"
+  const ROOT = "media-source://media_source/local/media";
+  const SUB = "media-source://media_source/local/media/sub";
+
+  // Root tree: 2 leaf images + 1 expandable subdirectory.
+  const rootTree = { children: [
+    { media_content_id: "root/a.jpg", media_class: "image", can_play: true, can_expand: false },
+    { media_content_id: "root/b.jpg", media_class: "image", can_play: true, can_expand: false },
+    { media_content_id: SUB, media_class: "directory", can_play: false, can_expand: true },
   ]};
+
+  // Subdir tree: 2 MORE distinct leaf images (proves recursion descends).
+  const subTree = { children: [
+    { media_content_id: "sub/c.jpg", media_class: "image", can_play: true, can_expand: false },
+    { media_content_id: "sub/d.jpg", media_class: "image", can_play: true, can_expand: false },
+  ]};
+
+  // 4 ids -> 4 DIFFERENT unsplash landscape photos.
   const urls = {
-    a: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200",
-    b: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=1200",
+    "root/a.jpg": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200",
+    "root/b.jpg": "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=1200",
+    "sub/c.jpg": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200",
+    "sub/d.jpg": "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200",
   };
+
   card.hass = {
     states: { "input_boolean.kitchen_idle": { state: "on" } },
     callWS: async (m) =>
-      m.type === "media_source/browse_media" ? fakeTree
+      m.type === "media_source/browse_media"
+        ? (m.media_content_id === ROOT ? rootTree
+           : m.media_content_id === SUB ? subTree
+           : { children: [] })
       : m.type === "media_source/resolve_media" ? { url: urls[m.media_content_id], mime_type: "image/jpeg" }
       : null,
   };
   document.body.appendChild(card);
   window.toggleIdle = (on) => { card.hass = { ...card.hass, states: { "input_boolean.kitchen_idle": { state: on ? "on" : "off" } } }; };
 </script>
-<p style="color:#888;font:14px sans-serif">Open devtools. Expect: full-screen overlay, two photos cross-cycling every ~4s with Ken-Burns. Run <code>toggleIdle(false)</code> → overlay disappears; <code>toggleIdle(true)</code> → returns.</p>
+<p style="color:#888;font:14px sans-serif">Open devtools. Expect: full-screen overlay cycling through <strong>4 distinct photos</strong> (2 from root + 2 from the nested subdir, shuffled) every ~3s with strong Ken-Burns (intensity 1). Run <code>toggleIdle(false)</code> &rarr; overlay disappears; <code>toggleIdle(true)</code> &rarr; returns.</p>
