@@ -1,7 +1,7 @@
 # KitchenCOM — Session State: Home Assistant Pivot & Architecture Locked
 
 **Date:** 2026-06-07
-**Phase:** Brainstorming → architecture locked; design walkthrough Sections 1–4 approved (with folds), Section 5 next.
+**Phase:** Brainstorming → architecture locked; **all 6 design-walkthrough sections approved (with folds).** Next phase: formal implementation plan (`writing-plans`) for the first buildable slice.
 **This file is the cold-open briefing.** A fresh session should read this end-to-end before doing anything.
 
 **Empirical state (as of last checkpoint):**
@@ -15,6 +15,10 @@
 - §2 Component breakdown / repo structure — approved; folded I-3 (added keystone `homeassistant/configuration.yaml`), M-3 (dashboard mode tension), M-4 (reference gitignore verified). **Decision: dashboard runs in STORAGE mode + committed snapshot** (keeps phone drag-edit; premium look from version-controlled theme + screensaver card).
 - §3 Voice pipeline — approved after **C-2 fold** (the heart-of-system error): it's a **TWO-call pipeline**, not one. Then M-7 fold (model-default phrasing). See §10.
 - §4 Error handling — approved; folded **C-3** (offline = greyed-out default), I-4 (no-intent reply is our prompt), I-5 (tool-dispatch MatchFailedError row), M-8 (Pi-5 codec caveat). **Decision: accept greyed-out offline default for v1.** See §11.
+- §5 Idle/screensaver — approved (0 Critical, 0 Important, 3 Minor: M-9 custom-card hass-reactivity, M-10 touch→HA-timer browser↔HA seam, M-11 motion-sensor optional-gating). Reactive-card design (card subscribes to `input_boolean.kitchen_idle`, fades in place) verified to sidestep the no-native-view-switch constraint (browser_mod not in core, confirmed).
+- §6 Kiosk + custom-component scope — approved after **C-4 fold** (calendar-add is NOT a built-in intent — `calendar` registers zero intents; only `CREATE_EVENT_SERVICE` at `calendar/__init__.py:224` — so calendar-by-voice is a custom intent_script case, I-1 family, NOT a config freebie). **I-6 RESOLVED → install method amended to Pi OS + HA Container** (see §3 Decision 4). 6b "zero custom Python until proven necessary" boundary endorsed. Verified built-in: device-control (`intent/__init__.py:107-155`), climate (`climate/intent.py`), weather (`weather/intent.py`); intents ship via `home-assistant-intents==2026.6.1` (`conversation/manifest.json:9`).
+
+**ALL 6 DESIGN SECTIONS NOW APPROVED.** Next: produce the formal implementation plan (`writing-plans`) for the first buildable slice. Carry-forwards into the plan: C-4 calendar-add = custom intent_script scope; M-10 touch→HA-timer bridge; M-8 Pi-5 codec validation at hardware time; M-12 kiosk auth (long-lived token vs trusted_networks).
 
 ---
 
@@ -65,14 +69,14 @@ The user added `git /core-dev` (= `home-assistant/core`) and `git /frontend-dev`
 1. **Frontend stack** → originally vanilla SPA + Tailwind + Lucide. **SUPERSEDED by the HA pivot** — the dashboard is now HA Lovelace (Lit/TypeScript custom cards), not a from-scratch SPA. Tailwind/Lucide reference clones become reference-only or feed custom-card styling.
 2. **Data persistence** → originally "JSON-now-behind-repository-interface, SQLite-swappable." **SUPERSEDED by the HA pivot** — HA owns the data layer (entities/recorder). No custom JSON store.
 3. **Voice / STT** → **Gemini-native multimodal** (record audio → send to Gemini → it transcribes + decides answer-vs-action + returns JSON/conversational text). Separate Google Cloud Speech-to-Text **rejected** (re-adds a second credential the user explicitly wanted gone). Confirmed natively supported by HA's Gemini integration.
-4. **Install method** → **Home Assistant OS** (the appliance install; gives Add-on Store + HACS). Chosen over HA Container/Core.
+4. **Install method** → **AMENDED 2026-06-07 (Section 6 / I-6 resolution):** originally **Home Assistant OS**, now **Raspberry Pi OS + Home Assistant Container (Docker).** Reason: HA OS is a locked headless appliance and cannot cleanly self-host a Chromium kiosk on the same Pi (I-6). Pi OS is full desktop Linux → Chromium `--kiosk` runs natively via a standard systemd unit. **Verified (`reference/core-dev`):** every component the design depends on (google_generative_ai_conversation, todo, local_todo, intent, conversation, assist_pipeline, input_boolean, media_source, frontend, lovelace) lives in `homeassistant/components` = the core image = present in HA Container. **Cost of the trade:** no Supervisor → no Add-on Store (any add-on becomes a separate Docker container you run; KitchenCOM's verified feature set needs none). HACS still works (it's a `custom_components` integration, not an add-on). You self-manage OS + container updates. Net: Container loses nothing this project uses and gains the native kiosk.
 5. **Build timing** → **Start now, deploy when hardware arrives.** All file-based artifacts (dashboard YAML, custom card TS, custom integration Python, theming, kiosk scripts) get built in this repo now; deployment later = copy files + click-through integration setup. NOT blocked on hardware.
 6. **Dashboard layout** → **Layout B (Tile Grid)**: a large hero clock/weather/voice tile anchoring the left, with other modules as flexible cards of varying sizes around it. Premium smart-display feel. (Layout A "Command Center" — top status bar + 3 equal columns — was rejected.)
 7. **Polish vs. editability tradeoff** → **Balanced.** Custom theme + custom screensaver card for the cinematic feel, BUT content tiles stay as standard HA cards inside a grid → user keeps phone-side drag-and-drop reorder/add/remove of content tiles forever. The "premium" styling + screensaver are config-edits (not drag-and-drop), editable anytime via HA's YAML editor or by asking Claude to adjust + re-deploy.
 
 ## 4. Install/setup process (agreed, for when hardware arrives)
 
-- **Phase A:** Flash HA OS to fast storage (NVMe SSD strongly recommended on Pi 5 over SD card; keep SD/media for photos). Boot, run onboarding.
+- **Phase A (AMENDED — Pi OS + Container):** Flash **Raspberry Pi OS** to fast storage (NVMe SSD strongly recommended on Pi 5; keep SD/media for photos). Boot → install **Docker** → run the **Home Assistant Container** image → onboard. (Previously "flash HA OS appliance" — changed per the §1 Decision-4 amendment / I-6 resolution.) More setup steps than the appliance, but enables the same-Pi kiosk.
 - **Phase B:** Wire integrations (mostly clicks + light config): add Google Gemini integration (paste API key); add Google Calendar/Tasks/Photos (OAuth with family Google account); set up Assist voice pipeline (USB mic → Gemini STT → conversation agent → Gemini TTS → speaker).
 - **Phase C:** Our custom build — custom Lovelace dashboard (Layout B), custom screensaver card, theming, chore logic via helpers/automations or small custom integration.
 - **Phase D:** Kiosk deployment — Pi boots → Chromium full-screen at the dashboard → auto-launch on startup → screen stays on → touchscreen calibration. Config + small scripts.
