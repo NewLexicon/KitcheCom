@@ -7,10 +7,11 @@
 
 ## 0. WHERE THINGS STAND (read first)
 
-- **`main` HEAD = `dc3b9e7`** ("chore: gitignore Playwright MCP scratch dir"). Local `main` and `origin/main` are in sync (0 ahead / 0 behind).
+- **`main` HEAD = `45f38c5`** (this cold-open doc). Local `main` and `origin/main` are in sync after the final push (0 ahead / 0 behind).
 - **Commit arc since last session:**
   - `1bad1eb` — **merge commit of PR #1** (`feat/screensaver-rendering` → `main`): the full screensaver card rendering slice (idle-fade overlay, Ken-Burns photo loop, fallback, media_source browse→resolve). 15 commits, +416/-7 across 11 files.
   - `dc3b9e7` — post-merge hygiene: gitignore `.playwright-mcp/` scratch dir.
+  - `45f38c5` — this cold-open doc (HEAD line points here per the self-referential fix-up rule).
 - **PR #1 is MERGED** (mergedAt 2026-06-08T13:40:32Z). Remote branch `feat/screensaver-rendering` DELETED. URL: https://github.com/NewLexicon/KitcheCom/pull/1
 - **No open PRs. No other branches** (local or remote) — only `main`. **One worktree** (the main checkout). Two stale empty pre-created branches (`feat/voice-pipeline`, `feat/calendar-intent`) were found and deleted this session; don't be surprised they're gone.
 - **Remote:** `origin` = `git@github.com:NewLexicon/KitcheCom.git` (SSH, NewLexicon). Repo name is `KitcheCom` (typo — missing the "n"; memory `kitchencom-github-remote.md`).
