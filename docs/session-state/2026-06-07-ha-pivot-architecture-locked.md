@@ -5,10 +5,16 @@
 **This file is the cold-open briefing.** A fresh session should read this end-to-end before doing anything.
 
 **Empirical state (as of last checkpoint):**
-- Git repo: **initialized.** HEAD = `536215d` ("Initial commit: HA-pivot housekeeping"). Branch: default. 1 commit.
-- Reference folder renamed `git ` (trailing space) → **`reference/`** and **gitignored** (`git check-ignore reference/core-dev` confirms; 328 MB of upstream clones, never committed).
+- Git repo initialized. **HEAD = `397b135`** ("Add foundation-slice implementation plan"). Branch: default. 5 commits: `536215d` init/housekeeping → `ed2bcbc` §§1-4 checkpoint → `6d9a815` consolidated spec → `d74c846` cite-drift fix → `397b135` plan.
+- Reference folder renamed `git ` (trailing space) → **`reference/`** and **gitignored** (328 MB upstream clones, never committed).
 - `.gitignore` excludes: `reference/`, `.superpowers/`, secrets/credentials, node/python build artifacts.
-- All source cites below now use **`reference/core-dev/...`** paths (post-rename).
+- All source cites use **`reference/core-dev/...`** paths.
+
+**DESIGN PHASE COMPLETE. Two durable artifacts produced this session:**
+- **Spec:** `docs/superpowers/specs/2026-06-07-kitchencom-ha-hub-design.md` (all 6 sections, folds applied, consistency-reviewed + cite-drift fixed).
+- **Plan:** `docs/superpowers/plans/2026-06-07-kitchencom-foundation-slice.md` (TDD, 8 tasks across 2 chunks, plan-reviewed — yamllint+HA-tags risk empirically validated, card TDD chain runs on Mac via Vitest).
+
+**→ NEXT SESSION'S LITERAL FIRST ACTION:** Execute the plan via **superpowers:subagent-driven-development** (subagents available in this harness). Read `docs/superpowers/plans/2026-06-07-kitchencom-foundation-slice.md` and start at Chunk 1 / Task 1. The plan is self-contained (exact files, code, commands, expected outputs). No Pi needed — the whole slice builds/tests on the Mac (`npm run validate:yaml`; card tests via Vitest). Tooling prereqs the plan assumes: `yamllint` (`pip install yamllint`), Node 24 + npm.
 
 **Sections approved so far (section-by-section reviewer-pass discipline):**
 - §1 Architecture — approved (C-1 retired, see §9).
