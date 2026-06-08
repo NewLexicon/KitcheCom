@@ -5,7 +5,7 @@
 **This file is the cold-open briefing.** A fresh session should read this end-to-end before doing anything.
 
 **Empirical state (current):**
-- Git repo initialized; single branch **`main`**. **HEAD = `30cfcbe`** ("Merge feat/foundation-slice: KitchenCOM foundation scaffold"). No remote configured yet (GitHub repo not created — user will add later; to push: create remote, then `git push -u origin main`).
+- Git repo initialized; single branch **`main`**. **HEAD = `33e3ef4`** ("docs: cold-open reflects merged foundation slice"; the foundation merge is its parent `30cfcbe`). No remote configured yet (GitHub repo not created — user will add later; to push: create remote, then `git push -u origin main`).
 - The foundation slice was built on `feat/foundation-slice` (15 commits, TDD + per-task spec+quality review), merged `--no-ff` to main, branch + worktree cleaned up.
 - **Empirical green (verified on merged main):** `python3 -m yamllint -c .yamllint homeassistant/` → exit 0; `cd custom_cards/screensaver-card && npm install && npm test` → 9 passing (4 idle + 5 media); `bash -n deploy/kiosk/start-kiosk.sh` → OK.
 - Reference folder = **`reference/`**, gitignored (328 MB upstream HA clones; source cites use `reference/core-dev/...`). `.gitignore` also excludes `.superpowers/`, `.worktrees/`, `.claude-flow/`, secrets, build artifacts.
