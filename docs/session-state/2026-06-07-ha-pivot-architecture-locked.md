@@ -124,7 +124,7 @@ Claude can help with all three "code" types:
 The concern was that "STT platform exists" did not prove the actual product flow (*"add milk" → Gemini decides action → mutates the list → confirms aloud*). Traced the real source:
 
 - **`google_generative_ai_conversation/conversation.py`** — the conversation entity sets `_attr_supported_features = ConversationEntityFeature.CONTROL` **when `CONF_LLM_HASS_API` is configured**. It calls `chat_log.async_provide_llm_data(... options.get(CONF_LLM_HASS_API) ...)`. So enabling the "Assist" LLM API on the Gemini config entry is what grants it control of HA entities. **This is a config toggle, not custom code.**
-- **`entity.py:510-513`** — confirmed: `if chat_log.llm_api:` → it passes `_format_tool(tool, ...) for tool in chat_log.llm_api.tools` to Gemini as native function-declarations. So HA's exposed entities/intents become **Gemini tool calls**. Gemini's function-call response (`entity.py:439-441`, `Part.from_function_call`) is dispatched back through HA's tool layer.
+- **`entity.py:510-513`** — confirmed: `if chat_log.llm_api:` → it passes `_format_tool(tool, ...) for tool in chat_log.llm_api.tools` to Gemini as native function-declarations (the `function_declarations` list is assembled at `entity.py:162`). So HA's exposed entities/intents become **Gemini tool calls**. Gemini's function-call response is read at `entity.py:439` (`if part.function_call:`) and dispatched back through HA's tool layer. (Note: the `Part.from_function_call` *constructor* is at `entity.py:317` — the outbound tool-result path — not 439; 439 is the inbound read.)
 - **`todo/intent.py`** — confirmed the `todo` domain registers `HassListAddItem` (`ListAddItemIntentHandler`), plus complete/remove handlers. Slots: `item` + `name` (the list). This is the intent Gemini's tool call resolves to.
 - **`shopping_list/intent.py`** — confirmed the older built-in shopping list also registers `HassShoppingListAddItem` / complete / last-items.
 
@@ -143,7 +143,7 @@ Given C-1's resolution, the *standard* list/calendar mutation path IS mostly con
 **Critical correction.** The pipeline is NOT a single fused Gemini call. Source: `reference/core-dev/homeassistant/components/assist_pipeline/pipeline.py:604` — `# wake -> stt -> intent -> tts` (four stages).
 
 1. **STT — Gemini call #1 (transcribe only, NO tools).** `google_generative_ai_conversation/stt.py:234` sends audio via `Part.from_bytes` to `generate_content`; the file has **zero** `tool|llm_api|function|chat_log|intent` refs (verified by grep). Returns `result.text` (`pipeline.py:994`).
-2. **INTENT — Gemini call #2 (conversation, TOOLS exposed).** `pipeline.py:1296` `conversation.async_converse(text)`. THIS call exposes entities as `function_declarations` (`entity.py:510-513`) and is where Gemini **decides question-vs-command**. Action → `Part.from_function_call` (`entity.py:439`) → HA tool dispatch.
+2. **INTENT — Gemini call #2 (conversation, TOOLS exposed).** `pipeline.py:1296` `conversation.async_converse(text)`. THIS call turns entities into Gemini tools (`chat_log.llm_api.tools` → `_format_tool`, `entity.py:510-513`; `function_declarations` assembled at `entity.py:162`) and is where Gemini **decides question-vs-command**. Action path: function-call response read at `entity.py:439` (`if part.function_call:`) → HA tool dispatch. (`Part.from_function_call` constructor = `entity.py:317`, outbound path, not 439.)
 3. **TTS** → speaker.
 
 **Consequences (now load-bearing in the design):**

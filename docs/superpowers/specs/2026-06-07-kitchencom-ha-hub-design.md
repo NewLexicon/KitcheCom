@@ -52,7 +52,7 @@ KitchenCOM/
 HA's Assist pipeline is four stages: `wake → stt → intent → tts` (`assist_pipeline/pipeline.py:604`). This is **two separate Gemini calls**, not one:
 
 1. **STT — Gemini call #1 (transcribe only, NO tools).** `google_generative_ai_conversation/stt.py:234` sends audio via `Part.from_bytes` → `generate_content`. No tools/intent in this call (verified: zero such refs in the file). Returns `result.text` (`pipeline.py:994`).
-2. **INTENT — Gemini call #2 (conversation, TOOLS exposed).** `pipeline.py:1296` `conversation.async_converse(text)`. Entities are exposed as `function_declarations` (`entity.py:510-513`) — **this** is where Gemini decides question-vs-command. Action → `Part.from_function_call` (`entity.py:439`) → HA tool dispatch → e.g. `HassListAddItem` (`todo/intent.py`) mutates the entity.
+2. **INTENT — Gemini call #2 (conversation, TOOLS exposed).** `pipeline.py:1296` `conversation.async_converse(text)`. Entities are turned into Gemini tools via `chat_log.llm_api.tools` → `_format_tool` (`entity.py:510-513`; the `function_declarations` list itself is assembled at `entity.py:162`) — **this** is where Gemini decides question-vs-command. Action path: Gemini's function-call response is read (`entity.py:439` `if part.function_call:`) and dispatched through HA's tool layer → e.g. `HassListAddItem` (`todo/intent.py`) mutates the entity.
 3. **TTS** → speaker.
 
 **Consequences (priced into the design):**
