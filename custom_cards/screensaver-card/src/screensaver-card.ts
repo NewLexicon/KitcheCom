@@ -74,6 +74,21 @@ export function selectPlayableChildren(browseTree?: { children?: BrowseChild[] }
   return items;
 }
 
+// Parallel predicate to selectPlayableChildren (NOT a mirror): returns the
+// media_content_id strings of expandable subdirectories to recurse into. Dirs carry
+// no playable kind, hence string[] not MediaItem[]. Pure. (HA browse_media is lazy/
+// one-level — local_source.py:258-266 — so the glue browses each returned id.)
+export function selectSubdirectories(browseTree?: { children?: BrowseChild[] }): string[] {
+  const children = browseTree?.children ?? [];
+  const dirs: string[] = [];
+  for (const c of children) {
+    if (c.can_expand === true && c.media_content_id) {
+      dirs.push(c.media_content_id);
+    }
+  }
+  return dirs;
+}
+
 // Next loop index with wrap-around. count 0 => 0 (caller shows fallback instead).
 // Out-of-range current resets to 0 (defensive: items list may have shrunk).
 export function nextMediaIndex(current: number, count: number): number {
