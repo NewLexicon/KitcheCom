@@ -1,0 +1,34 @@
+# Layout B — Tile Grid (spec §1 Decision 6). Standard HA cards only.
+# Entity ids are PLACEHOLDERS — wire to real entities on hardware setup.
+title: Kitchen
+views:
+  - title: Home
+    type: sections
+    sections:
+      # Hero column — clock/weather/voice anchor (Layout B left hero)
+      - type: grid
+        cards:
+          - type: clock            # native HA clock card
+          - type: weather-forecast
+            entity: weather.home   # PLACEHOLDER
+          - type: button
+            name: Hold to talk
+            icon: mdi:microphone
+            tap_action:
+              action: assist        # opens HA Assist (voice) — native
+      # Groceries
+      - type: grid
+        cards:
+          - type: todo-list
+            entity: todo.groceries  # PLACEHOLDER (local_todo canonical, spec M-2)
+      # Calendar + chores
+      - type: grid
+        cards:
+          - type: calendar
+            entities:
+              - calendar.family     # PLACEHOLDER
+          - type: todo-list
+            entity: todo.chores     # PLACEHOLDER
+# Screensaver: the custom card (custom:screensaver-card) overlays via the
+# kitchen_idle automation (packages/screensaver.yaml, Task 4). Its JS resource is
+# registered in HA on hardware setup — see deploy/INSTALL.md.

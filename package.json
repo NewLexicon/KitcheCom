@@ -1,0 +1,7 @@
+{
+  "name": "kitchencom",
+  "private": true,
+  "scripts": {
+    "validate:yaml": "yamllint -c .yamllint homeassistant/"
+  }
+}

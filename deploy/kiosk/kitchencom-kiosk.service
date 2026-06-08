@@ -1,0 +1,13 @@
+[Unit]
+Description=KitchenCOM Chromium Kiosk
+After=graphical.target
+
+[Service]
+Type=simple
+Environment=DISPLAY=:0
+ExecStart=/home/pi/kitchencom/deploy/kiosk/start-kiosk.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

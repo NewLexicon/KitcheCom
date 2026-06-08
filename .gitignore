@@ -29,3 +29,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Stray subagent tooling artifact
+/.claude-flow/
