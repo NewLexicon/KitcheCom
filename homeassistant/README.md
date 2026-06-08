@@ -14,9 +14,9 @@ Deployed to the Pi's Home Assistant `/config` directory (Pi OS + HA Container).
 - `dashboards/kitchen.yaml` is a committed **YAML-mode SNAPSHOT** registered as a separate
   dashboard ("Kitchen (snapshot)") for version-control, review, and disaster recovery.
 - To update the snapshot: export the live dashboard's YAML and paste it into kitchen.yaml.
-- Note: `dashboards/kitchen.yaml` does not exist yet in this foundation slice (it is created/
-  populated in a later task); until it exists, the "Kitchen (snapshot)" dashboard will log an
-  error / appear empty in HA — this is expected at this stage.
+- Note: `dashboards/kitchen.yaml` exists as a Layout-B skeleton, but its entity ids are
+  placeholders (`weather.home`, `todo.groceries`, etc.) pending hardware wiring — so the
+  "Kitchen (snapshot)" dashboard will show unavailable/empty cards until those entities exist.
 
 ## Layout (keystone)
 `configuration.yaml` wires `packages/` (helpers+automations), `themes/` (look),

@@ -608,7 +608,7 @@ npm run validate:yaml && \
 cd custom_cards/screensaver-card && npm install && npm test && cd ../.. && \
 bash -n deploy/kiosk/start-kiosk.sh && echo "SLICE VERIFIED"
 ```
-Expected: yaml validates, 8 card tests pass, kiosk script syntax OK, prints `SLICE VERIFIED`.
+Expected: yaml validates, 9 card tests pass, kiosk script syntax OK, prints `SLICE VERIFIED`.
 
 - [ ] **Step 3: Commit**
 
@@ -621,7 +621,7 @@ git commit -m "docs: root README + foundation slice complete"
 
 ## Done criteria
 - `npm run validate:yaml` passes (HA config tree is syntactically valid).
-- Screensaver card: 8 Vitest tests pass (idle-state + media-resilience logic).
+- Screensaver card: 9 Vitest tests pass (idle-state + media-resilience logic).
 - Kiosk script syntax-checks.
 - All hardware-dependent work is captured as explicit TODOs in `deploy/INSTALL.md`, not silently dropped.
 - The repo can be copied to a Pi and followed via `INSTALL.md` to a running hub.
