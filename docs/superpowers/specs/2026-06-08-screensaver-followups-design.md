@@ -35,14 +35,14 @@ Four independent enhancements to the merged screensaver card, preserving its **p
 
 ### `resolveConfig` extension — explicit snake-in / camel-out (C-3)
 
-`resolveConfig` reads **snake_case** YAML input keys and outputs **camelCase** fields (established pattern: `raw.photo_duration → photoDuration`, `:88-102`). The new fields MUST follow it:
+`resolveConfig` reads **snake_case** YAML input keys and outputs **camelCase** fields (established pattern: `raw.photo_duration → photoDuration`, `:88-99`). The new fields MUST follow it:
 
 | YAML input key (snake) | Resolved field (camel) | Resolution |
 |---|---|---|
 | `shuffle:` | `shuffle` | `raw.shuffle === true` (default `false`) |
 | `ken_burns_intensity:` | `kenBurnsIntensity` | `n = typeof raw.ken_burns_intensity === "number" ? n : 0.5`, then **two-sided clamp** `Math.min(1, Math.max(0, n))` |
 
-**C-2:** `kenBurnsIntensity`'s clamp is a **NEW two-sided 0–1 shape** — NOT `photoDuration`'s one-sided `Math.max(FLOOR, x)` floor (`:97`). Do not copy the floor pattern. `resolve-config.test.ts` must test **both ends + default**: `negative → 0`, `>1 → 1`, `absent → 0.5`, plus `shuffle` default `false` / explicit `true`.
+**C-2:** `kenBurnsIntensity`'s clamp is a **NEW two-sided 0–1 shape** — NOT `photoDuration`'s one-sided `Math.max(FLOOR, x)` floor (`:92`). Do not copy the floor pattern. `resolve-config.test.ts` must test **both ends + default**: `negative → 0`, `>1 → 1`, `absent → 0.5`, plus `shuffle` default `false` / explicit `true`.
 
 ### Glue changes (demo-harness verified, no DOM tests)
 
