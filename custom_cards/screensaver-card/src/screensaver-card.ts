@@ -17,15 +17,23 @@ export function isScreensaverActive(hass?: HassLike, idleEntity: string = IDLE_E
 // limited on Pi 5 — validate video formats on real hardware. Conservative default set.
 const SUPPORTED = [".jpg", ".jpeg", ".png", ".webp", ".mp4", ".webm"];
 
-// Expects bare filenames / basenames (e.g. "photo.jpg"), NOT URLs with query strings.
-// When HA media_source URLs are wired in later, strip any "?query"/"#fragment" before
-// matching, or endsWith(ext) will silently drop e.g. "photo.jpg?token=…". (Deferred.)
+// Accepts bare filenames / basenames (e.g. "photo.jpg") or resolved media_source URLs
+// with a "?query"/"#fragment" suffix. Resolved: stripMediaUrlQuery strips query/fragment
+// before matching, so endsWith(ext) no longer silently drops e.g. "photo.jpg?token=…".
 export function selectDisplayMode(files: string[] | undefined | null): "media" | "fallback" {
   if (!files || files.length === 0) return "fallback";
   const usable = files.filter((f) =>
-    SUPPORTED.some((ext) => f.toLowerCase().endsWith(ext))
+    SUPPORTED.some((ext) => stripMediaUrlQuery(f).toLowerCase().endsWith(ext))
   );
   return usable.length > 0 ? "media" : "fallback";
+}
+
+// Strip ?query and #fragment from a media URL/path so extension-matching works
+// on resolved media_source URLs (e.g. "photo.jpg?token=…"). Pure. (Closes the
+// deferral noted on selectDisplayMode below.)
+export function stripMediaUrlQuery(url: string): string {
+  const cut = url.search(/[?#]/);
+  return cut === -1 ? url : url.slice(0, cut);
 }
 
 // Build the media_source content id for HA's browse_media WS from a folder path.
