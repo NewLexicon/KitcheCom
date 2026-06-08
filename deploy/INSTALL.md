@@ -2,6 +2,10 @@
 
 ## Phase A — OS + HA
 1. Flash Raspberry Pi OS (64-bit) to NVMe SSD; keep SD/USB for media.
+   - **Kiosk prerequisite:** use the **Desktop** image (not Lite). The kiosk systemd unit
+     uses `graphical.target` + `DISPLAY=:0`, so the Pi must boot to the DESKTOP with autologin
+     enabled (`raspi-config` → System Options → Boot / Auto Login → Desktop Autologin). On a
+     Lite/console-boot Pi the kiosk will silently never start.
 2. Install Docker; run the Home Assistant Container image; complete onboarding.
 
 ## Phase B — Integrations (HA UI, mostly clicks)
@@ -20,10 +24,17 @@
 2. `sudo cp deploy/kiosk/kitchencom-kiosk.service /etc/systemd/system/`
 3. `sudo systemctl enable --now kitchencom-kiosk`
 
+> **Bookworm browser binary:** on current Pi OS (Bookworm) the browser is `chromium`, not
+> `chromium-browser` (the older Buster/Bullseye name) that `start-kiosk.sh` calls. If
+> `chromium-browser` is missing the service crash-loops every 5s — either install/symlink it
+> (`sudo apt install chromium-browser`, or `ln -s $(which chromium) /usr/bin/chromium-browser`)
+> or change the script's `ExecStart` to call `chromium`.
+
 ## Phase E — Mobile
 - Family installs HA Companion app, signs in on the home network.
 
 ## HARDWARE-PHASE TODOs (carry-forwards from design)
+- [ ] **Kiosk dashboard target:** the kiosk's default `HA_URL` points at `/kitchen-snapshot` — the committed YAML SNAPSHOT dashboard (recovery/review copy), which does NOT reflect phone-side live edits to the storage-mode dashboard. Once the live dashboard exists, repoint `HA_URL` to the live dashboard's `url_path`.
 - [ ] **M-12 kiosk auth:** choose long-lived access token vs `trusted_networks` for the kiosk; wire it.
 - [ ] **M-10 activity bridge:** wire kiosk touch → `input_button.kitchen_activity` press (e.g. via a tap-action on the dashboard or a small JS ping) so the HA idle timer resets on touch.
 - [ ] **M-8 codec validation:** test screensaver video formats on the actual Pi 5 (HEVC/H.265 hw decode limited).
