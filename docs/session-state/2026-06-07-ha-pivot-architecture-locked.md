@@ -1,8 +1,20 @@
 # KitchenCOM — Session State: Home Assistant Pivot & Architecture Locked
 
 **Date:** 2026-06-07
-**Phase:** Brainstorming → architecture locked, design walkthrough in progress (interrupted at Section 1)
+**Phase:** Brainstorming → architecture locked; design walkthrough Sections 1–4 approved (with folds), Section 5 next.
 **This file is the cold-open briefing.** A fresh session should read this end-to-end before doing anything.
+
+**Empirical state (as of last checkpoint):**
+- Git repo: **initialized.** HEAD = `536215d` ("Initial commit: HA-pivot housekeeping"). Branch: default. 1 commit.
+- Reference folder renamed `git ` (trailing space) → **`reference/`** and **gitignored** (`git check-ignore reference/core-dev` confirms; 328 MB of upstream clones, never committed).
+- `.gitignore` excludes: `reference/`, `.superpowers/`, secrets/credentials, node/python build artifacts.
+- All source cites below now use **`reference/core-dev/...`** paths (post-rename).
+
+**Sections approved so far (section-by-section reviewer-pass discipline):**
+- §1 Architecture — approved (C-1 retired, see §9).
+- §2 Component breakdown / repo structure — approved; folded I-3 (added keystone `homeassistant/configuration.yaml`), M-3 (dashboard mode tension), M-4 (reference gitignore verified). **Decision: dashboard runs in STORAGE mode + committed snapshot** (keeps phone drag-edit; premium look from version-controlled theme + screensaver card).
+- §3 Voice pipeline — approved after **C-2 fold** (the heart-of-system error): it's a **TWO-call pipeline**, not one. Then M-7 fold (model-default phrasing). See §10.
+- §4 Error handling — approved; folded **C-3** (offline = greyed-out default), I-4 (no-intent reply is our prompt), I-5 (tool-dispatch MatchFailedError row), M-8 (Pi-5 codec caveat). **Decision: accept greyed-out offline default for v1.** See §11.
 
 ---
 
@@ -86,11 +98,18 @@ Claude can help with all three "code" types:
 **Interrupted mid-design-walkthrough.** Section 1 (Architecture & the big pivot) was being presented for section-by-section approval when the session paused. The reviewer (Claude-as-reviewer) flagged that no durable artifact existed and the user chose "capture state first, then review" — which produced THIS file.
 
 **Next actions, in order:**
-1. ✅ (this file) Capture locked decisions + reasoning.
-2. ✅ **Reviewer-pass on the captured architecture** — done. Architecture approved. See §9 below for findings + the C-1 source verification result.
-3. **Finish the design walkthrough** — present remaining sections for ratification: data/integration wiring, voice-pipeline specifics, screensaver-card design, kiosk deployment, custom-component scope.
-4. **Produce a formal plan** (`writing-plans` skill) for the first buildable slice — likely: repo scaffold as an HA config + custom-card workspace, the Layout B dashboard skeleton (standard HA cards in a grid), and the custom screensaver card stub.
-5. House-keeping: decide on `git init`, rename the `git ` folder, decide how the HA clones are tracked.
+1. ✅ Capture locked decisions + reasoning (this file).
+2. ✅ Reviewer-pass on architecture — approved (§9, C-1 verified).
+3. ✅ Housekeeping — `git init` done (HEAD `536215d`), `git ` → `reference/` renamed + gitignored. (Resolved I-2, M-1.)
+4. ✅ Design walkthrough §§1–4 approved with folds (§§9–11 capture the load-bearing ones).
+5. **→ NEXT: Section 5 of the design walkthrough.** Remaining sections to ratify: screensaver-card design, kiosk deployment specifics, custom-component scope boundary, testing strategy. Continue section-by-section reviewer-pass discipline (deep on substantive sections).
+6. **Then: write the design doc** to `docs/superpowers/specs/2026-06-07-kitchencom-ha-hub-design.md` + commit (brainstorming skill terminal step before plan).
+7. **Then: `writing-plans`** for the first buildable slice — repo scaffold as HA config + custom-card workspace, `configuration.yaml` keystone, Layout B dashboard (standard cards in grid), custom screensaver-card stub, theme.
+
+**Carry-forwards (deferred, with triggers):**
+- **v2 offline degrade** (C-3): build template-sensor snapshotting / custom-card fallback ONLY if family finds greyed-out offline tiles annoying.
+- **M-8 Pi-5 codec validation**: screensaver video format guidance (HEVC/H.265 hardware decode limited on Pi 5) must be validated on real hardware — hardware-test phase.
+- **M-2 canonical list**: `local_todo` canonical (voice path of least resistance), Google Tasks as sync mirror — confirm during voice-slice build.
 
 ## 9. Reviewer-pass result (2026-06-07) + C-1 source verification
 
@@ -114,6 +133,28 @@ Given C-1's resolution, the *standard* list/calendar mutation path IS mostly con
 ### I-2 (open): no git backstop — `git init` recommended before formal plan. Decide clone tracking.
 ### M-1 (open): rename `git ` (trailing space) → `reference/`.
 ### M-2 (open, now sharper): canonical list source-of-truth decision is load-bearing because the voice tool resolves to a specific entity domain. `todo`/`local_todo` (HA-native) is the path of least resistance for the voice flow; Google Tasks sync is a separate concern layered on top. Recommend `local_todo` as canonical, Google Tasks as a mirror/sync target — to be confirmed in the design walkthrough.
+
+## 10. Section 3 — voice pipeline is TWO sequential Gemini calls (C-2 fold, source-verified)
+
+**Critical correction.** The pipeline is NOT a single fused Gemini call. Source: `reference/core-dev/homeassistant/components/assist_pipeline/pipeline.py:604` — `# wake -> stt -> intent -> tts` (four stages).
+
+1. **STT — Gemini call #1 (transcribe only, NO tools).** `google_generative_ai_conversation/stt.py:234` sends audio via `Part.from_bytes` to `generate_content`; the file has **zero** `tool|llm_api|function|chat_log|intent` refs (verified by grep). Returns `result.text` (`pipeline.py:994`).
+2. **INTENT — Gemini call #2 (conversation, TOOLS exposed).** `pipeline.py:1296` `conversation.async_converse(text)`. THIS call exposes entities as `function_declarations` (`entity.py:510-513`) and is where Gemini **decides question-vs-command**. Action → `Part.from_function_call` (`entity.py:439`) → HA tool dispatch.
+3. **TTS** → speaker.
+
+**Consequences (now load-bearing in the design):**
+- **Latency:** two *sequential* Gemini round-trips per utterance. `TIMEOUT_MILLIS = 10000` (`const.py:44`, used at `entity.py:771`) → ~20s worst-case before both time out.
+- **Cost:** two billed Gemini calls per command.
+- **Config:** STT entity and conversation entity configured **separately**, each with own model. **M-7:** both default to the SAME model — `RECOMMENDED_STT_MODEL = RECOMMENDED_CHAT_MODEL = models/gemini-3.1-flash-lite` (`const.py:22-23`); independently overridable. Cost = two calls to the cheap flash-lite tier by default — real but modest.
+
+## 11. Section 4 — error handling folds (source-verified)
+
+- **C-3 (offline UX inverted from default — RESOLVED via v1 scope decision).** `reference/core-dev/homeassistant/helpers/update_coordinator.py`: `CoordinatorEntity.available` ← `last_update_success`, which flips `False` on update failure (lines 369/385/394/442/456). So offline cloud entities (Calendar/Tasks/Photos, all `cloud_polling`) **grey out as `unavailable`** — NOT cached stale data. **v1 DECISION: accept greyed-out default.** Still-works-offline: `local_todo`, clock, weather-last-value, SD-card screensaver. Stale-data degrade = v2 carry-forward.
+- **I-4:** no-matching-intent graceful reply is **our Assist system-prompt** responsibility, not a platform freebie (`entity.py:143` literally "we don't have a better fallback strategy so far").
+- **I-5:** missing failure point added — tool dispatch can fail with `MatchFailedError` (`todo/intent.py:52`, via `MatchTargetsConstraints`) when a misheard/typo'd list name matches no `todo` entity. UX: "I couldn't find a list called X." Most likely real-world voice failure.
+- **M-8:** Pi 5 has limited HEVC/H.265 hardware decode (dropped vs Pi 4) — screensaver format guidance is Pi-5-specific, validate on real hardware.
+
+**Meta-pattern observed across §§2–4:** the "we inherit HA robustness" framing held for STT/timeout/local_todo but was WRONG for offline-tile-degrade (C-3) and the single-call assumption (C-2). Source-checking confident-looking platform claims is earning its keep — both Criticals were platform-default/architecture assumptions that source contradicted.
 
 ## 8. Open questions not yet resolved
 
