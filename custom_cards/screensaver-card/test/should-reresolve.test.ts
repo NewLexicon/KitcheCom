@@ -18,4 +18,8 @@ describe("shouldReResolve", () => {
     // ttl 200 < margin 300 => threshold clamps to 0 => any elapsed time re-resolves.
     expect(shouldReResolve(0, 100, 200)).toBe(true);
   });
+  it("re-resolves at exactly the threshold (>= boundary)", () => {
+    // threshold = DAY - 300; at exactly that elapsed time, >= returns true (safe direction).
+    expect(shouldReResolve(0, DAY - 300)).toBe(true);
+  });
 });
