@@ -5,7 +5,7 @@
 **This file is the cold-open briefing.** A fresh session should read this end-to-end before doing anything.
 
 **Empirical state (as of last checkpoint):**
-- Git repo initialized. **HEAD = `397b135`** ("Add foundation-slice implementation plan"). Branch: default. 5 commits: `536215d` init/housekeeping → `ed2bcbc` §§1-4 checkpoint → `6d9a815` consolidated spec → `d74c846` cite-drift fix → `397b135` plan.
+- Git repo initialized. **HEAD = `e078119`** ("Checkpoint: design+plan complete, point cold-open at plan execution"). Branch: default. 6 commits: `536215d` init/housekeeping → `ed2bcbc` §§1-4 checkpoint → `6d9a815` consolidated spec → `d74c846` cite-drift fix → `397b135` plan → `e078119` cold-open fix-up.
 - Reference folder renamed `git ` (trailing space) → **`reference/`** and **gitignored** (328 MB upstream clones, never committed).
 - `.gitignore` excludes: `reference/`, `.superpowers/`, secrets/credentials, node/python build artifacts.
 - All source cites use **`reference/core-dev/...`** paths.
