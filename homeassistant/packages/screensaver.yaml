@@ -1,0 +1,48 @@
+# Screensaver idle state (spec §5 reactive-card model).
+# The custom screensaver card subscribes to input_boolean.kitchen_idle and fades
+# in/out IN PLACE (no view switching — HA core has no native remote view-switch).
+
+input_boolean:
+  kitchen_idle:
+    name: Kitchen Idle
+    icon: mdi:television-ambient-light
+
+timer:
+  kitchen_inactivity:
+    duration: "00:03:00"   # 3 min default; tune on hardware
+
+automation:
+  - alias: "Kitchen — go idle when inactivity timer finishes"
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.kitchen_inactivity
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.kitchen_idle
+
+  - alias: "Kitchen — wake on activity ping (M-10 browser->HA bridge)"
+    # The kiosk fires input_button.kitchen_activity on touch (wired on hardware,
+    # see deploy/INSTALL.md). That restarts the inactivity timer and clears idle.
+    trigger:
+      - platform: state
+        entity_id: input_button.kitchen_activity
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.kitchen_idle
+      - service: timer.start
+        target:
+          entity_id: timer.kitchen_inactivity
+
+input_button:
+  kitchen_activity:
+    name: Kitchen Activity Ping
+
+# OPTIONAL motion wake (M-11 — gated): uncomment and set your motion entity on hardware.
+# automation manual add:
+#   - alias: "Kitchen — wake on motion"
+#     trigger: { platform: state, entity_id: binary_sensor.kitchen_motion, to: "on" }
+#     action: [ { service: input_button.press, target: { entity_id: input_button.kitchen_activity } } ]
