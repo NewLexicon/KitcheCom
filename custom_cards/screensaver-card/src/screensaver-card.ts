@@ -103,6 +103,8 @@ export type ScreensaverConfig = {
   transitionDuration: number;
   idleEntity: string;
   showClock: boolean;
+  shuffle: boolean;
+  kenBurnsIntensity: number;
 };
 
 const PHOTO_DURATION_FLOOR = 2;
@@ -118,6 +120,9 @@ export function resolveConfig(raw: Record<string, unknown> = {}): ScreensaverCon
     idleEntity:
       typeof raw.idle_entity === "string" && raw.idle_entity ? raw.idle_entity : IDLE_ENTITY,
     showClock: raw.show_clock === undefined ? true : Boolean(raw.show_clock),
+    shuffle: raw.shuffle === true,
+    kenBurnsIntensity: Math.min(1, Math.max(0,
+      typeof raw.ken_burns_intensity === "number" ? raw.ken_burns_intensity : 0.5)),
   };
 }
 
