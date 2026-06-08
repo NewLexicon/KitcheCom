@@ -1,0 +1,14 @@
+KitchenCOM:
+  # Base palette — dark premium smart-display
+  primary-color: "#2d6cff"
+  accent-color: "#2d6cff"
+  primary-background-color: "#0f1115"
+  secondary-background-color: "#1b2130"
+  card-background-color: "#1b2130"
+  primary-text-color: "#e8edf6"
+  secondary-text-color: "#cdd6e6"
+  # Touch-friendly sizing
+  ha-card-border-radius: "14px"
+  # Glanceable headers
+  app-header-background-color: "#0f1115"
+  app-header-text-color: "#e8edf6"
