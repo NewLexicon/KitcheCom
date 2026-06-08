@@ -14,4 +14,7 @@ describe("selectDisplayMode", () => {
   it("ignores unsupported file types, shows fallback if none remain", () => {
     expect(selectDisplayMode(["notes.txt", "thumbs.db"])).toBe("fallback");
   });
+  it("shows media when supported and unsupported files are mixed", () => {
+    expect(selectDisplayMode(["notes.txt", "photo.JPG"])).toBe("media");
+  });
 });

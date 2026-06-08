@@ -15,6 +15,9 @@ export function isScreensaverActive(hass?: HassLike): boolean {
 // limited on Pi 5 — validate video formats on real hardware. Conservative default set.
 const SUPPORTED = [".jpg", ".jpeg", ".png", ".webp", ".mp4", ".webm"];
 
+// Expects bare filenames / basenames (e.g. "photo.jpg"), NOT URLs with query strings.
+// When HA media_source URLs are wired in later, strip any "?query"/"#fragment" before
+// matching, or endsWith(ext) will silently drop e.g. "photo.jpg?token=…". (Deferred.)
 export function selectDisplayMode(files: string[] | undefined | null): "media" | "fallback" {
   if (!files || files.length === 0) return "fallback";
   const usable = files.filter((f) =>
