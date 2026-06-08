@@ -209,7 +209,21 @@ git commit -m "feat: selectSubdirectories for nested-album recursion (TDD)"
 
 **Note:** snake-in / camel-out. `shuffle:` → `shuffle` (default false). `ken_burns_intensity:` → `kenBurnsIntensity` with a **two-sided** clamp `Math.min(1, Math.max(0, n))` (NOT photoDuration's one-sided floor), default 0.5.
 
-- [ ] **Step 1: Add failing tests** — append inside the existing `describe("resolveConfig", ...)` in `test/resolve-config.test.ts`:
+- [ ] **Step 1a: UPDATE the existing exact-match assertion (REQUIRED — C-1, not append-only).**
+The existing `applies all defaults for empty config` test does `toEqual({...})` against an **exact 5-field object**. Adding `shuffle`/`kenBurnsIntensity` to the return object makes this test fail on a key-count mismatch — a **regression to fix**, distinct from the new tests' expected FAIL. Edit that assertion's object literal to add the two new fields:
+```typescript
+    expect(resolveConfig({})).toEqual({
+      mediaPath: "media",
+      photoDuration: 10,
+      transitionDuration: 1.5,
+      idleEntity: "input_boolean.kitchen_idle",
+      showClock: true,
+      shuffle: false,
+      kenBurnsIntensity: 0.5,
+    });
+```
+
+- [ ] **Step 1b: Add failing tests** — append inside the existing `describe("resolveConfig", ...)`:
 ```typescript
   it("defaults shuffle to false and kenBurnsIntensity to 0.5", () => {
     const c = resolveConfig({});
@@ -226,7 +240,7 @@ git commit -m "feat: selectSubdirectories for nested-album recursion (TDD)"
   });
 ```
 
-- [ ] **Step 2: Run — verify FAIL** (`npm test` — the 3 new fail; existing resolveConfig tests pass). PASTE.
+- [ ] **Step 2: Run — verify FAIL** (`npm test`). Expected reds until Step 3: the 3 new tests AND the updated `applies all defaults` test (now expects 7 fields the impl returns only 5 of). All go green after Step 3 adds the two fields. PASTE.
 
 - [ ] **Step 3: Implement** — extend `ScreensaverConfig` type (add `shuffle: boolean;` and `kenBurnsIntensity: number;`) and the `resolveConfig` return object:
 ```typescript
@@ -260,20 +274,19 @@ export const MAX_RECURSION_DEPTH = 3;     // root + 3 subfolder levels
 export const MAX_BROWSE_FOLDERS = 50;     // hard cap on browse_media calls per activation
 ```
 
-- [ ] **Step 2: Replace the single browse in `_startLoop` with a bounded recursive browse.**
-Currently `_startLoop` does one `callWS(browse_media, …)` → `selectPlayableChildren`. Replace the collection with a helper `_collectMedia(rootContentId)` that:
+- [ ] **Step 2: Replace the single browse in `_startLoop` with a bounded recursive browse (I-1: generation-token-safe).**
+Currently `_startLoop` does one `callWS(browse_media, …)` → `selectPlayableChildren`. Replace the collection with a helper `_collectMedia(rootContentId, gen)` — **note it TAKES the captured `gen`** (the same `gen` `_startLoop` already captured at its top via `const gen = this._gen;`), NOT a fresh read:
 - maintains a queue of `{contentId, depth}` starting at `{root, 0}` and a `foldersBrowsed` counter;
-- while queue non-empty AND `foldersBrowsed < MAX_BROWSE_FOLDERS`: dequeue, `callWS(browse_media, contentId)`, `foldersBrowsed++`; accumulate `selectPlayableChildren(tree)` into items; if `depth < MAX_RECURSION_DEPTH`, enqueue each `selectSubdirectories(tree)` id at `depth+1`;
+- while queue non-empty AND `foldersBrowsed < MAX_BROWSE_FOLDERS`: dequeue, `callWS(browse_media, contentId)`, `foldersBrowsed++`; **after the await, `if (gen !== this._gen) return items;` (stop descending — a stop/restart happened)**; accumulate `selectPlayableChildren(tree)` into items; if `depth < MAX_RECURSION_DEPTH`, enqueue each `selectSubdirectories(tree)` id at `depth+1`;
 - wrap each `callWS` in try/catch → on error, skip that folder (don't abort the whole loop);
-- respect the generation-token guard (re-check `gen !== this._gen` after each await, same as the existing loop's I-7/concurrency pattern) — bail if stale;
 - return the accumulated `MediaItem[]`.
-Then `_startLoop` uses `_collectMedia(buildBrowseContentId(this._cfg.mediaPath))` for `this._items`. Keep the existing `items.length === 0 → fallback` branch.
+Then in `_startLoop`: `const items = await _collectMedia(buildBrowseContentId(this._cfg.mediaPath), gen);` followed by **the authoritative post-collection guard, mirroring the existing post-browse guard (lines 170/173):** `if (gen !== this._gen) { this._loopRunning = false; return; }` — placed BEFORE assigning `this._items`/`this._mode`/`this._index` or calling `_advance`. This prevents a stale collection from mutating display state or starting the loop on a dead generation (the I-1 concurrency gap). Keep the existing `items.length === 0 → fallback` branch.
 
-- [ ] **Step 3: Shuffle integration.**
-After collecting items, if `this._cfg.shuffle`, set `this._items = shuffleOrder(this._items, Math.random)`. On wrap (when `nextMediaIndex` returns to 0 / the loop cycles), re-shuffle: `this._items = shuffleOrder(this._items, Math.random)`. (Polish — avoid placing the just-shown item first: implement if a one-liner, else leave a `// TODO defer: no-immediate-repeat on reshuffle` comment.)
+- [ ] **Step 3: Shuffle integration (I-2: concrete wrap detection).**
+After collection (post-guard), if `this._cfg.shuffle`: `this._items = shuffleOrder(this._items, Math.random)` once before first display. **Wrap detection** happens in `_advance` where the index advances: compute `const next = nextMediaIndex(this._index, this._items.length);` and, BEFORE using `next`, if `this._cfg.shuffle && next === 0 && this._items.length > 1`, reshuffle: `this._items = shuffleOrder(this._items, Math.random)`. Shuffling reorders the **same `MediaItem` object references**, so the per-item resolve cache (`url`/`resolvedAt` mutated in place at lines ~194-195) is preserved across the reshuffle. (Polish — avoid placing the just-shown item first on reshuffle: implement only if a clean one-liner, else leave `// TODO defer: no-immediate-repeat on reshuffle`. Not load-bearing.)
 
-- [ ] **Step 4: Ken-Burns intensity CSS var.**
-In `render()` (or where the overlay element is created), set an inline style custom property `--kb-intensity: ${this._cfg.kenBurnsIntensity}` on the overlay. Update the `kb` keyframes to scale transform by the var, e.g. `transform: scale(calc(1 + 0.18 * var(--kb-intensity, 0.5))) translate(calc(-4% * var(--kb-intensity, 0.5)), calc(-3% * var(--kb-intensity, 0.5)))` at the `to` keyframe (so `0` = no movement, `1` = full current effect). Keep the existing animation duration.
+- [ ] **Step 4: Ken-Burns intensity CSS var (styleMap mechanism).**
+Custom properties do NOT bind through Lit's normal attribute syntax — use `styleMap`. **Add `styleMap` to the imports** (currently line 1 imports only `LitElement, html, css, nothing, type PropertyValues` from `"lit"`; styleMap lives in `lit/directives/style-map.js`): add `import { styleMap } from "lit/directives/style-map.js";`. In `render()`, set the property on the overlay element: `style=${styleMap({ "--kb-intensity": String(this._cfg.kenBurnsIntensity) })}`. Update ONLY the `to` keyframe of `kb` to use the var with a fallback: `transform: scale(calc(1 + 0.18 * var(--kb-intensity, 0.5))) translate(calc(-4% * var(--kb-intensity, 0.5)), calc(-3% * var(--kb-intensity, 0.5)))`. The custom property set on `.overlay` inherits to the `.kenburns` img child, where the keyframe `var()` resolves. `0` → `scale(1) translate(0,0)` = static; `1` → full current effect. Keep the existing animation duration. (The `from` keyframe is already the intensity-0 state — leave it.)
 
 - [ ] **Step 5: Verify typecheck + pure-fn tests unaffected.**
 Run: `npm run typecheck && npm test`
@@ -291,7 +304,8 @@ git commit -m "feat: wire follow-ups into card glue (bounded recursion, shuffle,
 
 - [ ] **Step 1: Build** — `npm run build` → emits `dist/screensaver-card.js`, exit 0. PASTE.
 
-- [ ] **Step 2: Extend the demo mock** to exercise the new behavior. Update `demo/index.html`'s mock `callWS` so `browse_media` returns a tree WITH a subdirectory (a `can_expand: true` child), and a second `browse_media` for that subdir id returns more images — proving recursion. Set the card config to `{ media_path: "media", photo_duration: 3, shuffle: true, ken_burns_intensity: 1 }`. (Keep resolve_media returning the unsplash URLs.)
+- [ ] **Step 2: Extend the demo mock** to exercise the new behavior (M-5: key `browse_media` on `media_content_id`).
+The current mock returns `fakeTree` for ANY `browse_media` regardless of id — so the recursive loop would browse the subdir id and get the ROOT tree back (no distinct photos; just loops the root until `MAX_BROWSE_FOLDERS`). Fix the mock to **switch on `m.media_content_id`**: the root id returns a tree with a `can_expand:true` subdir child (e.g. id `"sub"`) + some leaf images; the `"sub"` id returns a DIFFERENT tree of additional leaf images (no further subdirs). This proves recursion adds distinct photos. Keep `resolve_media` returning the unsplash URLs (give the subdir's images distinct URLs so recursion is visually obvious). Set card config to `{ media_path: "media", photo_duration: 3, shuffle: true, ken_burns_intensity: 1 }`.
 
 - [ ] **Step 3: Manual verification** (controller drives this with the browser tool, OR document for human):
 Serve (`python3 -m http.server`) and open `demo/`. Verify by eye / via DOM eval:
