@@ -25,3 +25,10 @@ export function selectDisplayMode(files: string[] | undefined | null): "media" |
   );
   return usable.length > 0 ? "media" : "fallback";
 }
+
+// Build the media_source content id for HA's browse_media WS from a folder path.
+// Source contract: "local" is the source_dir_id; format media-source://media_source/local/<dir>.
+export function buildBrowseContentId(mediaPath: string): string {
+  const dir = (mediaPath || "media").replace(/^\/+|\/+$/g, "") || "media";
+  return `media-source://media_source/local/${dir}`;
+}
