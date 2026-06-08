@@ -31,4 +31,10 @@ describe("selectPlayableChildren", () => {
     expect(selectPlayableChildren(tree([]))).toEqual([]);
     expect(selectPlayableChildren({} as any)).toEqual([]);
   });
+  it("skips a playable leaf missing media_content_id", () => {
+    const out = selectPlayableChildren(tree([
+      { media_class: "image", can_play: true, can_expand: false }, // no media_content_id
+    ]));
+    expect(out).toEqual([]);
+  });
 });
