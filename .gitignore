@@ -4,6 +4,9 @@
 # Brainstorming visual-companion artifacts
 /.superpowers/
 
+# Git worktrees (isolated workspaces for feature branches)
+/.worktrees/
+
 # macOS
 .DS_Store
 
