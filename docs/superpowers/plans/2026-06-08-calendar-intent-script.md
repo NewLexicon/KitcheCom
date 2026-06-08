@@ -151,7 +151,8 @@ PASTE both runs' output. **Leave calendar.yaml in its correct (no-duration-in-da
 
 - [ ] **Step 4: Confirm HA won't try to load the .py**
 
-The keystone wires `packages: !include_dir_named packages` which includes `*.yaml` only. Confirm the dotfile-py is not matched: `ls homeassistant/packages/` should show `calendar.yaml`, `screensaver.yaml`, `.calendar-verify.py`, `.gitkeep`. The `.py` (dotfile) is not a `.yaml`, so HA ignores it. (Documentation check only — no command needed beyond the `ls`.)
+The keystone wires `packages: !include_dir_named packages`. HA's `!include_dir_named` excludes `.calendar-verify.py` for **two** independent reasons (both confirmed by HA core's own test suite, `reference/core-dev/tests/util/yaml/test_init.py`): it matches only `*.yaml`/`*.yml`, AND it skips dot-prefixed/hidden entries. So a future maintainer needn't worry even about a hypothetical `calendar-verify.yaml`-named helper (it'd be loaded) vs. this dotfile (skipped).
+Confirm the files present (use `ls -a` — bare `ls` hides dotfiles on macOS): `ls -a homeassistant/packages/` should show `calendar.yaml`, `screensaver.yaml`, `.calendar-verify.py`, `.gitkeep`. (Documentation check only.)
 
 - [ ] **Step 5: Commit**
 
