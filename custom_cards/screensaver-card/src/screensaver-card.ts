@@ -71,3 +71,27 @@ export function nextMediaIndex(current: number, count: number): number {
   if (current < 0 || current >= count) return 0;
   return (current + 1) % count;
 }
+
+export type ScreensaverConfig = {
+  mediaPath: string;
+  photoDuration: number;
+  transitionDuration: number;
+  idleEntity: string;
+  showClock: boolean;
+};
+
+const PHOTO_DURATION_FLOOR = 2;
+
+// Apply defaults + clamp to raw card YAML config (spec §2 defaults table).
+export function resolveConfig(raw: Record<string, unknown> = {}): ScreensaverConfig {
+  const photo = typeof raw.photo_duration === "number" ? raw.photo_duration : 10;
+  return {
+    mediaPath: typeof raw.media_path === "string" && raw.media_path ? raw.media_path : "media",
+    photoDuration: Math.max(PHOTO_DURATION_FLOOR, photo),
+    transitionDuration:
+      typeof raw.transition_duration === "number" ? raw.transition_duration : 1.5,
+    idleEntity:
+      typeof raw.idle_entity === "string" && raw.idle_entity ? raw.idle_entity : IDLE_ENTITY,
+    showClock: raw.show_clock === undefined ? true : Boolean(raw.show_clock),
+  };
+}
