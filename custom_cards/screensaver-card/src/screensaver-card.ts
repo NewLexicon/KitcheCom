@@ -256,7 +256,7 @@ export class ScreensaverCard extends LitElement {
     const next = nextMediaIndex(this._index < 0 ? this._items.length - 1 : this._index, this._items.length);
     // I-2 wrap-detect: on a full pass (wrapped to 0) reshuffle the same MediaItem refs
     // so the per-item resolve cache survives. // TODO defer: no-immediate-repeat on reshuffle
-    if (this._cfg.shuffle && next === 0 && this._items.length > 1) {
+    if (this._cfg.shuffle && next === 0 && this._index >= 0 && this._items.length > 1) {
       this._items = shuffleOrder(this._items, Math.random);
     }
     this._index = next;
