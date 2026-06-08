@@ -7,8 +7,8 @@ export const IDLE_ENTITY = "input_boolean.kitchen_idle";
 
 type HassLike = { states?: Record<string, { state?: string } | undefined> };
 
-export function isScreensaverActive(hass?: HassLike): boolean {
-  return hass?.states?.[IDLE_ENTITY]?.state === "on";
+export function isScreensaverActive(hass?: HassLike, idleEntity: string = IDLE_ENTITY): boolean {
+  return hass?.states?.[idleEntity]?.state === "on";
 }
 
 // Supported media extensions. Pi-5 codec note (M-8): HEVC/H.265 hardware decode is
