@@ -31,7 +31,7 @@ A custom HA **`intent_script`** (config-only YAML, **zero custom Python**) that 
 | Slot | Required | Shape | Notes |
 |---|---|---|---|
 | `summary` | yes | string | event title → `summary` field |
-| `start` | yes | ISO datetime string | Gemini resolves relative→absolute → `start_date_time` field |
+| `start` | yes | **tz-aware** ISO datetime string | Gemini resolves relative→absolute → `start_date_time` field. **Must be timezone-aware** (e.g. `2026-06-09T15:00:00-04:00`): `create_event`'s `_has_consistent_timezone`/`_as_local_timezone` validators (`__init__.py:257-258`) reject naive datetimes. This is a contract Gemini's slot output must meet (hardware-phase prompt/runbook concern). |
 | `duration` | no | hours (number) | **Consumed by our Jinja template ONLY, to compute `end_date_time`. NEVER sent to `calendar.create_event` — `duration` is not a field of that service's schema (it belongs to `get_events`, `const.py:55`); `data: {duration: …}` would be rejected.** (C-1) |
 
 ### create_event field requirements (verified)
