@@ -34,6 +34,10 @@ describe("resolveConfig", () => {
   it("honors shuffle: true", () => {
     expect(resolveConfig({ shuffle: true }).shuffle).toBe(true);
   });
+  it("treats non-true shuffle values as false (strict boolean)", () => {
+    expect(resolveConfig({ shuffle: "true" as unknown as boolean }).shuffle).toBe(false);
+    expect(resolveConfig({ shuffle: 1 as unknown as boolean }).shuffle).toBe(false);
+  });
   it("clamps ken_burns_intensity to [0,1] (both ends) and reads snake_case", () => {
     expect(resolveConfig({ ken_burns_intensity: -0.5 }).kenBurnsIntensity).toBe(0);
     expect(resolveConfig({ ken_burns_intensity: 2 }).kenBurnsIntensity).toBe(1);
