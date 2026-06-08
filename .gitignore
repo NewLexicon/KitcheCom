@@ -32,3 +32,6 @@ venv/
 
 # Stray subagent tooling artifact (match at any depth, not just repo root)
 .claude-flow/
+
+# Playwright MCP scratch dir (browser-verification console/page dumps)
+.playwright-mcp/
