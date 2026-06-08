@@ -139,6 +139,7 @@ export class ScreensaverCard extends LitElement {
   private _timer?: ReturnType<typeof setTimeout>;
   private _clock?: ReturnType<typeof setInterval>;
   private _loopRunning = false;
+  private _gen = 0;
 
   setConfig(config: Record<string, unknown>): void {
     this._rawConfig = config ?? {};
@@ -158,6 +159,7 @@ export class ScreensaverCard extends LitElement {
   private async _startLoop(): Promise<void> {
     if (this._loopRunning) return;
     this._loopRunning = true;
+    const gen = this._gen;
     this._tickClock();
     this._clock = setInterval(() => this._tickClock(), 1000);
     try {
@@ -165,8 +167,10 @@ export class ScreensaverCard extends LitElement {
         type: "media_source/browse_media",
         media_content_id: buildBrowseContentId(this._cfg.mediaPath),
       });
+      if (gen !== this._gen) { this._loopRunning = false; return; }   // stale: a stop happened during browse
       this._items = selectPlayableChildren(tree);
     } catch {
+      if (gen !== this._gen) { this._loopRunning = false; return; }
       this._items = [];
     }
     this._mode = this._items.length === 0 ? "fallback" : "media";
@@ -176,6 +180,7 @@ export class ScreensaverCard extends LitElement {
 
   private async _advance(): Promise<void> {
     if (!this._active || this._items.length === 0) return;
+    const gen = this._gen;
     this._index = nextMediaIndex(this._index < 0 ? this._items.length - 1 : this._index, this._items.length);
     const item = this._items[this._index];
     const now = Math.floor(Date.now() / 1000);
@@ -185,12 +190,15 @@ export class ScreensaverCard extends LitElement {
           type: "media_source/resolve_media",
           media_content_id: item.contentId,
         });
+        if (gen !== this._gen) return;   // stale: stopped/restarted during resolve
         item.url = res?.url;
         item.resolvedAt = now;
       } catch {
+        if (gen !== this._gen) return;
         return this._skip(); // resolve failed → skip
       }
     }
+    if (gen !== this._gen) return;
     // M-2: if resolve succeeded but returned no url, item.resolvedAt is now stamped,
     // so this item stays permanently skipped on future passes (shouldReResolve→false,
     // url still undefined). Intentional — a broken item must not freeze the loop (spec 4c).
@@ -208,6 +216,7 @@ export class ScreensaverCard extends LitElement {
   }
 
   private _stopLoop(): void {
+    this._gen++;
     this._loopRunning = false;
     if (this._timer) clearTimeout(this._timer);
     if (this._clock) clearInterval(this._clock);
