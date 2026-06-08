@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>screensaver-card demo</title>
+<style>body{margin:0;background:#222}</style>
+<!-- The built dist/screensaver-card.js has a bare `import ... from "lit"`.
+     tsc does NOT bundle bare specifiers, so the browser needs this import map.
+     jsdelivr +esm is self-contained (zero bare sub-imports). Demo-only; the Pi
+     resolves lit via HA's module system. -->
+<script type="importmap">
+{ "imports": { "lit": "https://cdn.jsdelivr.net/npm/lit@3.3.3/+esm" } }
+</script>
+<script type="module">
+  import { ScreensaverCard } from "../dist/screensaver-card.js";
+  const card = document.createElement("screensaver-card");
+  card.setConfig({ media_path: "media", photo_duration: 4, show_clock: true });
+  const fakeTree = { children: [
+    { media_content_id: "a", media_class: "image", can_play: true, can_expand: false },
+    { media_content_id: "b", media_class: "image", can_play: true, can_expand: false },
+  ]};
+  const urls = {
+    a: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200",
+    b: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=1200",
+  };
+  card.hass = {
+    states: { "input_boolean.kitchen_idle": { state: "on" } },
+    callWS: async (m) =>
+      m.type === "media_source/browse_media" ? fakeTree
+      : m.type === "media_source/resolve_media" ? { url: urls[m.media_content_id], mime_type: "image/jpeg" }
+      : null,
+  };
+  document.body.appendChild(card);
+  window.toggleIdle = (on) => { card.hass = { ...card.hass, states: { "input_boolean.kitchen_idle": { state: on ? "on" : "off" } } }; };
+</script>
+<p style="color:#888;font:14px sans-serif">Open devtools. Expect: full-screen overlay, two photos cross-cycling every ~4s with Ken-Burns. Run <code>toggleIdle(false)</code> → overlay disappears; <code>toggleIdle(true)</code> → returns.</p>
