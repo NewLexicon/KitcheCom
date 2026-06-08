@@ -5,6 +5,8 @@
 
 export const IDLE_ENTITY = "input_boolean.kitchen_idle";
 
-export function isScreensaverActive(hass: any): boolean {
+type HassLike = { states?: Record<string, { state?: string } | undefined> };
+
+export function isScreensaverActive(hass?: HassLike): boolean {
   return hass?.states?.[IDLE_ENTITY]?.state === "on";
 }
