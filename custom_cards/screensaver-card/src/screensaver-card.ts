@@ -1,3 +1,5 @@
+import { LitElement, html, css, nothing, type PropertyValues } from "lit";
+
 // Pure idle-decision logic — the card's one piece of real, testable logic.
 // Reads input_boolean.kitchen_idle from hass (spec §5 reactive-card model, M-9).
 // Fail-safe: any missing/unknown state => inactive, so the screensaver can never
@@ -110,4 +112,151 @@ export function shouldReResolve(
   if (resolvedAt === undefined) return true;
   const threshold = Math.max(0, ttlSeconds - RESOLVE_SAFETY_MARGIN_SECONDS);
   return now - resolvedAt >= threshold;
+}
+
+type HassWS = HassLike & { callWS?: (msg: Record<string, unknown>) => Promise<any> };
+
+export class ScreensaverCard extends LitElement {
+  static properties = {
+    hass: { attribute: false },
+    _active: { state: true },
+    _mode: { state: true },
+    _currentUrl: { state: true },
+    _currentKind: { state: true },
+    _now: { state: true },
+  };
+
+  hass?: HassWS;
+  private _cfg: ScreensaverConfig = resolveConfig({});
+  private _rawConfig: Record<string, unknown> = {};
+  private _active = false;
+  private _mode: "media" | "fallback" = "fallback";
+  private _items: MediaItem[] = [];
+  private _index = 0;
+  private _currentUrl = "";
+  private _currentKind: "image" | "video" = "image";
+  private _now = "";
+  private _timer?: ReturnType<typeof setTimeout>;
+  private _clock?: ReturnType<typeof setInterval>;
+  private _loopRunning = false;
+
+  setConfig(config: Record<string, unknown>): void {
+    this._rawConfig = config ?? {};
+    this._cfg = resolveConfig(this._rawConfig);
+  }
+
+  updated(changed: PropertyValues): void {
+    if (changed.has("hass")) {
+      const active = isScreensaverActive(this.hass, this._cfg.idleEntity);
+      if (active !== this._active) {
+        this._active = active;
+        active ? this._startLoop() : this._stopLoop();
+      }
+    }
+  }
+
+  private async _startLoop(): Promise<void> {
+    if (this._loopRunning) return;
+    this._loopRunning = true;
+    this._tickClock();
+    this._clock = setInterval(() => this._tickClock(), 1000);
+    try {
+      const tree = await this.hass?.callWS?.({
+        type: "media_source/browse_media",
+        media_content_id: buildBrowseContentId(this._cfg.mediaPath),
+      });
+      this._items = selectPlayableChildren(tree);
+    } catch {
+      this._items = [];
+    }
+    this._mode = this._items.length === 0 ? "fallback" : "media";
+    this._index = -1;
+    if (this._mode === "media") this._advance();
+  }
+
+  private async _advance(): Promise<void> {
+    if (!this._active || this._items.length === 0) return;
+    this._index = nextMediaIndex(this._index < 0 ? this._items.length - 1 : this._index, this._items.length);
+    const item = this._items[this._index];
+    const now = Math.floor(Date.now() / 1000);
+    if (shouldReResolve(item.resolvedAt, now)) {
+      try {
+        const res = await this.hass?.callWS?.({
+          type: "media_source/resolve_media",
+          media_content_id: item.contentId,
+        });
+        item.url = res?.url;
+        item.resolvedAt = now;
+      } catch {
+        return this._skip(); // resolve failed → skip
+      }
+    }
+    // M-2: if resolve succeeded but returned no url, item.resolvedAt is now stamped,
+    // so this item stays permanently skipped on future passes (shouldReResolve→false,
+    // url still undefined). Intentional — a broken item must not freeze the loop (spec 4c).
+    if (!item.url) return this._skip();
+    this._currentUrl = item.url;
+    this._currentKind = item.kind;
+    if (item.kind === "image") {
+      this._timer = setTimeout(() => this._advance(), this._cfg.photoDuration * 1000);
+    }
+    // video advances on its 'ended' event (see render)
+  }
+
+  private _skip(): void {
+    if (this._active) this._timer = setTimeout(() => this._advance(), 0);
+  }
+
+  private _stopLoop(): void {
+    this._loopRunning = false;
+    if (this._timer) clearTimeout(this._timer);
+    if (this._clock) clearInterval(this._clock);
+    this._timer = this._clock = undefined;
+    this._currentUrl = "";
+  }
+
+  private _tickClock(): void {
+    const d = new Date();
+    this._now = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._stopLoop();
+  }
+
+  render() {
+    if (!this._active) return nothing;
+    return html`
+      <div class="overlay">
+        ${this._mode === "media" && this._currentUrl
+          ? this._currentKind === "image"
+            ? html`<img class="media kenburns" src=${this._currentUrl} @error=${this._skip} />`
+            : html`<video class="media" src=${this._currentUrl} autoplay muted
+                @ended=${this._advance} @error=${this._skip}></video>`
+          : html`<div class="fallback"></div>`}
+        ${this._cfg.showClock ? html`<div class="clock">${this._now}</div>` : nothing}
+      </div>
+    `;
+  }
+
+  static styles = css`
+    .overlay { position: fixed; inset: 0; background: #000; z-index: 9999;
+      animation: fadein 0.8s ease; overflow: hidden; }
+    .media { width: 100%; height: 100%; object-fit: cover; }
+    .kenburns { animation: kb 14s ease-in-out infinite alternate; }
+    .fallback { width: 100%; height: 100%;
+      background: linear-gradient(120deg,#0f1115,#1b2130,#243657,#1b2130);
+      background-size: 300% 300%; animation: grad 18s ease infinite; }
+    .clock { position: absolute; bottom: 28px; left: 32px; color: #e8edf6;
+      font: 800 56px/1 -apple-system, system-ui, sans-serif; letter-spacing: -1px;
+      text-shadow: 0 2px 12px rgba(0,0,0,.6); }
+    @keyframes fadein { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes kb { from { transform: scale(1) translate(0,0) } to { transform: scale(1.18) translate(-4%,-3%) } }
+    @keyframes grad { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+  `;
+}
+
+if (!customElements.get("screensaver-card")) {
+  customElements.define("screensaver-card", ScreensaverCard);
 }
