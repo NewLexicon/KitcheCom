@@ -1,20 +1,26 @@
 # KitchenCOM — Session State: Home Assistant Pivot & Architecture Locked
 
 **Date:** 2026-06-07
-**Phase:** Brainstorming → architecture locked; **all 6 design-walkthrough sections approved (with folds).** Next phase: formal implementation plan (`writing-plans`) for the first buildable slice.
+**Phase:** Design locked + **foundation slice BUILT, reviewed, and MERGED to main.** Next phase: deferred subsystems (voice config, calendar intent_script) + hardware deployment.
 **This file is the cold-open briefing.** A fresh session should read this end-to-end before doing anything.
 
-**Empirical state (as of last checkpoint):**
-- Git repo initialized. **HEAD = `e078119`** ("Checkpoint: design+plan complete, point cold-open at plan execution"). Branch: default. 6 commits: `536215d` init/housekeeping → `ed2bcbc` §§1-4 checkpoint → `6d9a815` consolidated spec → `d74c846` cite-drift fix → `397b135` plan → `e078119` cold-open fix-up.
-- Reference folder renamed `git ` (trailing space) → **`reference/`** and **gitignored** (328 MB upstream clones, never committed).
-- `.gitignore` excludes: `reference/`, `.superpowers/`, secrets/credentials, node/python build artifacts.
-- All source cites use **`reference/core-dev/...`** paths.
+**Empirical state (current):**
+- Git repo initialized; single branch **`main`**. **HEAD = `30cfcbe`** ("Merge feat/foundation-slice: KitchenCOM foundation scaffold"). No remote configured yet (GitHub repo not created — user will add later; to push: create remote, then `git push -u origin main`).
+- The foundation slice was built on `feat/foundation-slice` (15 commits, TDD + per-task spec+quality review), merged `--no-ff` to main, branch + worktree cleaned up.
+- **Empirical green (verified on merged main):** `python3 -m yamllint -c .yamllint homeassistant/` → exit 0; `cd custom_cards/screensaver-card && npm install && npm test` → 9 passing (4 idle + 5 media); `bash -n deploy/kiosk/start-kiosk.sh` → OK.
+- Reference folder = **`reference/`**, gitignored (328 MB upstream HA clones; source cites use `reference/core-dev/...`). `.gitignore` also excludes `.superpowers/`, `.worktrees/`, `.claude-flow/`, secrets, build artifacts.
+- **Tooling prereq:** `validate:yaml` needs `yamllint` (`pip install --user yamllint`); on this Mac it's at `~/Library/Python/3.9/bin` (NOT on default PATH) — invoke via `python3 -m yamllint` or prepend that dir. Node 24 + npm for the card.
 
-**DESIGN PHASE COMPLETE. Two durable artifacts produced this session:**
-- **Spec:** `docs/superpowers/specs/2026-06-07-kitchencom-ha-hub-design.md` (all 6 sections, folds applied, consistency-reviewed + cite-drift fixed).
-- **Plan:** `docs/superpowers/plans/2026-06-07-kitchencom-foundation-slice.md` (TDD, 8 tasks across 2 chunks, plan-reviewed — yamllint+HA-tags risk empirically validated, card TDD chain runs on Mac via Vitest).
+**DESIGN + FOUNDATION-SLICE COMPLETE. Durable artifacts:**
+- **Spec:** `docs/superpowers/specs/2026-06-07-kitchencom-ha-hub-design.md` (6 sections, folds applied, consistency-reviewed).
+- **Plan:** `docs/superpowers/plans/2026-06-07-kitchencom-foundation-slice.md` (executed in full; 8 tasks).
+- **Built (in main):** `homeassistant/` (keystone configuration.yaml + theme + Layout-B dashboard snapshot + screensaver idle package), `custom_cards/screensaver-card/` (Lit/TS, 9 tests), `deploy/` (kiosk systemd unit + INSTALL.md), root README.
 
-**→ NEXT SESSION'S LITERAL FIRST ACTION:** Execute the plan via **superpowers:subagent-driven-development** (subagents available in this harness). Read `docs/superpowers/plans/2026-06-07-kitchencom-foundation-slice.md` and start at Chunk 1 / Task 1. The plan is self-contained (exact files, code, commands, expected outputs). No Pi needed — the whole slice builds/tests on the Mac (`npm run validate:yaml`; card tests via Vitest). Tooling prereqs the plan assumes: `yamllint` (`pip install yamllint`), Node 24 + npm.
+**→ NEXT SESSION'S WORK (no single literal action — pick the next slice):** The foundation scaffold is done and merged. The remaining work is the *deferred subsystems* + hardware. Each is its own spec→plan→build cycle. Candidate next slices, roughly in dependency order:
+1. **Hardware deployment** (when the Pi 5 arrives): follow `deploy/INSTALL.md` Phases A–E. Address its HARDWARE-PHASE TODOs: M-12 kiosk auth, M-10 touch→`input_button.kitchen_activity` bridge, M-8 Pi-5 codec validation, Bookworm `chromium` binary, boot-to-desktop autologin, repoint kiosk `HA_URL` to the live dashboard, replace placeholder entity ids.
+2. **Voice pipeline config slice** — wire the Assist pipeline (Gemini STT→conversation→TTS) per spec §3 (the verified TWO-call pipeline). Mostly HA config.
+3. **C-4 calendar-by-voice slice** — custom `intent_script` for calendar event creation (calendar has NO built-in add intent; only `CREATE_EVENT_SERVICE` at `reference/core-dev/homeassistant/components/calendar/__init__.py:224`). The first thing likely to need `custom_components/`-adjacent work.
+4. **Screensaver card rendering** — the current card is pure idle/media-select LOGIC only; the Lit rendering + media loop + Ken-Burns/crossfade is NOT built yet. Deferred Minor from Task 5: add `lib: ["ES2021","DOM","DOM.Iterable"]` to the card's tsconfig when rendering lands.
 
 **Sections approved so far (section-by-section reviewer-pass discipline):**
 - §1 Architecture — approved (C-1 retired, see §9).
