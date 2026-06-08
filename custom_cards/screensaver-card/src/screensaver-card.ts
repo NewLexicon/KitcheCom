@@ -32,3 +32,34 @@ export function buildBrowseContentId(mediaPath: string): string {
   const dir = (mediaPath || "media").replace(/^\/+|\/+$/g, "") || "media";
   return `media-source://media_source/local/${dir}`;
 }
+
+// A playable media leaf the loop cycles. contentId feeds resolve_media; url/resolvedAt
+// are the lazy-resolve cache, stamped by the Lit glue loop (NOT here). See spec §2.
+export type MediaItem = {
+  contentId: string;
+  kind: "image" | "video";
+  url?: string;
+  resolvedAt?: number;
+};
+
+type BrowseChild = {
+  media_content_id?: string;
+  media_class?: string;
+  can_play?: boolean;
+  can_expand?: boolean;
+};
+
+// Filter an HA browse_media tree to ordered playable image/video leaves (spec M-13).
+// Predicate (browse_media.py:106-120): can_expand === false && can_play === true.
+export function selectPlayableChildren(browseTree?: { children?: BrowseChild[] }): MediaItem[] {
+  const children = browseTree?.children ?? [];
+  const items: MediaItem[] = [];
+  for (const c of children) {
+    if (c.can_expand === false && c.can_play === true && c.media_content_id) {
+      if (c.media_class === "image" || c.media_class === "video") {
+        items.push({ contentId: c.media_content_id, kind: c.media_class });
+      }
+    }
+  }
+  return items;
+}
