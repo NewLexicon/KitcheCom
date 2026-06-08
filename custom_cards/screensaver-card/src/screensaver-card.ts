@@ -95,3 +95,19 @@ export function resolveConfig(raw: Record<string, unknown> = {}): ScreensaverCon
     showClock: raw.show_clock === undefined ? true : Boolean(raw.show_clock),
   };
 }
+
+// Resolved media URLs are signed + time-limited (resolve_media `expires`,
+// default CONTENT_AUTH_EXPIRY_TIME = 24h). Re-resolve before expiry (spec I-7).
+export const RESOLVE_TTL_SECONDS = 3600 * 24; // CONTENT_AUTH_EXPIRY_TIME
+export const RESOLVE_SAFETY_MARGIN_SECONDS = 300;
+
+// All times epoch seconds. True = the url is missing/stale and must be re-resolved.
+export function shouldReResolve(
+  resolvedAt: number | undefined,
+  now: number,
+  ttlSeconds: number = RESOLVE_TTL_SECONDS,
+): boolean {
+  if (resolvedAt === undefined) return true;
+  const threshold = Math.max(0, ttlSeconds - RESOLVE_SAFETY_MARGIN_SECONDS);
+  return now - resolvedAt >= threshold;
+}
