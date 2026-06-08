@@ -63,3 +63,11 @@ export function selectPlayableChildren(browseTree?: { children?: BrowseChild[] }
   }
   return items;
 }
+
+// Next loop index with wrap-around. count 0 => 0 (caller shows fallback instead).
+// Out-of-range current resets to 0 (defensive: items list may have shrunk).
+export function nextMediaIndex(current: number, count: number): number {
+  if (count <= 0) return 0;
+  if (current < 0 || current >= count) return 0;
+  return (current + 1) % count;
+}
