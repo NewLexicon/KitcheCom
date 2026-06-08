@@ -21,4 +21,7 @@ describe("resolveConfig", () => {
     expect(resolveConfig({ photo_duration: 0 }).photoDuration).toBe(2);
     expect(resolveConfig({ photo_duration: -5 }).photoDuration).toBe(2);
   });
+  it("falls back to 'media' when media_path is an empty string", () => {
+    expect(resolveConfig({ media_path: "" }).mediaPath).toBe("media");
+  });
 });
