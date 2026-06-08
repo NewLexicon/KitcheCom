@@ -122,6 +122,18 @@ export function shouldReResolve(
   return now - resolvedAt >= threshold;
 }
 
+// Fisher-Yates shuffle with injectable randomness (rand() -> [0,1)). Returns a NEW
+// array; does not mutate input. Injectable rand keeps it deterministically testable
+// (glue passes Math.random). Used for shuffle-bag photo ordering.
+export function shuffleOrder<T>(items: T[], rand: () => number): T[] {
+  const out = items.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 type HassWS = HassLike & { callWS?: (msg: Record<string, unknown>) => Promise<any> };
 
 export class ScreensaverCard extends LitElement {
