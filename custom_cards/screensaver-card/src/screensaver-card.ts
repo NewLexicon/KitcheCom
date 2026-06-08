@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing, type PropertyValues } from "lit";
+import { styleMap } from "lit/directives/style-map.js";
 
 // Pure idle-decision logic — the card's one piece of real, testable logic.
 // Reads input_boolean.kitchen_idle from hass (spec §5 reactive-card model, M-9).
@@ -17,15 +18,23 @@ export function isScreensaverActive(hass?: HassLike, idleEntity: string = IDLE_E
 // limited on Pi 5 — validate video formats on real hardware. Conservative default set.
 const SUPPORTED = [".jpg", ".jpeg", ".png", ".webp", ".mp4", ".webm"];
 
-// Expects bare filenames / basenames (e.g. "photo.jpg"), NOT URLs with query strings.
-// When HA media_source URLs are wired in later, strip any "?query"/"#fragment" before
-// matching, or endsWith(ext) will silently drop e.g. "photo.jpg?token=…". (Deferred.)
+// Accepts bare filenames / basenames (e.g. "photo.jpg") or resolved media_source URLs
+// with a "?query"/"#fragment" suffix. Resolved: stripMediaUrlQuery strips query/fragment
+// before matching, so endsWith(ext) no longer silently drops e.g. "photo.jpg?token=…".
 export function selectDisplayMode(files: string[] | undefined | null): "media" | "fallback" {
   if (!files || files.length === 0) return "fallback";
   const usable = files.filter((f) =>
-    SUPPORTED.some((ext) => f.toLowerCase().endsWith(ext))
+    SUPPORTED.some((ext) => stripMediaUrlQuery(f).toLowerCase().endsWith(ext))
   );
   return usable.length > 0 ? "media" : "fallback";
+}
+
+// Strip ?query and #fragment from a media URL/path so extension-matching works
+// on resolved media_source URLs (e.g. "photo.jpg?token=…"). Pure. (Closes the
+// deferral noted on selectDisplayMode below.)
+export function stripMediaUrlQuery(url: string): string {
+  const cut = url.search(/[?#]/);
+  return cut === -1 ? url : url.slice(0, cut);
 }
 
 // Build the media_source content id for HA's browse_media WS from a folder path.
@@ -66,6 +75,21 @@ export function selectPlayableChildren(browseTree?: { children?: BrowseChild[] }
   return items;
 }
 
+// Parallel predicate to selectPlayableChildren (NOT a mirror): returns the
+// media_content_id strings of expandable subdirectories to recurse into. Dirs carry
+// no playable kind, hence string[] not MediaItem[]. Pure. (HA browse_media is lazy/
+// one-level — local_source.py:258-266 — so the glue browses each returned id.)
+export function selectSubdirectories(browseTree?: { children?: BrowseChild[] }): string[] {
+  const children = browseTree?.children ?? [];
+  const dirs: string[] = [];
+  for (const c of children) {
+    if (c.can_expand === true && c.media_content_id) {
+      dirs.push(c.media_content_id);
+    }
+  }
+  return dirs;
+}
+
 // Next loop index with wrap-around. count 0 => 0 (caller shows fallback instead).
 // Out-of-range current resets to 0 (defensive: items list may have shrunk).
 export function nextMediaIndex(current: number, count: number): number {
@@ -80,6 +104,8 @@ export type ScreensaverConfig = {
   transitionDuration: number;
   idleEntity: string;
   showClock: boolean;
+  shuffle: boolean;
+  kenBurnsIntensity: number;
 };
 
 const PHOTO_DURATION_FLOOR = 2;
@@ -95,6 +121,9 @@ export function resolveConfig(raw: Record<string, unknown> = {}): ScreensaverCon
     idleEntity:
       typeof raw.idle_entity === "string" && raw.idle_entity ? raw.idle_entity : IDLE_ENTITY,
     showClock: raw.show_clock === undefined ? true : Boolean(raw.show_clock),
+    shuffle: raw.shuffle === true,
+    kenBurnsIntensity: Math.min(1, Math.max(0,
+      typeof raw.ken_burns_intensity === "number" ? raw.ken_burns_intensity : 0.5)),
   };
 }
 
@@ -114,7 +143,25 @@ export function shouldReResolve(
   return now - resolvedAt >= threshold;
 }
 
+// Fisher-Yates shuffle with injectable randomness (rand() -> [0,1)). Returns a NEW
+// array; does not mutate input. Injectable rand keeps it deterministically testable
+// (glue passes Math.random). Used for shuffle-bag photo ordering.
+export function shuffleOrder<T>(items: T[], rand: () => number): T[] {
+  const out = items.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 type HassWS = HassLike & { callWS?: (msg: Record<string, unknown>) => Promise<any> };
+
+// Bounded recursive browse limits (I-1). HA browse_media is lazy/one-level, so the
+// glue walks subdirectories itself. Cap depth + total folder calls per activation so
+// a deep/wide media tree can't issue an unbounded number of WS calls.
+export const MAX_RECURSION_DEPTH = 3;     // root + 3 subfolder levels
+export const MAX_BROWSE_FOLDERS = 50;     // hard cap on browse_media calls per activation
 
 export class ScreensaverCard extends LitElement {
   static properties = {
@@ -156,23 +203,48 @@ export class ScreensaverCard extends LitElement {
     }
   }
 
+  // Bounded BFS over the media tree (I-1). Generation-token-safe: takes the captured
+  // gen and re-checks after every await — if a stop/restart happened mid-walk, bail
+  // out returning whatever was collected so far (the authoritative guard in _startLoop
+  // discards it). Per-folder errors skip that folder rather than aborting the walk.
+  private async _collectMedia(rootContentId: string, gen: number): Promise<MediaItem[]> {
+    const queue: { contentId: string; depth: number }[] = [{ contentId: rootContentId, depth: 0 }];
+    let foldersBrowsed = 0;
+    const items: MediaItem[] = [];
+    while (queue.length > 0 && foldersBrowsed < MAX_BROWSE_FOLDERS) {
+      const { contentId, depth } = queue.shift()!;
+      let tree: { children?: BrowseChild[] } | undefined;
+      try {
+        tree = await this.hass?.callWS?.({
+          type: "media_source/browse_media",
+          media_content_id: contentId,
+        });
+      } catch {
+        continue; // skip this folder on error, keep walking
+      }
+      foldersBrowsed++;
+      if (gen !== this._gen) return items;   // stale: stopped/restarted during browse
+      items.push(...selectPlayableChildren(tree));
+      if (depth < MAX_RECURSION_DEPTH) {
+        for (const id of selectSubdirectories(tree)) {
+          queue.push({ contentId: id, depth: depth + 1 });
+        }
+      }
+    }
+    return items;
+  }
+
   private async _startLoop(): Promise<void> {
     if (this._loopRunning) return;
     this._loopRunning = true;
     const gen = this._gen;
     this._tickClock();
     this._clock = setInterval(() => this._tickClock(), 1000);
-    try {
-      const tree = await this.hass?.callWS?.({
-        type: "media_source/browse_media",
-        media_content_id: buildBrowseContentId(this._cfg.mediaPath),
-      });
-      if (gen !== this._gen) { this._loopRunning = false; return; }   // stale: a stop happened during browse
-      this._items = selectPlayableChildren(tree);
-    } catch {
-      if (gen !== this._gen) { this._loopRunning = false; return; }
-      this._items = [];
-    }
+    const items = await this._collectMedia(buildBrowseContentId(this._cfg.mediaPath), gen);
+    // Authoritative guard BEFORE mutating display state: if a stop happened during
+    // collection, discard everything and bail.
+    if (gen !== this._gen) { this._loopRunning = false; return; }
+    this._items = this._cfg.shuffle ? shuffleOrder(items, Math.random) : items;
     this._mode = this._items.length === 0 ? "fallback" : "media";
     this._index = -1;
     if (this._mode === "media") this._advance();
@@ -181,7 +253,13 @@ export class ScreensaverCard extends LitElement {
   private async _advance(): Promise<void> {
     if (!this._active || this._items.length === 0) return;
     const gen = this._gen;
-    this._index = nextMediaIndex(this._index < 0 ? this._items.length - 1 : this._index, this._items.length);
+    const next = nextMediaIndex(this._index < 0 ? this._items.length - 1 : this._index, this._items.length);
+    // I-2 wrap-detect: on a full pass (wrapped to 0) reshuffle the same MediaItem refs
+    // so the per-item resolve cache survives. // TODO defer: no-immediate-repeat on reshuffle
+    if (this._cfg.shuffle && next === 0 && this._index >= 0 && this._items.length > 1) {
+      this._items = shuffleOrder(this._items, Math.random);
+    }
+    this._index = next;
     const item = this._items[this._index];
     const now = Math.floor(Date.now() / 1000);
     if (shouldReResolve(item.resolvedAt, now)) {
@@ -237,7 +315,7 @@ export class ScreensaverCard extends LitElement {
   render() {
     if (!this._active) return nothing;
     return html`
-      <div class="overlay">
+      <div class="overlay" style=${styleMap({ "--kb-intensity": String(this._cfg.kenBurnsIntensity) })}>
         ${this._mode === "media" && this._currentUrl
           ? this._currentKind === "image"
             ? html`<img class="media kenburns" src=${this._currentUrl} @error=${this._skip} />`
@@ -261,7 +339,7 @@ export class ScreensaverCard extends LitElement {
       font: 800 56px/1 -apple-system, system-ui, sans-serif; letter-spacing: -1px;
       text-shadow: 0 2px 12px rgba(0,0,0,.6); }
     @keyframes fadein { from { opacity: 0 } to { opacity: 1 } }
-    @keyframes kb { from { transform: scale(1) translate(0,0) } to { transform: scale(1.18) translate(-4%,-3%) } }
+    @keyframes kb { from { transform: scale(1) translate(0,0) } to { transform: scale(calc(1 + 0.18 * var(--kb-intensity, 0.5))) translate(calc(-4% * var(--kb-intensity, 0.5)), calc(-3% * var(--kb-intensity, 0.5))) } }
     @keyframes grad { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
   `;
 }
