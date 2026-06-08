@@ -16,6 +16,10 @@ views:
             icon: mdi:microphone
             tap_action:
               action: assist        # opens HA Assist (voice) — native
+          - type: custom:screensaver-card
+            media_path: media
+            photo_duration: 10
+            # idle_entity defaults to input_boolean.kitchen_idle
       # Groceries
       - type: grid
         cards:
@@ -29,6 +33,8 @@ views:
               - calendar.family     # PLACEHOLDER
           - type: todo-list
             entity: todo.chores     # PLACEHOLDER
-# Screensaver: the custom card (custom:screensaver-card) overlays via the
-# kitchen_idle automation (packages/screensaver.yaml, Task 4). Its JS resource is
-# registered in HA on hardware setup — see deploy/INSTALL.md.
+# Screensaver: the custom card (custom:screensaver-card) is now instantiated in
+# the hero grid section above. It renders nothing unless idle, driven by the
+# kitchen_idle automation (packages/screensaver.yaml, Task 4). Its JS resource
+# (/local/screensaver-card.js, registered as a dashboard resource in HA) remains
+# a hardware-phase INSTALL.md step — see deploy/INSTALL.md.

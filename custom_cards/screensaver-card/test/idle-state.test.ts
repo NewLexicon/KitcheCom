@@ -18,4 +18,12 @@ describe("isScreensaverActive", () => {
   it("is inactive when hass is undefined", () => {
     expect(isScreensaverActive(undefined)).toBe(false);
   });
+  it("uses a custom idle entity when provided", () => {
+    const hass = { states: { "input_boolean.den_idle": { state: "on" } } } as any;
+    expect(isScreensaverActive(hass, "input_boolean.den_idle")).toBe(true);
+  });
+  it("defaults to input_boolean.kitchen_idle when no entity given", () => {
+    const hass = { states: { "input_boolean.kitchen_idle": { state: "on" } } } as any;
+    expect(isScreensaverActive(hass)).toBe(true);
+  });
 });
