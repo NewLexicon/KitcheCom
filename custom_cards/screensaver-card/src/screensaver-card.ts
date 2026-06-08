@@ -10,3 +10,15 @@ type HassLike = { states?: Record<string, { state?: string } | undefined> };
 export function isScreensaverActive(hass?: HassLike): boolean {
   return hass?.states?.[IDLE_ENTITY]?.state === "on";
 }
+
+// Supported media extensions. Pi-5 codec note (M-8): HEVC/H.265 hardware decode is
+// limited on Pi 5 — validate video formats on real hardware. Conservative default set.
+const SUPPORTED = [".jpg", ".jpeg", ".png", ".webp", ".mp4", ".webm"];
+
+export function selectDisplayMode(files: string[] | undefined | null): "media" | "fallback" {
+  if (!files || files.length === 0) return "fallback";
+  const usable = files.filter((f) =>
+    SUPPORTED.some((ext) => f.toLowerCase().endsWith(ext))
+  );
+  return usable.length > 0 ? "media" : "fallback";
+}
