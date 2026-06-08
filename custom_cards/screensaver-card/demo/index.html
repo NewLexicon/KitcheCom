@@ -7,7 +7,10 @@
      jsdelivr +esm is self-contained (zero bare sub-imports). Demo-only; the Pi
      resolves lit via HA's module system. -->
 <script type="importmap">
-{ "imports": { "lit": "https://cdn.jsdelivr.net/npm/lit@3.3.3/+esm" } }
+{ "imports": {
+  "lit": "https://cdn.jsdelivr.net/npm/lit@3.3.3/+esm",
+  "lit/directives/style-map.js": "https://cdn.jsdelivr.net/npm/lit@3.3.3/directives/style-map.js/+esm"
+} }
 </script>
 <script type="module">
   import { ScreensaverCard } from "../dist/screensaver-card.js";
