@@ -1,0 +1,28 @@
+# Calendar-by-voice (C-4): a custom intent_script that lets the Gemini voice
+# pipeline create calendar events. Calendar has NO built-in add intent — only the
+# calendar.create_event service (reference/core-dev/homeassistant/components/calendar/__init__.py:224).
+# Gemini (Assist conversation agent, hardware-phase config) fills the slots and calls this intent.
+#
+# Slot contract (Gemini must supply):
+#   summary  (required, string)            -> event title
+#   start    (required, tz-AWARE ISO dt)   -> start_date_time; MUST be tz-aware
+#                                             (create_event tz validators reject naive datetimes)
+#   duration (optional, hours, number)     -> used ONLY to compute end_date_time below.
+#                                             NEVER sent to create_event (not a field of that service).
+
+intent_script:
+  KitchenAddCalendarEvent:
+    description: >-
+      Add an event to the family calendar. Use this when the user asks to
+      schedule, add, book, or put something on the calendar (e.g. "add dentist
+      Tuesday at 3pm"). Provide a tz-aware ISO 8601 start datetime.
+    action:
+      - service: calendar.create_event
+        target:
+          entity_id: calendar.family    # PLACEHOLDER — set the real calendar entity at hardware setup
+        data:
+          summary: "{{ summary }}"
+          start_date_time: "{{ start }}"
+          end_date_time: "{{ (as_datetime(start) + timedelta(hours=(duration | default(1) | float))) }}"
+    speech:
+      text: "Added {{ summary }} to the calendar."
