@@ -113,4 +113,4 @@ LOOP (per displayed item):
 - Resource registration in HA (`/local/screensaver-card.js`) remains a hardware-phase INSTALL.md step (already documented).
 
 ## 5. Scope boundary (YAGNI)
-NOT in this slice: shuffle/randomization, nested-album recursion, per-media-type durations, configurable Ken-Burns intensity, cloud (`google_photos`) source, in-card upload UI. Each is a clean later addition; v1 is one flat folder, sequential loop, the 6 config knobs above.
+NOT in this slice: shuffle/randomization, nested-album recursion, per-media-type durations, configurable Ken-Burns intensity, cloud (`google_photos`) source, in-card upload UI. Each is a clean later addition; v1 is one flat folder, sequential loop, the 5 config knobs above.
