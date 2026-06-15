@@ -22,7 +22,11 @@
   - On Pi: kiosk script at `/home/garrettdehart/kitchencom/deploy/kiosk/start-kiosk-wayland.sh` (chmod +x). chromium binary = `/usr/bin/chromium` (v147); `chromium-browser` does NOT exist.
   - Verified: reboot → autologin (autologin-user=garrettdehart, session rpd-labwc) → labwc → chromium fullscreen at dashboard, NO browser chrome. User confirmed visual.
 - **This work committed on branch `feat/hardware-deploy`** (off `origin/main`), commit `80c8112` — the 2 kiosk files + this handoff. NOT on `feat/audio-music` (where they were first authored — moved off to avoid mislabeling). Branch is 1 ahead of origin/main, unpushed.
-- **NEXT: Phase B integrations (HA-UI) — needs user accounts/keys.** Google Gemini (API key) + Google Calendar/Tasks/Photos (OAuth) + Assist voice pipeline (USB mic). THEN replace placeholder entities (`weather.home`, `todo.groceries`, `todo.chores`, `calendar.family`) — dashboard cards show "entity not found" until then. Screensaver media source also pending (point at real photos).
+- **Phase B integrations — PARTIALLY DONE (2026-06-15), no-credential cards wired live:**
+  - **Weather: DONE.** Met.no was auto-created by `default_config` during onboarding (no API key). Real entity = `weather.forecast_home` (NOT the placeholder `weather.home`). Dashboard updated to point at it (commit `af70670`). Live on kiosk.
+  - **Groceries + Chores: DONE.** Added two **Local To-do** integrations via HA UI named `Groceries`/`Chores` → produced entities `todo.groceries` + `todo.chores` (exact match to dashboard placeholders, so NO dashboard edit needed). Live on kiosk. NOTE: list titles have a stray trailing space (`'Groceries '`/`'Chores '`) — cosmetic only, entity IDs are clean. These are instance state (HA `.storage` config entries), NOT in the repo. (Caveat: `todo.chores` may later be replaced by a Grocy card per the concurrent grocy-chores slice.)
+- **STILL NEEDS USER ACCOUNTS/KEYS:** `calendar.family` (Google Calendar OAuth), voice button (`action: assist` → Gemini API key + USB mic + Assist pipeline), screensaver media source (Google Photos OAuth or local images). Also Google Gemini integration for voice.
+- **HEAD = `af70670`** on `feat/hardware-deploy`, 3 commits ahead of `origin/main`, UNPUSHED. Arc: `80c8112` (kiosk + handoff) → `0c740c1` (handoff fix-ups) → `af70670` (weather card wired).
 
 ## PI ACCESS (how to drive it)
 - `ssh kitchencom` — passwordless (dedicated key `~/.ssh/id_kitchencom`, alias in `~/.ssh/config`). Pi: user `garrettdehart`, host `KitchenCom`, IP `192.168.1.225` (DHCP).
