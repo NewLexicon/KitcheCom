@@ -6,9 +6,11 @@
 
 **Architecture:** ChoreOps is a HACS-managed HA custom integration on the Pi (HA 2026.6.3 in Docker, reachable via `ssh kitchencom`). It generates its own multi-view Lovelace dashboard (`cod-chores`) into HA storage via its options-flow Dashboard Generator (NOT hand-vendored YAML — the templates are un-renderable Jinja). The kitchen home dashboard stays the kiosk default; the placeholder `todo.chores` card is replaced with a navigation button to `/cod-chores`. We version-control the generation *procedure* (this plan + runbook), not the generated artifact.
 
-**Tech Stack:** Home Assistant (Docker), HACS, ChoreOps v1.0.8 (`custom_components/choreops`), `button-card` + `auto-entities` frontend cards, labwc/Wayland kiosk, `ssh kitchencom`.
+**Tech Stack:** Home Assistant (Docker), HACS, ChoreOps v1.0.7 (`custom_components/choreops`), `button-card` + `auto-entities` frontend cards, labwc/Wayland kiosk, `ssh kitchencom`.
 
 **Spec:** `docs/superpowers/specs/2026-06-15-choreops-chores-design.md`
+
+**Version note (2026-06-15, during execution):** Pinned to **1.0.7** — the latest PUBLISHED HACS release (`ccpk1/ChoreOps` tags top out at 1.0.7; the `reference/ChoreOps-main` copy's `1.0.8` is an untagged snapshot ahead of release, not installable via HACS). The installed 1.0.7 was verified to carry identical load-bearing mechanics (kc_ prefix, `cod-` url prefix, Dashboard Generator in options_flow + dashboard_builder, python-dateutil dep, both templates present) — the plan transfers cleanly.
 
 **CRITICAL non-regression facts (from spec §2):**
 - ChoreOps DOES auto-generate dashboards (options-flow Dashboard Generator → HA storage `cod-chores`). Do NOT hand-vendor the `dashboards/templates/*.yaml` — they are raw Jinja (`<< user.name >>`), un-renderable as static YAML.
@@ -55,7 +57,7 @@ Do not proceed past a failed floor. (HA already at 2026.6.3/Python 3.13, so this
 - [ ] **Step 2: Confirm ChoreOps offline source is present (fallback)**
 
 Run: `ls /Users/jdehart1/___Code_DEV/KitchenCOM/reference/ChoreOps-main/custom_components/choreops/manifest.json && grep '"version"' /Users/jdehart1/___Code_DEV/KitchenCOM/reference/ChoreOps-main/custom_components/choreops/manifest.json`
-Expected: file exists, version `1.0.8`. This is the deterministic fallback if HACS can't fetch.
+Expected: file exists, version `1.0.7`. This is the deterministic fallback if HACS can't fetch.
 
 ---
 
@@ -126,7 +128,7 @@ Expected: `200` for the button-card and auto-entities URLs.
 
 - [ ] **Step 1: [HUMAN-GATED] Add ChoreOps as a HACS custom repository + download**
 
-Guide the user (HA browser UI): HACS → ⋮ (top-right) → Custom repositories → add `https://github.com/ccpk1/choreops` , type "Integration" → Add. Then HACS → search "ChoreOps" → Download → select version **v1.0.8** (tag exists per `hacs.json` `hide_default_branch:true`).
+Guide the user (HA browser UI): HACS → ⋮ (top-right) → Custom repositories → add `https://github.com/ccpk1/choreops` , type "Integration" → Add. Then HACS → search "ChoreOps" → Download → select version **v1.0.7** (tag exists per `hacs.json` `hide_default_branch:true`).
 
 *Fallback if HACS can't fetch:* `scp -r reference/ChoreOps-main/custom_components/choreops kitchencom:/tmp/ && ssh kitchencom 'sudo cp -r /tmp/choreops /home/garrettdehart/homeassistant/custom_components/ && sudo chown -R garrettdehart:garrettdehart /home/garrettdehart/homeassistant/custom_components/choreops'`
 
@@ -292,7 +294,7 @@ Expected: commit on `feat/choreops-chores`.
 
 - [ ] **Step 2: Write a deployment handoff**
 
-Create `docs/session-state/2026-06-15-choreops-deployed-handoff.md` documenting: install state (HACS + ChoreOps v1.0.8 + button-card + auto-entities), the exact Dashboard Generator settings used (for reproducibility — this IS the version-controlled procedure), the family profiles created, gamification seed, the `cod-chores` url_path, and that the generated dashboard is HA storage state (not in repo). Commit it.
+Create `docs/session-state/2026-06-15-choreops-deployed-handoff.md` documenting: install state (HACS + ChoreOps v1.0.7 + button-card + auto-entities), the exact Dashboard Generator settings used (for reproducibility — this IS the version-controlled procedure), the family profiles created, gamification seed, the `cod-chores` url_path, and that the generated dashboard is HA storage state (not in repo). Commit it.
 
 - [ ] **Step 3: Update memory**
 
