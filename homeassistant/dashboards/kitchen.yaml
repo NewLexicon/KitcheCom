@@ -10,7 +10,7 @@ views:
         cards:
           - type: clock            # native HA clock card
           - type: weather-forecast
-            entity: weather.home   # PLACEHOLDER
+            entity: weather.forecast_home   # Met.no (built-in, no API key) — wired 2026-06-15
           - type: button
             name: Hold to talk
             icon: mdi:microphone
