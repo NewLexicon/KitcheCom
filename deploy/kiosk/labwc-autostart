@@ -1,0 +1,10 @@
+# KitchenCOM kiosk — labwc autostart (Debian 13 trixie / Wayland).
+# Deploy to: ~/.config/labwc/autostart  (append to existing, don't clobber Pi defaults).
+#
+# labwc sources this as a shell script when the rpd-labwc session starts (autologin
+# user garrettdehart, verified 2026-06-15). Running the kiosk here means it inherits
+# the live WAYLAND_DISPLAY — no systemd DISPLAY=:0 needed (that was the X11 approach).
+#
+# The `&` backgrounds it so labwc startup continues; the script exec's chromium.
+
+/home/garrettdehart/kitchencom/deploy/kiosk/start-kiosk-wayland.sh &
