@@ -16,7 +16,13 @@
   - `check_config` → exit 0 clean. Restarted HA.
   - **Verified live:** entities `input_boolean.kitchen_idle`, `timer.kitchen_inactivity`, `input_button.kitchen_activity` in entity_registry. Card serves HTTP 200 at `/local/screensaver-card.js`. Lovelace resource `/local/screensaver-card.js` (module) registered in `.storage/lovelace_resources` (written via host path — note: container sees `/config/.storage`, host sees `/home/garrettdehart/homeassistant/.storage`).
   - Benign boot log noise: `habluetooth` BT AttributeError + HA-internal translation-cache WARNINGs (scene/sun/energy/backup/cloud/mobile_app) — NOT from our packages.
-- **NEXT: Phase B integrations (HA-UI) + Phase D kiosk.** See PHASE C→D MOVES below.
+- **Phase D — kiosk: DONE & REBOOT-VERIFIED (2026-06-15).** Pi runs **labwc / Wayland** (Debian 13 default), NOT X11 — so the repo's original X11 kiosk files (`start-kiosk.sh` DISPLAY=:0/xset, `kitchencom-kiosk.service`) do NOT apply. Built Wayland-native variant:
+  - `deploy/kiosk/start-kiosk-wayland.sh` — `chromium --ozone-platform=wayland --kiosk http://localhost:8123/kitchen-snapshot`, never-blank.
+  - `deploy/kiosk/labwc-autostart` — launched from `~/.config/labwc/autostart` (deployed = system `/etc/xdg/labwc/autostart` 4 desktop-default lines + our kiosk line appended, so desktop fallback survives if chromium exits).
+  - On Pi: kiosk script at `/home/garrettdehart/kitchencom/deploy/kiosk/start-kiosk-wayland.sh` (chmod +x). chromium binary = `/usr/bin/chromium` (v147); `chromium-browser` does NOT exist.
+  - Verified: reboot → autologin (autologin-user=garrettdehart, session rpd-labwc) → labwc → chromium fullscreen at dashboard, NO browser chrome. User confirmed visual.
+- **This work committed on branch `feat/hardware-deploy`** (off `origin/main`), commit `80c8112` — the 2 kiosk files + this handoff. NOT on `feat/audio-music` (where they were first authored — moved off to avoid mislabeling). Branch is 1 ahead of origin/main, unpushed.
+- **NEXT: Phase B integrations (HA-UI) — needs user accounts/keys.** Google Gemini (API key) + Google Calendar/Tasks/Photos (OAuth) + Assist voice pipeline (USB mic). THEN replace placeholder entities (`weather.home`, `todo.groceries`, `todo.chores`, `calendar.family`) — dashboard cards show "entity not found" until then. Screensaver media source also pending (point at real photos).
 
 ## PI ACCESS (how to drive it)
 - `ssh kitchencom` — passwordless (dedicated key `~/.ssh/id_kitchencom`, alias in `~/.ssh/config`). Pi: user `garrettdehart`, host `KitchenCom`, IP `192.168.1.225` (DHCP).
