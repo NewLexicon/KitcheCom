@@ -11,7 +11,7 @@
 - **⚠️ THE PI IS POWERED OFF as of session end 2026-07-02.** It went unreachable (`Host is down`, 100% ping loss, did not return in 2+ min) right after the user was rewiring USB-C. **Almost certainly a POWER problem:** the user tried to power the Pi 5 from the ViewSonic monitor over USB-C, which cannot deliver the Pi 5's required 5V/5A (27W). **First action next session: confirm the Pi is back on its proper 27W USB-C brick (ViewSonic powered separately), then `ping 192.168.1.234` / `ssh kitchencom 'echo UP'`.** Nothing is lost — HA + ChoreOps data live on the SD card; the kiosk auto-launches on boot now (see §4).
 
 ## 1. WHERE HEAD IS
-- **This checkout is on branch `feat/choreops-chores`, HEAD = `c83eef6`** (pre-this-session's-doc-commits), 4 ahead of `origin/main`. A close-out commit lands after this doc (see §6 self-ref fixup).
+- **This checkout is on branch `feat/choreops-chores`, HEAD = `9438094`** (the session close-out docs commit; a tiny fixup commit follows it), **6 ahead** of `origin/main`.
 - **A SECOND commit landed on `feat/hardware-deploy` this session:** `b5f712e` "fix(kiosk): make Wayland kiosk reboot-proof (wait-for-HA + respawn)". That branch is now **8 ahead** of origin/main (was 7). See §3.
 - **Branch map (concurrent-session hazard — verify `git branch --show-current` before EVERY commit):**
   - `feat/choreops-chores` (this checkout) — **active slice, this cold-open.**
@@ -53,4 +53,4 @@
 
 ## 6. PROCESS STATE
 - subagent-driven-development (adapted for deployment: agent drives SSH, guides UI, gates = `.storage` verification not pytest). Tasks 1–7 DONE. Building gamification content before Task 8.
-- **Self-referential fixup pending:** this close-out commit can't know its own SHA. After committing, update §1 HEAD line to the close-out SHA + branch-ahead 4→5, commit as "cold-start sanity-check fix-ups".
+- **Self-referential fixup:** DONE — §1 HEAD line points at `9438094` (close-out) with this fixup commit on top (6 ahead).
