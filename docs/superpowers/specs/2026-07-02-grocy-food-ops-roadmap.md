@@ -87,7 +87,7 @@ Each slice is its own spec → plan → build → verify cycle. Dependencies flo
 | Slice | Name | Delivers | Confidence | Depends on |
 |-------|------|----------|-----------|-----------|
 | **S1** | **Meal plan + shopping display** | Grocy on the kitchen screen: read-only meal-plan card + shopping check-off card. Proves the Docker→HACS→sensor→card→screen pipeline end-to-end. | ✅ High — pattern proven by chores/screensaver | — |
-| **S2** | Recipe repository | Recipes with itemized ingredients in Grocy; a recipe-view card | ✅ High — Grocy core | S1 (card pattern) |
+| **S2** | Recipe repository | Recipes with itemized ingredients in Grocy; a recipe-view card | ⚠️ Medium — **no recipe sensor in the HA integration**; recipes come from Grocy REST via an HA proxy (see §8) | S1 (card pattern) |
 | **S3** | Recipe web-import | Scraper to pull NYT / recipe-site / personal recipes into Grocy | ⚠️ Medium — custom scraper, per-site fragility, paywalls | S2 |
 | **S4** | Meal-plan → auto shopping list | Scheduled meal → Grocy's native "add recipe's missing products to shopping list" | ✅ High — Grocy native feature | S1, S2 |
 | **S5** | Kroger cart integration | OAuth to Kroger; ingredient→UPC mapping with user's saved product choices; "send to Kroger" → `cart/add`; user reviews & orders manually | ⚠️ Medium — novel, but official API path is verified/clear | S1/S4 (a list to send) |
@@ -121,3 +121,26 @@ Each slice is its own spec → plan → build → verify cycle. Dependencies flo
 - **Ingredient→product mapping (S5):** the "predetermined product links / user's saved choices" is a custom mapping layer (ingredient → chosen Kroger UPC) that S5 must design and persist. Not a Grocy feature.
 - **Amazon:** dropped. Do not build retailer automation against Amazon (Wall 2).
 - **Pi-blocked:** Tier-3 on-screen verification for every card slice waits on the Pi hardware phase.
+
+---
+
+## 8. S2 (Recipe repository) pre-brainstorm groundwork — source-verified 2026-07-02
+
+Added during S1's execution-wait. This is **pre-brainstorm** research, not a ratified S2 design — the S2 spec brainstorm (recipe-card UX, fields, layout) still needs the user in the loop. What's locked here is the *architecture constraint*, verified against source.
+
+### The load-bearing finding: no recipe sensor
+The `custom-components/grocy` HACS integration exposes **NO recipe sensor** (verified against `const.py` — recipes/`recipes_pos` are absent from the attribute/entity definitions). Recipe *content* (name, ingredients via `recipes_pos`, picture, instructions) lives **only in Grocy's own REST API** (`GET /api/objects/recipes`, `/api/objects/recipes_pos`). The only recipe touchpoints in HA are the `consume_recipe(recipe_id)` service and generic `add_generic`/`update_generic`/`delete_generic` with entity types `recipes` / `recipes_pos`. **So S2 is NOT "mirror the S1 card against a new sensor" — the recipe data has to reach HA another way.**
+
+### Reachability research (verified)
+- **Grocy ships permissive CORS by default** — `CorsMiddleware` hardcodes `Access-Control-Allow-Origin: *` (verified in grocy source + a real packet capture, issue #1996). So a browser fetch is not blocked by Grocy itself.
+- **BUT direct browser fetch is NOT the chosen path**, for three reasons: (1) the `GROCY-API-KEY` header triggers a CORS preflight whose end-to-end success **through the linuxserver image's nginx** is unverifiable from docs (needs a live `curl -D-`); (2) it exposes a **full-scope Grocy API key** (read+write everything) in the browser; (3) browser/version-dependent wildcard-header behavior.
+- **Decision: proxy through HA** (server-side fetch; key stays in HA secrets; zero browser-CORS surface). Two CORS-free, key-safe options — **A vs. B is an OQ resolved at S2 implementation** (both are safe; the choice depends on the real recipe payload size measured against HA limits, which needs Docker + a live Grocy — deferred, same as S1's OQs):
+  - **Option A — `rest` sensor + `json_attributes`.** HA polls `/objects/recipes`, exposes `sensor.grocy_recipes` with recipes in attributes; the card reads `hass.states[...]` **exactly like S1's cards** (novelty is a bit of `packages/` YAML, not new card logic). Constraints: HA **state** is capped at 255 chars (put JSON in *attributes*, dummy state); large attributes bloat the recorder DB (**exclude the sensor from recorder**); **pictures loaded as `<img src>` URLs, NOT base64 in attributes** (`<img>` loads aren't CORS-gated). Best when recipes change rarely (they do). **This collapses S2 back to the proven S1 shape** — lower risk than a card-owns-HTTP design.
+  - **Option B — response-returning `rest_command` + `hass.callService(domain, service, data, target, false, true)`.** The card calls an HA service on-demand and receives the recipe JSON in the response (`returnResponse: true` is a verified `hass.callService` param). No 255 limit, no recorder storage, always fresh, key server-side. Best if the recipe list is large, or you want on-open freshness / per-recipe fetch by id. Slightly more moving parts.
+
+### S2 carry-forwards (for the eventual S2 brainstorm/plan)
+- **OQ-S2-1 — Option A vs. B.** Resolved at S2 impl by measuring the real `/objects/recipes` payload size vs. HA attribute/recorder limits against a live Grocy. Both are CORS-free/key-safe.
+- **OQ-S2-2 — the recipes / `recipes_pos` JSON field shape** (ingredient rows link to products + amounts + quantity units). Source-derive from Grocy's API docs, confirm against the live instance at impl (same OQ-1 discipline as S1).
+- **Recipe pictures:** `GET /api/files/recipepictures/...` — load via `<img src>` URL in the card regardless of A/B (not CORS-gated).
+- **Recipe *authoring*** (create/edit recipes + ingredients) is out of S2's read-first scope — it needs the clunky `add_generic`/`update_generic` path; authoring happens in Grocy's own UI. S2 is a **read/browse** surface, mirroring S1's read-first posture.
+- **Next step when the user is back:** run the S2 spec brainstorm (recipe-card UX: list vs. detail, which fields on the kitchen screen, ingredient display) with this architecture as the settled substrate; then writing-plans.
