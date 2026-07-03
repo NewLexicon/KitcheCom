@@ -66,7 +66,17 @@ The user pivoted Grocy's role. **Chores moved to ChoreOps** (separate HACS integ
 
 **S2 (recipe repository) is pre-de-risked** — roadmap §8 (`docs/superpowers/specs/2026-07-02-grocy-food-ops-roadmap.md`) holds source-verified groundwork: the HA integration has NO recipe sensor, so S2 proxies Grocy REST through HA (Option A rest-sensor mirrors the S1 card shape, or Option B response-returning rest_command — A-vs-B is OQ-S2-1, resolved at S2 impl by measuring live payload size). The S2 spec brainstorm (recipe-card UX) still needs the user in the loop; do NOT write the S2 spec without them. Don't start S2 until S1 executes.
 
-**S2 UX brainstorm PAUSED mid-flight (2026-07-02)** — architecture substrate is settled; only the UX design remains. It paused at a BLOCKING FORK the user must answer, do not guess: **is the kitchen display touch-capable?** Session memory (obs 1498) says the current Viewsonic display LACKS touch — which kills the obvious "tap a recipe to open it" model. This one answer gates every downstream UX question. Queued behind it, ask one at a time: (a) what the recipe surface is FOR (browse-to-cook / reference-while-cooking / pick-for-meal-plan); (b) list vs detail vs both; (c) which `RecipeItem` fields on screen (name, description, base/desired_servings, picture_file_name); (d) ingredient display from `recipes_pos` (shape = OQ-S2-2, source-derive + confirm at impl); (e) interaction model consistent with the touch answer. Recipe pictures load via `<img src=/api/files/recipepictures/...>` (not CORS-gated) regardless. Resume by re-asking the touch fork, then continue the queue. Task tracker: #9 (paused) holds the full queue; #10 = present-design/write-spec.
+**S2 UX brainstorm — DESIGN PRESENTED, awaiting user approval (2026-07-02).** The full UX design has been laid out (5 sections) and is waiting on the user's OK before the spec is written. NO SPEC WRITTEN YET (brainstorming HARD-GATE). **Decisions locked from the brainstorm:**
+- **Touch:** screen IS touch-capable; touch temporarily cable-blocked → **touch-first design, degrade gracefully** to a usable no-touch view for now.
+- **Purpose:** BOTH — browse-list → tap → cook-reference detail (full recipe experience).
+- **Two views:** LIST = recipe grid, handles BOTH picture-forward (`picture_file_name` present) and text fallback (absent). DETAIL = picture + name + servings + scaled ingredients + instructions (from recipe `description` field).
+- **Ingredients:** SCALED to servings = `recipes_pos.amount × (desired_servings / base_servings)`, v1 uses recipe's `desired_servings`. This is the one real **pure function** (Tier-1 TDD target). Adjustable servings (touch +/−) deferred (YAGNI).
+- **Fields:** handle-both picture/text (resolved on best-judgment while user away — robust default, not a preference guess; picture-emphasis is an impl observation vs live data).
+- **Testing:** same 3 tiers as S1.
+
+**New source-finding this session:** pygrocy has NO recipe-ingredient model → `recipes_pos` is raw Grocy REST (`product_id` + `qu_id` + `amount` as IDs, NOT names). So the HA-proxy layer likely fetches + **joins** recipes/recipes_pos/products/quantity_units, OR uses `/recipes/{id}/fulfillment` if it pre-resolves. That join = **OQ-S2-2**, confirmed at impl. Pictures via `<img src=/api/files/recipepictures/...>` (not CORS-gated).
+
+**Resume:** re-present the 5-section design (or read it from this handoff), get user approval, then write spec to `docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md`, self-review, spec-review gate, writing-plans. Task tracker: #9 done (queue complete); #10 = present-design/write-spec (in progress). Do NOT start S2 impl until S1 executes.
 
 ---
 
