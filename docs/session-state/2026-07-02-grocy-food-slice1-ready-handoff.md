@@ -10,11 +10,13 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `972f9cc` — `docs: cold-open handoff — Grocy food-ops Slice 1 ready` (this file)
+- **HEAD:** `af31ed5` — `docs(spec): S2 recipe-repository pre-brainstorm groundwork` (+ this handoff will be the fix-up on top)
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** 8 commits. Worktree clean (no uncommitted changes).
-- **Recent arc (this session added the top 4):**
-  - `972f9cc` — this cold-open handoff
+- **Ahead of main:** 10 commits (11 after this handoff-update fix-up). Worktree clean.
+- **Recent arc (this session):**
+  - `af31ed5` — S2 recipe-repository pre-brainstorm groundwork (roadmap §8)
+  - `7da1ce7` — cold-start sanity-check fix-ups
+  - `972f9cc` — cold-open handoff (this file)
   - `6301e5a` — Slice 1 implementation plan
   - `ca9ae54` — Slice 1 design spec
   - `c4f7944` — food-ops roadmap (umbrella)
@@ -61,6 +63,8 @@ The user pivoted Grocy's role. **Chores moved to ChoreOps** (separate HACS integ
 **Mandatory pre-flight:** confirm `git branch --show-current` == `feat/grocy-chores` before the first commit (§1 hazard).
 
 **Executable now (no Docker):** Tasks 1–9 (scaffold rename, provisional fixtures, all Tier-1 TDD, both Lit cards, demo, deploy-doc authoring) + Task 11 (supersession/dashboard/boundary). **Blocked until Docker up:** Task 10 (Tier-2 live round-trip).
+
+**S2 (recipe repository) is pre-de-risked** — roadmap §8 (`docs/superpowers/specs/2026-07-02-grocy-food-ops-roadmap.md`) holds source-verified groundwork: the HA integration has NO recipe sensor, so S2 proxies Grocy REST through HA (Option A rest-sensor mirrors the S1 card shape, or Option B response-returning rest_command — A-vs-B is OQ-S2-1, resolved at S2 impl by measuring live payload size). The S2 spec brainstorm (recipe-card UX) still needs the user in the loop; do NOT write the S2 spec without them. Don't start S2 until S1 executes.
 
 ---
 
