@@ -10,10 +10,11 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `6301e5a` — `docs(plan): Grocy food-ops Slice 1 implementation plan`
+- **HEAD:** `972f9cc` — `docs: cold-open handoff — Grocy food-ops Slice 1 ready` (this file)
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** 7 commits. Worktree clean (no uncommitted changes).
-- **Recent arc (this session added the top 3):**
+- **Ahead of main:** 8 commits. Worktree clean (no uncommitted changes).
+- **Recent arc (this session added the top 4):**
+  - `972f9cc` — this cold-open handoff
   - `6301e5a` — Slice 1 implementation plan
   - `ca9ae54` — Slice 1 design spec
   - `c4f7944` — food-ops roadmap (umbrella)
@@ -89,7 +90,7 @@ Memory dir (OUTSIDE the repo): `/Users/jdehart1/.claude/projects/-Users-jdehart1
 
 ## 7. Session-close verification (done before reporting)
 
-- HEAD SHA (`6301e5a`), branch (`feat/grocy-chores`), ahead-count (7) — all `git`-verified above.
+- HEAD SHA (`972f9cc` after the fix-up commit), branch (`feat/grocy-chores`), ahead-count (8) — all `git`-verified.
 - Tier-1 baseline (no tests yet, scaffold config-only) — `ls`-verified.
 - All four "read first" absolute paths exist (roadmap, spec, plan committed this session; screensaver-card pre-existing).
 - Docker-not-running — verified (`docker ps` failed, no daemon).
