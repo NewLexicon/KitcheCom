@@ -1,8 +1,12 @@
-# Cold-open handoff — Grocy Food-Ops Slice 1 ready to execute
+# Cold-open handoff — Grocy Food-Ops (S1 ready to execute; S2 UX design presented)
 
-**Date:** 2026-07-02
+**Date:** 2026-07-02 (last refreshed 2026-07-04)
 **Branch:** `feat/grocy-chores` (in the worktree `.worktrees/grocy-chores`)
-**Status:** Design + plan complete and committed. **Execution NOT started.** Paused deliberately — the user is doing HA auto-restart + ChoreOps work in another window; Slice 1 execution resumes when that's done.
+**Status (two parallel threads):**
+1. **S1 (meal-plan + shopping cards):** design + plan complete and committed. **Execution NOT started** — paused for the user's HA auto-restart + ChoreOps work in another window + Docker being down (Tier-2 gate). Resume by executing the plan from Task 1.
+2. **S2 (recipe card):** architecture de-risked (roadmap §8) + **UX design fully presented, awaiting user approval** — NO spec written yet (brainstorming HARD-GATE). Resume by getting design approval, then writing the spec. See §8 of this handoff for the locked decisions.
+
+**The immediate next action depends on what the user wants:** execute S1 (Task 1 = `git mv` scaffold rename) OR approve the S2 UX design so its spec can be written. Both are teed up; neither is blocked on the other except that S2 impl must not start until S1 executes.
 
 > This is a feature-branch handoff, not the project-wide cold-open. The formal `docs/session-state/README.md` cold-open describes main; this file covers the `feat/grocy-chores` work-arc. Post-merge, rewrite the project cold-open from main's perspective.
 
@@ -10,18 +14,20 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `af31ed5` — `docs(spec): S2 recipe-repository pre-brainstorm groundwork` (+ this handoff will be the fix-up on top)
+- **HEAD:** `42aa689` — `docs: cold-open — S2 UX design presented, awaiting approval` (this handoff refresh will land a fix-up on top)
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** 10 commits (11 after this handoff-update fix-up). Worktree clean.
-- **Recent arc (this session):**
+- **Ahead of main:** 13 commits (14 after this refresh's fix-up). Worktree clean.
+- **Recent arc (newest first):**
+  - `42aa689` — cold-open: S2 UX design presented, awaiting approval
+  - `d60c8e2` — cold-open: S2 UX brainstorm paused at touch fork
+  - `1e69370` — cold-open refresh: S2 groundwork + HEAD fix-up
   - `af31ed5` — S2 recipe-repository pre-brainstorm groundwork (roadmap §8)
   - `7da1ce7` — cold-start sanity-check fix-ups
-  - `972f9cc` — cold-open handoff (this file)
+  - `972f9cc` — cold-open handoff (this file, created)
   - `6301e5a` — Slice 1 implementation plan
   - `ca9ae54` — Slice 1 design spec
   - `c4f7944` — food-ops roadmap (umbrella)
   - `8c559d7` — (prior) Pi hardware bring-up handoff
-  - `7aae13f` — (prior) scaffold `grocy-chores-card` package
 
 **⚠️ Concurrent-session hazard (memory: `concurrent-sessions-branch-hazard.md`):** the OTHER window shares the SAME repo's main checkout, currently on `feat/choreops-chores`. This Slice 1 work is isolated in the WORKTREE on `feat/grocy-chores`. **Before ANY commit, run `git branch --show-current` and confirm it says `feat/grocy-chores`.** Every task command in the plan `cd`s into the worktree — stay there.
 
