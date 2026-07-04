@@ -14,10 +14,11 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `42aa689` — `docs: cold-open — S2 UX design presented, awaiting approval` (this handoff refresh will land a fix-up on top)
+- **HEAD:** `6b43d75` — `docs: refresh cold-open header/HEAD block for session close` (this file; the `42aa689` below is the meaningful S2-design-presented anchor)
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** 13 commits (14 after this refresh's fix-up). Worktree clean.
+- **Ahead of main:** 14 commits. Worktree clean.
 - **Recent arc (newest first):**
+  - `6b43d75` — cold-open refresh for session close (this fix-up)
   - `42aa689` — cold-open: S2 UX design presented, awaiting approval
   - `d60c8e2` — cold-open: S2 UX brainstorm paused at touch fork
   - `1e69370` — cold-open refresh: S2 groundwork + HEAD fix-up
@@ -110,9 +111,11 @@ Memory dir (OUTSIDE the repo): `/Users/jdehart1/.claude/projects/-Users-jdehart1
 
 ---
 
-## 7. Session-close verification (done before reporting)
+## 7. Session-close verification (re-verified 2026-07-04)
 
-- HEAD SHA (`972f9cc` after the fix-up commit), branch (`feat/grocy-chores`), ahead-count (8) — all `git`-verified.
-- Tier-1 baseline (no tests yet, scaffold config-only) — `ls`-verified.
-- All four "read first" absolute paths exist (roadmap, spec, plan committed this session; screensaver-card pre-existing).
-- Docker-not-running — verified (`docker ps` failed, no daemon).
+- HEAD SHA (`6b43d75` after this refresh's fix-up), branch (`feat/grocy-chores`), ahead-count (14) — all `git`-verified.
+- Worktree clean (`git status --short` empty).
+- Other window still on `feat/choreops-chores` — isolation holds.
+- S2 recipe spec (`2026-07-02-grocy-recipe-card-design.md`) does NOT exist yet — `ls`-verified (correct: awaiting user approval, brainstorming HARD-GATE).
+- Tier-1 baseline (no tests yet, scaffold still config-only as `grocy-chores-card/`, Task 1 renames it) — unchanged since 2026-07-02.
+- Docker still not confirmed running (was down 2026-07-02; blocks S1 Task 10 Tier-2).
