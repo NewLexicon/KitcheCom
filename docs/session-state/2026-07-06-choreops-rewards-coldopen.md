@@ -12,8 +12,8 @@
 - **Input:** Logitech G203 mouse + G.SKILL KM250 keyboard plugged into the Pi work. **No touchscreen** (likely a display-only ViewSonic; need model# to confirm). Mouse/kbd suffice for the smoke test.
 
 ## 1. WHERE HEAD IS
-- **This checkout: branch `feat/choreops-chores`, HEAD = `f651930`, 8 ahead of `origin/main`** (a close-out fixup may follow this doc → 9 ahead; §6).
-- Session commit arc (choreops branch): `9438094` (profiles+blueprint) → `b74f9c2` (fixup) → `ed0d6f3` (kiosk online) → `f651930` (chores corrected).
+- **This checkout: branch `feat/choreops-chores`, HEAD = `d208a60` (this cold-open) + a fixup commit on top, 10 ahead of `origin/main`.**
+- Session commit arc (choreops branch): `9438094` (profiles+blueprint) → `b74f9c2` (fixup) → `ed0d6f3` (kiosk online) → `f651930` (chores corrected) → `d208a60` (this cold-open).
 - **`feat/hardware-deploy` = `b5f712e`, 8 ahead** — Pi deploy + kiosk. The LIVE Pi kiosk runs THIS branch's `deploy/kiosk/start-kiosk-wayland.sh`. Still NOT merged.
 - **Branch map (concurrent-session hazard — verify `git branch --show-current` before EVERY commit):**
   - `feat/choreops-chores` (this checkout) — **active slice.**
@@ -57,4 +57,4 @@
 ## 6. PROCESS STATE
 - subagent-driven-development adapted for deployment (agent drives SSH/`.storage` verification, guides UI, gates = verification not pytest). Tasks 1–7 DONE. Building gamification content (rewards next) before Task 8.
 - **Tooling note:** nested-SSH quoting is fragile — write probe/edit scripts to a file, `scp` to Pi, `docker cp` into the `homeassistant` container, run. Don't inline heredocs with regex/quotes.
-- **Self-referential fixup:** after committing THIS doc, update §1 HEAD line to the close-out SHA + ahead-count +1, commit as "cold-start sanity-check fix-ups".
+- **Self-referential fixup:** DONE — §1 HEAD points at `d208a60` (this cold-open) with this fixup commit on top (10 ahead).
