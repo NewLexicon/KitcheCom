@@ -6,19 +6,21 @@
 
 ## 0. ⚠️ READ FIRST — live environment state
 
-- **Pi reachability depends on being on the HOME LAN.** The Pi is `kitchencom` = **`192.168.1.234`** (reserved — see below). As of 2026-07-06 the Mac is on a DIFFERENT network (`10.250.4.216`, not `192.168.1.x`), so the Pi is UNREACHABLE right now — **this is expected (not-at-home), NOT a fault.** Gate before any Pi work: `ipconfig getifaddr en0` must show `192.168.1.x`, then `ssh kitchencom 'echo UP'` → UP. If on the home LAN and still down, THEN it's power/hardware (§4).
+- **Pi reachability depends on being on the HOME LAN.** The Pi is `kitchencom` = **`192.168.1.234`** (reserved — see below). Gate before any Pi work: `ipconfig getifaddr en0` must show `192.168.1.x`, then `ssh kitchencom 'echo UP'` → UP.
+- **⚡ AS OF 2026-07-22 THE PI IS POWERED DOWN / NOT SET UP.** Mac was ON the home LAN (`192.168.1.180`) and `.234` still failed both ping and SSH — so this is **hardware-not-running, not a network fault**. The user confirmed the Pi isn't currently set up. **First physical action next session: plug the Pi into its OWN 27W USB-C brick** (never the ViewSonic port — brownout crash-loop), micro-HDMI → ViewSonic for video, power on, wait ~2min for HA. Kiosk is reboot-proof and self-respawns. Then re-run the gate above.
 - **Pi IP is RESERVED at `192.168.1.234`** (Fixed Allocation on the AT&T gateway `http://192.168.1.254` → Home Network → IP Allocation; MAC `2c:cf:67:e2:f2:67`). `~/.ssh/config` Host `kitchencom` → `.234`. It will NOT DHCP-drift again. HA URL = **`http://192.168.1.234:8123`** (plan/spec docs still say `.225` — mentally substitute).
 - **✅ KIOSK FULLY WORKING + STABLE.** Pi on its own **27W USB-C brick** (ViewSonic on its OWN power; Pi micro-HDMI→ViewSonic HDMI for video). `vcgencmd get_throttled` = `0x0`. Dashboard shows + holds. Kiosk login = persistent password session ("Keep me logged in" refresh token). Kiosk is reboot-proof (wait-for-HA + respawn). **Do NOT power the Pi from the ViewSonic over USB-C** — it browns out and crash-loops (memory `pi-power-and-kiosk-login.md`).
 - **Input:** Logitech G203 mouse + G.SKILL KM250 keyboard plugged into the Pi work. **No touchscreen** (likely a display-only ViewSonic; need model# to confirm). Mouse/kbd suffice for the smoke test.
 
 ## 1. WHERE HEAD IS
-- **This checkout: branch `feat/choreops-chores`, HEAD = `d208a60` (this cold-open) + a fixup commit on top, 10 ahead of `origin/main`.**
-- Session commit arc (choreops branch): `9438094` (profiles+blueprint) → `b74f9c2` (fixup) → `ed0d6f3` (kiosk online) → `f651930` (chores corrected) → `d208a60` (this cold-open).
+- **This checkout: branch `feat/choreops-chores`, HEAD = `3942520` (reward entry sheet) + a fixup commit on top, 12 ahead of `origin/main`.**
+- Session commit arc (choreops branch): `9438094` (profiles+blueprint) → `b74f9c2` (fixup) → `ed0d6f3` (kiosk online) → `f651930` (chores corrected) → `d208a60` (prior cold-open) → `751ac63` (fixup) → `3942520` (reward entry sheet).
+- **2026-07-22 session (offline, Pi powered down):** drafted the reward store as a type-and-go entry sheet. **Nothing entered on the Pi yet.**
 - **`feat/hardware-deploy` = `b5f712e`, 8 ahead** — Pi deploy + kiosk. The LIVE Pi kiosk runs THIS branch's `deploy/kiosk/start-kiosk-wayland.sh`. Still NOT merged.
 - **Branch map (concurrent-session hazard — verify `git branch --show-current` before EVERY commit):**
   - `feat/choreops-chores` (this checkout) — **active slice.**
   - `feat/hardware-deploy` (b5f712e) — Pi/kiosk work; live Pi runs its kiosk script.
-  - `feat/grocy-chores` (8c559d7, in `.worktrees/grocy-chores`) — other session's Grocy work; superseded for chores.
+  - `feat/grocy-chores` (**`c1c456e`** as of 2026-07-22, was `8c559d7` — the other session ADVANCED it; in `.worktrees/grocy-chores`) — other session's Grocy work; superseded for chores.
   - `feat/audio-music` — empty placeholder.
 - `main` = `origin/main` = `0cdc0f5`.
 
@@ -34,7 +36,9 @@
 
 ## 3. NEXT MOVE — literal first actions next session
 1. **Gate: get on the home LAN + Pi reachable** (§0). `ssh kitchencom 'echo UP'` → UP before any Pi work.
-2. **Build the REWARD STORE** (next blueprint section). Blueprint: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-07-02-choreops-gamification-blueprint.md` §2. User does entry in their **Mac browser** at `http://192.168.1.234:8123` (real keyboard) — Settings → Devices & Services → ChoreOps → Configure → Add Reward. Retune existing `treat`/`cash`; add screen-time (15/30/60min), cash-out tiers ($1/$5/$10/$20 = 10/50/100/200 pts), privileges (stay-up-late, pick-dinner, friend-over, activities), treats/items. **Verify each via `.storage/choreops/` (data.rewards) + `platform=choreops` entity counts.**
+2. **Build the REWARD STORE — the decisions are already made.** Work straight from the entry sheet: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-07-22-choreops-reward-store-entry-sheet.md` (drafted 2026-07-22 offline; 16 rewards = 2 seed retunes + 14 adds, with exact names/costs/descriptions/icons + verification commands). Blueprint background: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-07-02-choreops-gamification-blueprint.md` §2. User does entry in their **Mac browser** at `http://192.168.1.234:8123` (real keyboard) — Settings → Devices & Services → ChoreOps → Configure → Manage Rewards.
+   - **Key schema facts (verified against `reference/ChoreOps-main`, v1.0.8):** the reward form is exactly 6 fields — Name (req, unique-checked), Description, Labels, Cost (req), Icon, Assigned Users. **No cooldown/limit field exists.** Seed `treat`/`cash` must be **EDITED not re-added** (duplicate names rejected). Assigned Users pre-fills to all gamified users = Rowan+Wystan — leave untouched.
+   - **Verify via `.storage/choreops/` (data.rewards) + `platform=choreops` entity counts** — commands are in §5 of the entry sheet. Capture the pre-entry entity count BEFORE starting.
 3. **Then Bonuses** (retune `cheerful`, add Great-Attitude/Helped-Sibling/Initiative) → **Penalties** (retune `demerit`, add Reminder-Needed; keep light) → **Badges** (all 5 types: daily/cumulative/periodic/special/achievement-linked) → **Achievements** (Perfect Week ships; add 7-Day-Streak/Chore-Champion/Early-Bird). All per blueprint §3–6.
 4. **THEN Task 8** — Dashboard Generator (needs all chores/rewards/etc to exist first). Plan: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/plans/2026-06-15-choreops-chores.md`. **In Task 8, select ONLY Rowan+Wystan as dashboard users** (excludes parents' stale entities — see §4). **Correct every `kc_` grep to `platform=choreops`.**
 5. Remaining plan tasks: **9** (swap kitchen.yaml chores card for `/cod-chores` nav button — CLOBBER RISK §4) → **10** (delete orphaned local_todo Chores) → **11** (claim→approve smoke test via mouse/kbd) → **12** (commit + handoff).
@@ -44,6 +48,8 @@
 - **DASHBOARD CLOBBER RISK (Task 9), UNCHANGED:** `feat/choreops-chores`'s `homeassistant/dashboards/kitchen.yaml` is OLD (placeholders `weather.home`, `todo.chores`, no headings). The LIVE Pi runs `feat/hardware-deploy`'s newer kitchen.yaml (weather=`weather.forecast_home`, Groceries/Chores headings). Before Task 9: `git show feat/hardware-deploy:homeassistant/dashboards/kitchen.yaml` and merge the weather+headings deltas, or you'll regress the live dashboard.
 - **PI HA CONFIG DRIFT (Pi-side only):** `/config/configuration.yaml` on the Pi = default password auth (no auth_providers block). Backup on Pi: `configuration.yaml.bak.20260702`. Not in the repo (choreops branch doesn't own the HA config deploy). Reconcile at merge if desired.
 - **🚩 PREFIX: installed ChoreOps 1.0.7 uses `choreops` prefix, NOT `kc_`.** Plan/spec still say `kc_`. Verify entities via `platform=choreops` in `.storage/core.entity_registry`, never the `kc_` substring (returns 0).
+- **✅ FULL ChoreOps SOURCE IS VENDORED LOCALLY at `/Users/jdehart1/___Code_DEV/KitchenCOM/reference/ChoreOps-main/`** (found 2026-07-22). **Read form schemas / valid enums / validation rules from here instead of guessing or waiting on the Pi** — this is how the reward entry sheet was built with the Pi down. Useful entry points: `custom_components/choreops/helpers/flow_helpers.py` (all `build_*_schema` + `validate_*_inputs`), `options_flow.py` (step wiring + pre-fill defaults), `const.py` (every `DATA_*` / `DEFAULT_*` / enum). **⚠️ Vendored copy is v1.0.8; the Pi runs v1.0.7** — treat it as near-authoritative but confirm against the live form if a field looks unfamiliar.
+- **⚠️ SHELL-CWD TRAP (bit this session):** `reference/ChoreOps-main/` is a **nested git repo**, and Bash cwd persists between calls. A `cd` into it followed by `git branch --show-current` reports a branch name that can coincide with the outer repo's — an easy way to commit to the wrong place. **Use absolute paths for git commands, or `cd` back to the repo root first.**
 - **Pi power:** never power the Pi 5 from the ViewSonic. Own 27W brick only.
 - **Branch sprawl:** 4 unpushed branches. Eventually merge hardware-deploy → main, then choreops. Consider PRs.
 
