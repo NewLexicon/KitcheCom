@@ -13,8 +13,8 @@
 - **Input:** Logitech G203 mouse + G.SKILL KM250 keyboard plugged into the Pi work. **No touchscreen** (likely a display-only ViewSonic; need model# to confirm). Mouse/kbd suffice for the smoke test.
 
 ## 1. WHERE HEAD IS
-- **This checkout: branch `feat/choreops-chores`, HEAD = `3942520` (reward entry sheet) + a fixup commit on top, 12 ahead of `origin/main`.**
-- Session commit arc (choreops branch): `9438094` (profiles+blueprint) → `b74f9c2` (fixup) → `ed0d6f3` (kiosk online) → `f651930` (chores corrected) → `d208a60` (prior cold-open) → `751ac63` (fixup) → `3942520` (reward entry sheet).
+- **This checkout: branch `feat/choreops-chores`, HEAD = `8662184` (this cold-open refresh) + a fixup commit on top, 13 ahead of `origin/main`.**
+- Session commit arc (choreops branch): `9438094` (profiles+blueprint) → `b74f9c2` (fixup) → `ed0d6f3` (kiosk online) → `f651930` (chores corrected) → `d208a60` (prior cold-open) → `751ac63` (fixup) → `3942520` (reward entry sheet) → `8662184` (this cold-open refresh).
 - **2026-07-22 session (offline, Pi powered down):** drafted the reward store as a type-and-go entry sheet. **Nothing entered on the Pi yet.**
 - **`feat/hardware-deploy` = `b5f712e`, 8 ahead** — Pi deploy + kiosk. The LIVE Pi kiosk runs THIS branch's `deploy/kiosk/start-kiosk-wayland.sh`. Still NOT merged.
 - **Branch map (concurrent-session hazard — verify `git branch --show-current` before EVERY commit):**
