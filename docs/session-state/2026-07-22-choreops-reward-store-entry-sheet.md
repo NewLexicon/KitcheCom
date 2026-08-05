@@ -45,7 +45,7 @@ Names are unique-checked, so adding a second "Treat" or "Cash" fails validation.
 
 ---
 
-## 3. ADD THESE — 18 new rewards
+## 3. ADD THESE — 14 new rewards
 
 Enter in order. Assigned Users: leave the pre-filled Rowan + Wystan.
 
