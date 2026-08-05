@@ -61,3 +61,38 @@ export function canCheckOff(shoppingListId?: string): boolean {
 export function buildRemovePayload(shoppingListId: string, productId: number) {
   return { shopping_list_id: shoppingListId, product_id: productId };
 }
+
+// ---- Slice 2: recipes ----------------------------------------------------
+// Field names are PROVISIONAL (spec §4, OQ-S2-2) — weaker evidence than S1's.
+
+export type IngredientRow = { id: number; name: string; amount: number | string; unit: string };
+
+// scaleIngredients OWNS the rounding. Do NOT move it into formatAmount — that
+// helper is shared with S1's shopping card and changing it would silently alter
+// that card's rendering (spec §4.3).
+//
+// A non-numeric amount passes through AS-IS so it never becomes NaN. Note the
+// documented consequence: formatAmount then renders it as "" (spec §4.3).
+export function scaleIngredients(
+  rows?: IngredientRow[] | null,
+  baseServings?: number,
+  desiredServings?: number,
+): IngredientRow[] {
+  if (!Array.isArray(rows)) return [];
+  // A zero/negative/NaN/missing base is a divisor hazard — treat as 1.
+  const base =
+    typeof baseServings === "number" && Number.isFinite(baseServings) && baseServings > 0
+      ? baseServings
+      : 1;
+  const desired =
+    typeof desiredServings === "number" && Number.isFinite(desiredServings) && desiredServings > 0
+      ? desiredServings
+      : base;
+  const factor = desired / base;
+  return rows.map((r) => {
+    if (typeof r?.amount !== "number" || Number.isNaN(r.amount)) return { ...r };
+    // Round to <=2dp BEFORE formatAmount ever sees it: 0.1*3 is 0.30000000000000004.
+    const scaled = Math.round(r.amount * factor * 100) / 100;
+    return { ...r, amount: scaled };
+  });
+}
