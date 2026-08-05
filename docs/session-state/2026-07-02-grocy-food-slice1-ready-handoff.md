@@ -14,7 +14,7 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `4b07f20` — `docs: deploy Grocy backend (compose + INSTALL phase, HACS wiring, port note)` (Task 9) **+ this refresh's commit and its fix-up on top.**
+- **HEAD:** `b6d3d06` — `docs: refresh S1 handoff — Tasks 1-9 shipped, Task 10 next (Docker-gated)` (this file) **+ this refresh's fix-up commit on top.** Last code commit was `4b07f20` (Task 9).
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
 - **Ahead of main:** **26** commits. Worktree clean.
 - **Slice 1 execution arc — 2026-08-05, newest first (Tasks 1–9):**
@@ -169,7 +169,7 @@ Memory dir (OUTSIDE the repo): `/Users/jdehart1/.claude/projects/-Users-jdehart1
 
 Every number below was re-run at session close, not carried forward from memory:
 
-- **HEAD** `4b07f20` (Task 9) + this refresh + its fix-up; **branch** `feat/grocy-chores`; **ahead of main 26** — all `git`-verified.
+- **HEAD** `b6d3d06` (this refresh) + its fix-up commit; **branch** `feat/grocy-chores`; **ahead of main 26** — all `git`-verified.
 - **Worktree clean** (`git status --short` empty).
 - **Tier-1: 16 tests passing / 3 files** (`npx vitest run`); **typecheck 0 errors**; **build emits 3 files** — all re-run at close.
 - **Demo browser-verified** over `http://localhost:8777` — 0 console errors, 0 failed requests; guard confirmed (3 ✓ buttons with list id, 0 without).
