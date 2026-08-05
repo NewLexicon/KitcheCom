@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
-import { parseShoppingItems, canCheckOff, buildRemovePayload, type ShoppingRow } from "./shared";
+// NOTE: explicit .js extension is required — see mealplan-card.ts for the rationale.
+import { parseShoppingItems, canCheckOff, buildRemovePayload, type ShoppingRow } from "./shared.js";
 
 type HassLike = {
   states?: Record<string, { attributes?: any } | undefined>;

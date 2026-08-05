@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>grocy-food-card demo</title>
+<style>body{margin:0;background:#141821;padding:24px;display:flex;gap:24px;flex-wrap:wrap}
+  .pane{background:#1b2130;border-radius:12px;min-width:320px}</style>
+<script type="importmap">
+{ "imports": {
+  "lit": "https://cdn.jsdelivr.net/npm/lit@3.3.3/+esm"
+} }
+</script>
+<script type="module">
+  import "../dist/mealplan-card.js";
+  import "../dist/shopping-card.js";
+
+  const meals = { states: { "sensor.grocy_meal_plan": { attributes: { meals: [
+    { id: 1, day: "Wed", type: "recipe", recipe: { name: "Tacos" } },
+    { id: 2, day: "Thu", type: "note", note: "Leftovers night" },
+    { id: 3, day: "Thu", type: "section", section: { name: "Dinner" } }
+  ] } } } };
+
+  const shop = { states: { "sensor.grocy_shopping_list": { attributes: { products: [
+    { id: 11, amount: 2.0, note: "", product: { name: "Eggs" } },
+    { id: 12, amount: 1.5, note: "organic", product: { name: "Milk" } },
+    { id: 13, amount: 1.0, note: "" }
+  ] } } }, callService: (d, s, data) => console.log("callService", d, s, data) };
+
+  const mp = document.createElement("grocy-mealplan-card");
+  mp.setConfig({}); mp.hass = meals;
+  const mpPane = document.createElement("div"); mpPane.className = "pane"; mpPane.appendChild(mp);
+
+  const sc = document.createElement("grocy-shopping-card");
+  sc.setConfig({ shopping_list_id: "1" }); sc.hass = shop;   // check-off visible
+  const scPane = document.createElement("div"); scPane.className = "pane"; scPane.appendChild(sc);
+
+  document.body.append(mpPane, scPane);
+</script>

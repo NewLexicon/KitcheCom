@@ -1,5 +1,8 @@
 import { LitElement, html, css } from "lit";
-import { parseMeals, type MealRow } from "./shared";
+// NOTE: explicit .js extension is required — tsc emits this specifier verbatim and
+// browsers cannot resolve extensionless module paths (moduleResolution "bundler"
+// assumes a bundler that this package does not use). Without it, dist/shared 404s.
+import { parseMeals, type MealRow } from "./shared.js";
 
 type HassLike = { states?: Record<string, { attributes?: any } | undefined> };
 
