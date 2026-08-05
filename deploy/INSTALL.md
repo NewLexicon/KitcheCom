@@ -13,6 +13,60 @@
 - Add **Google Calendar / Tasks / Photos** (OAuth, family account).
 - Build the **Assist voice pipeline**: USB mic → Gemini STT → conversation → Gemini TTS → speaker.
 
+## Phase B2 — Grocy backend (food domain: meal plan + shopping list)
+
+Grocy runs as a headless Docker service alongside HA; its HACS integration surfaces the
+meal plan and shopping list as sensors that the `grocy-food-card` elements render. The
+native Grocy UI is never shown on the kitchen screen.
+
+1. **Run the container.** From `deploy/grocy/`:
+   ```bash
+   docker compose -f docker-compose.grocy.yml up -d
+   ```
+   Browse `http://<pi-host>:9283` — default login is `admin` / `admin`. **Change it.**
+   Then Grocy → Manage API keys → create a key and copy it.
+
+2. **Install HACS** (if not already present), then HACS → ⋮ → Custom repositories →
+   add `https://github.com/custom-components/grocy` with type **Integration** → download →
+   **restart HA**.
+
+3. **Add the integration.** Settings → Devices & Services → Add Integration → Grocy.
+   - **URL:** `http://<pi-host>` — hostname only, **no port and no path**.
+   - **Port:** `9283` — the published host port. **Do not leave the `9192` default**; that
+     is the container-internal port and the config flow will fail to connect.
+   - **API key:** the one created in step 1.
+
+4. **Enable the sensors.** The integration's entities are **disabled by default**. Enable
+   at least `sensor.grocy_meal_plan` and `sensor.grocy_shopping_list`, or the cards render
+   their empty states.
+
+5. **Deploy the card resources.** Build first (`dist/` is gitignored, so it must be produced
+   on the machine doing the install):
+   ```bash
+   cd custom_cards/grocy-food-card && npm install && npm run build
+   ```
+   Copy `dist/*.js` (`shared.js`, `mealplan-card.js`, `shopping-card.js` — **all three**;
+   the card modules import `shared.js` at runtime) into `/config/www/`. Register the two
+   card modules as resources (Settings → Dashboards → Resources), type **module**:
+   - `/local/mealplan-card.js`
+   - `/local/shopping-card.js`
+
+   `shared.js` is imported by those two and must be present, but is **not** registered as a
+   resource itself.
+
+6. **Add the cards** to a dashboard:
+   ```yaml
+   - type: custom:grocy-mealplan-card
+     entity: sensor.grocy_meal_plan
+   - type: custom:grocy-shopping-card
+     entity: sensor.grocy_shopping_list
+     shopping_list_id: "1"   # Grocy's default list; see note below
+   ```
+   > **`shopping_list_id` is required for check-off.** Without it the shopping card renders
+   > **read-only** (no ✓ buttons) by design, rather than firing a service call that would
+   > fail. `"1"` is Grocy's default list id and is **unconfirmed against a live instance**
+   > (slice-1 open question OQ-3) — verify in Grocy's UI if check-off does not work.
+
 ## Phase C — Deploy these files
 1. Copy `homeassistant/*` into HA's `/config`.
 2. Copy `custom_cards/screensaver-card` build output into `/config/www/`; **register the

@@ -1,0 +1,13 @@
+services:
+  grocy:
+    image: lscr.io/linuxserver/grocy:latest   # arm64 multi-arch — auto-selects aarch64 on Pi 5
+    container_name: grocy
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - ./grocy-config:/config
+    ports:
+      - "9283:80"
+    restart: unless-stopped
