@@ -49,9 +49,14 @@ custom_cards/grocy-food-card/
     mealplan-card.ts   # S1
     shopping-card.ts   # S1
     recipe-card.ts     # S2: registers grocy-recipe-card (LIST + DETAIL views)
-  test/
-    recipe-parse.test.ts     # S2 Tier-1
-    scale-ingredients.test.ts # S2 Tier-1 — the real pure-function target
+  test/                          # one file per concern, matching S1's convention
+    recipe-parse.test.ts         # parseRecipes
+    ingredient-parse.test.ts     # parseIngredients
+    scale-ingredients.test.ts    # scaleIngredients — the primary target (§4.3)
+    strip-tags.test.ts           # stripTags, incl. the <ol><li> case (§5.4)
+    fixtures/
+      recipes.json               # PROVISIONAL — field names unverified (§4, OQ-S2-2)
+      recipes-pos.json           # PROVISIONAL
   demo/index.html      # S2 extends with a recipe pane
 ```
 
@@ -98,7 +103,15 @@ scaledAmount = amount × (desiredServings / baseServings)
 
 - **`scaleIngredients(rows, baseServings, desiredServings) → IngredientRow[]`**
 - **Guards, all test cases:** `baseServings` of `0`, negative, `NaN`, or missing → **treat as 1** (never divide by zero, never render `Infinity`/`NaN`); `desiredServings` missing → equals `baseServings`, i.e. scale factor 1.0; a non-numeric `amount` → passes through as-is rather than becoming `NaN`.
-- **Rounding:** reuse S1's `formatAmount` posture — integer-valued results drop the decimal (`2.0 → "2"`), non-integers render as-is. Scaling produces ugly floats (`1.5 × 1.333… = 1.9995`), so **round to at most 2 decimal places before formatting**. No fraction-prettifying (`0.5 → "½"`) — YAGNI.
+- **Rounding — `scaleIngredients` owns it; `formatAmount` is NOT modified.** Scaling produces float noise: `0.1 × 3` is `0.30000000000000004`, and `formatAmount` would render every digit (verified against the real helper). So `scaleIngredients` **rounds to at most 2 decimal places before** handing the number to `formatAmount`. `formatAmount` then does its S1 job unchanged — integer-valued results drop the decimal (`2.0 → "2"`), non-integers render as-is. **Do not "fix" rounding inside `formatAmount`:** it is shared with S1's shopping card, and changing it would silently alter that card's rendering. No fraction-prettifying (`0.5 → "½"`) — YAGNI.
+
+- **⚠️ Non-numeric `amount` — the pass-through/blank collision, resolved.** These two rules collide, and the spec must say which wins:
+  - `scaleIngredients` passes a non-numeric `amount` through **as-is** (it must not become `NaN`).
+  - `formatAmount` returns `""` for anything failing `typeof amount === "number"` — **verified**: `"a pinch"`, `undefined`, `null`, `NaN`, and even the string `"2"` all render as `""`.
+
+  **Resolution: pass-through wins at the scale layer, and `formatAmount` blanks it at the render layer.** A recipe row with `amount: "a pinch"` therefore renders with an **empty quantity** and its name intact — "Salt", not "a pinch Salt". This is the real behavior, stated so nobody discovers it at Tier-2 and reads it as a bug.
+
+  **This is a deliberate v1 limitation, not a design goal.** If real recipes turn out to use text amounts often, the fix is a render-layer branch (`typeof amount === "string" ? amount : formatAmount(amount)`) — a small, contained change. Do not pre-build it; confirm the need at Tier-2 first. Tier-1 must include a test asserting this documented behavior so the collision stays visible.
 - **v1 uses the recipe's own `desired_servings`.** The user does not change servings on screen in this slice (§5.3).
 
 ---
@@ -136,6 +149,19 @@ Grocy's recipe `description` field holds **rich text authored in Grocy's WYSIWYG
 
 Whether `description` actually carries HTML in this household's recipes is **OQ-S2-4** (§6). If it turns out to be plain text, `stripTags` is a harmless no-op and this decision costs nothing.
 
+#### `stripTags` whitespace contract (load-bearing — a naive strip is unreadable)
+
+Deleting tags without inserting separators destroys the structure that made the text legible. **Verified:** `<ol><li>Preheat</li><li>Mix</li></ol>` through a naive `replace(/<[^>]*>/g, "")` yields **`"PreheatMix"`** — not "flat", but genuinely unreadable on a kitchen screen. A recipe's steps are exactly the content most likely to be an `<ol>`.
+
+**Contract, in order:**
+1. **Block-level closing tags and line breaks become newlines** — `</li>`, `</p>`, `</div>`, `</h1>`–`</h6>`, `</tr>`, and `<br>` / `<br/>`.
+2. **Then** remove all remaining tags.
+3. **Then** collapse runs of 2+ newlines to one, and trim.
+
+The same input then yields **`"Preheat\nMix"`** (verified). The DETAIL view renders instructions with **`white-space: pre-line`** so those newlines survive to the screen — without it, step 1 is wasted.
+
+**Tier-1 must test the `<ol><li>` case specifically**, since it is both the most likely real input and the one a naive implementation silently ruins.
+
 ### 5.5 Registration
 
 Registers via the same guarded `customElements.define` footer as S1's cards, plus a `window.customCards` entry for the HA card picker.
@@ -146,10 +172,18 @@ Registers via the same guarded `customElements.define` footer as S1's cards, plu
 
 - **OQ-S2-1 — Option A (rest sensor) vs Option B (rest_command).** Resolve by **measuring** the real `/objects/recipes` payload against HA's attribute and recorder limits. Recommendation is A (§2.1). Both are CORS-free and key-safe, so this is a sizing decision, not a safety one.
 - **OQ-S2-2 — the `recipes` / `recipes_pos` field shape.** Weaker evidence than S1's OQ-1 had (§4). Confirm every field name against the live instance and correct the fixtures.
-- **OQ-S2-3 — where the product/unit join happens.** HA-side pre-joined payload (preferred — card stays dumb) vs `/recipes/{id}/fulfillment` if it pre-resolves names. Determines whether `parseIngredients` receives names or bare IDs, so it shapes the parse contract.
+- **⚠️ OQ-S2-3 — where the product/unit join happens. This is the one OQ with a DESIGN-LEVEL fallback, not just a fixture correction.** HA-side pre-joined payload (preferred — card stays dumb) vs `/recipes/{id}/fulfillment` if it pre-resolves names.
+
+  **Why it is different from the others:** OQ-S2-1/2/4 resolve by correcting fixtures or config. OQ-S2-3 can invalidate a function that will already be TDD'd — §4.2 commits `parseIngredients` to receiving resolved `{id, name, amount, unit}` rows. If Tier-2 shows the pre-joined payload isn't achievable, that is a redesign plus new lookup machinery, not a rename.
+
+  **Stated fallback (so the surprise costs one function, not the slice):** `parseIngredients` gains a second argument — product and quantity-unit lookup maps — and performs the join card-side, emitting the same `IngredientRow` shape. The row contract and every downstream consumer stay unchanged; only that one function's signature and internals move.
+
+  **Sequencing consequence for the plan:** `scaleIngredients` is **join-independent** — it operates on `IngredientRow` regardless of where `name`/`unit` came from. **The plan must TDD `scaleIngredients` before `parseIngredients`**, so a Tier-2 surprise cannot strand the slice's primary pure function.
 - **OQ-S2-4 — does `description` actually contain HTML in practice?** §5.4 assumes yes based on Grocy's editor. If real recipes carry plain text, `stripTags` becomes a harmless no-op and nothing changes. Confirm by eye at Tier-2.
 
-**Shared prerequisite:** all four need Docker + a live Grocy — the same gate blocking S1's Task 10. **Standing that up once resolves S1's OQ-1/2/3 and S2's OQ-S2-1..4 together**, which is a strong argument for doing S1 Task 10 and S2's Tier-2 in one session.
+**Shared prerequisite:** all four need Docker + a live Grocy — the same gate blocking S1's Task 10. **Standing that up once resolves S1's OQ-1/2/3 and S2's OQ-S2-1..4 together.**
+
+**This must survive into the implementation plan, not just this spec.** The plan's Tier-2 task should state that it is a *joint* S1+S2 verification session and reference S1's Task 10 explicitly — otherwise Tier-2 gets scheduled as S2-only work and the Grocy stand-up cost is paid twice for no benefit.
 
 ---
 
@@ -157,7 +191,12 @@ Registers via the same guarded `customElements.define` footer as S1's cards, plu
 
 No tier's claim is made until that tier has actually run (verification-before-completion).
 
-- **Tier-1 — pure-function TDD (now, no HA/Grocy):** `scaleIngredients` (the real target — every guard in §4.3), `parseRecipes`, `parseIngredients`, `stripTags`. Against PROVISIONAL fixtures. Red→green→refactor.
+- **Tier-1 — pure-function TDD (now, no HA/Grocy):** four targets, one test file each (§3). Against PROVISIONAL fixtures. Red→green→refactor.
+  - `scaleIngredients` — the primary target. Every guard in §4.3: zero/negative/`NaN`/missing `baseServings`, missing `desiredServings`, non-numeric `amount` pass-through, and rounding-before-format.
+  - `stripTags` — including the `<ol><li>` case whose naive handling yields `"PreheatMix"` (§5.4).
+  - `parseRecipes` — nested fail-safes, `pictureUrl` null branch, `baseServings` divisor guard.
+  - `parseIngredients` — unresolved-join fail-safes.
+  - **Order matters: TDD `scaleIngredients` and `stripTags` FIRST.** Both are join-independent, so an OQ-S2-3 surprise at Tier-2 cannot strand them (§6).
 - **Tier-2 — live round-trip on the Mac (not Pi-blocked):** stand up Docker + Grocy + dev-HA; author ≥3 real recipes **including one with no picture and one with fractional amounts**; resolve all four OQs; render LIST and DETAIL against real data; confirm scaled amounts by hand against the arithmetic. **This tier proves the slice works.**
   - **Demo-harness note (learned S1):** `demo/index.html` cannot be opened over `file://` — ES modules are CORS-blocked on that scheme and the page silently renders blank. Serve over HTTP (`python3 -m http.server`).
 - **Tier-3 — on-kitchen-screen:** Pi-blocked, deferred to the hardware phase. **Touch itself is only verifiable at Tier-3** — until then, §5.3's mouse/keyboard path is what is actually exercised. NOT claimed by this slice.
