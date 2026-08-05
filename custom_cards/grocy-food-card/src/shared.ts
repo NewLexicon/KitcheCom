@@ -46,3 +46,18 @@ export function parseMeals(meals?: any[] | null): MealRow[] {
     return { id: m?.id, day: m?.day, label, kind };
   });
 }
+
+// canCheckOff gates whether the ✓ button renders. If the shopping-list id (OQ-3)
+// isn't resolvable, we render rows read-only rather than firing a call that 500s
+// (chores done_by precedent — spec §4.2).
+export function canCheckOff(shoppingListId?: string): boolean {
+  return typeof shoppingListId === "string" && shoppingListId.length > 0;
+}
+
+// buildRemovePayload — INPUT→OUTPUT MAPPING ONLY (spec §3.3 boundary). The field
+// names/shape here are the provisional best-guess for grocy.remove_product_in_shopping_list;
+// Tier-2 confirms them (OQ-2 product_id-vs-entry-id; OQ-3 list-id key). NOT proof
+// the service accepts this shape.
+export function buildRemovePayload(shoppingListId: string, productId: number) {
+  return { shopping_list_id: shoppingListId, product_id: productId };
+}
