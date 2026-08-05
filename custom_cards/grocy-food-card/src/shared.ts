@@ -23,3 +23,26 @@ export function parseShoppingItems(products?: any[] | null): ShoppingRow[] {
     note: p?.note ?? "",
   }));
 }
+
+// day is opaque passthrough (spec §3.2): the serialized form of Grocy's date is
+// unconfirmed (OQ-1), so parseMeals does NOT coerce it. Card layer decides date use.
+export type MealRow = { id: number; day: unknown; label: string; kind: string };
+
+// type is an OPEN set (spec §3.2): Grocy meal plans have section rows beyond
+// RECIPE/PRODUCT/NOTE. The switch has a `default` branch and never throws — an
+// unknown/section type renders generically rather than being dropped.
+export function parseMeals(meals?: any[] | null): MealRow[] {
+  if (!Array.isArray(meals)) return [];
+  return meals.map((m) => {
+    const kind = String(m?.type ?? "unknown");
+    let label: string;
+    switch (kind) {
+      case "recipe":  label = m?.recipe?.name ?? "(recipe)"; break;
+      case "note":    label = m?.note ?? "(note)"; break;
+      case "product": label = m?.product?.name ?? "(product)"; break;
+      case "section": label = m?.section?.name ?? "(section)"; break;
+      default:        label = m?.note ?? m?.recipe?.name ?? "(meal)"; break;
+    }
+    return { id: m?.id, day: m?.day, label, kind };
+  });
+}
