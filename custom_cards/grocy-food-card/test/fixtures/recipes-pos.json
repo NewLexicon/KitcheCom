@@ -1,0 +1,9 @@
+{
+  "_note": "PROVISIONAL — see recipes.json. Rows are shown PRE-JOINED (name/unit resolved HA-side, spec §4.2 preferred path). If Tier-2 forces the card-side join, OQ-S2-3's fallback applies.",
+  "recipes_pos": [
+    { "id": 10, "recipe_id": 1, "product_id": 3, "amount": 1.5, "qu_id": 2, "name": "Ground beef", "unit": "lb" },
+    { "id": 11, "recipe_id": 1, "product_id": 8, "amount": 12, "qu_id": 5, "name": "Tortillas", "unit": "" },
+    { "id": 12, "recipe_id": 1, "product_id": 9, "amount": "a pinch", "qu_id": 5, "name": "Salt", "unit": "" },
+    { "id": 13, "recipe_id": 2, "product_id": 4, "amount": 0.1, "qu_id": 2 }
+  ]
+}
