@@ -40,4 +40,20 @@ describe("scaleIngredients", () => {
     expect(scaleIngredients(undefined as any, 4, 8)).toEqual([]);
     expect(scaleIngredients([], 4, 8)).toEqual([]);
   });
+  it("never emits Infinity when the scaled amount overflows", () => {
+    const out = scaleIngredients(
+      [{ id: 1, name: "Flour", amount: Number.MAX_VALUE, unit: "cup" }], 1, 3);
+    expect(Number.isFinite(out[0].amount as number)).toBe(true);
+    expect(formatAmount(out[0].amount as any)).not.toBe("Infinity");
+  });
+  it("passes a non-finite amount through without scaling it", () => {
+    const out = scaleIngredients(
+      [{ id: 1, name: "Flour", amount: Infinity, unit: "cup" }], 1, 2);
+    expect(out[0].amount).toBe(Infinity);   // unchanged, not multiplied
+  });
+  it("does not fabricate an empty row from a null entry", () => {
+    const out = scaleIngredients([null, { id: 2, name: "OK", amount: 2, unit: "c" }] as any, 1, 2);
+    expect(out[1]).toMatchObject({ id: 2, name: "OK", amount: 4 });
+    expect(JSON.stringify(out[0])).not.toBe("{}");
+  });
 });

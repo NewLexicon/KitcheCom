@@ -84,15 +84,20 @@ export function scaleIngredients(
     typeof baseServings === "number" && Number.isFinite(baseServings) && baseServings > 0
       ? baseServings
       : 1;
+  // A missing/invalid desired falls back to base (factor 1.0), NOT to 1 — that
+  // keeps "no desiredServings given" a no-op scale rather than always normalizing
+  // to a single serving. Don't "simplify" this to `: 1`; see the factor-1.0 test.
   const desired =
     typeof desiredServings === "number" && Number.isFinite(desiredServings) && desiredServings > 0
       ? desiredServings
       : base;
   const factor = desired / base;
   return rows.map((r) => {
-    if (typeof r?.amount !== "number" || Number.isNaN(r.amount)) return { ...r };
+    if (!r) return r; // null/undefined row: pass through as-is, never fabricate {}
+    if (typeof r.amount !== "number" || !Number.isFinite(r.amount)) return { ...r };
     // Round to <=2dp BEFORE formatAmount ever sees it: 0.1*3 is 0.30000000000000004.
     const scaled = Math.round(r.amount * factor * 100) / 100;
-    return { ...r, amount: scaled };
+    // A finite amount can still overflow when scaled — never emit Infinity to the screen.
+    return Number.isFinite(scaled) ? { ...r, amount: scaled } : { ...r };
   });
 }
