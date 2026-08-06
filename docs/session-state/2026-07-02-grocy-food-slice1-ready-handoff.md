@@ -1,12 +1,14 @@
-# Cold-open handoff — Grocy Food-Ops (S1 Tasks 1–9 SHIPPED; Task 10 Docker-blocked; S2 UX design presented)
+# Cold-open handoff — Grocy Food-Ops (S1 + S2 offline work COMPLETE; both blocked on the same Docker gate)
 
-**Date:** 2026-07-02 (last refreshed **2026-08-05**)
+**Date:** 2026-07-02 (last refreshed **2026-08-06**)
 **Branch:** `feat/grocy-chores` (in the worktree `.worktrees/grocy-chores`)
-**Status (two parallel threads):**
-1. **S1 (meal-plan + shopping cards): Tasks 1–9 EXECUTED AND COMMITTED 2026-08-05.** Both cards build and render (browser-verified); 16 Tier-1 tests green; typecheck clean; deploy wiring authored. **Task 10 (Tier-2 live round-trip) remains BLOCKED on Docker** — it is the gate that resolves OQ-1/2/3. **Task 11 deliberately DEFERRED** (its dashboard edit hardcodes an OQ-3-dependent value — see §5).
-2. **S2 (recipe card):** architecture de-risked (roadmap §8) + **UX design fully presented, awaiting user approval** — NO spec written yet (brainstorming HARD-GATE). Unchanged since 2026-07-02.
+**Status (two threads, both now at the same gate):**
+1. **S1 (meal-plan + shopping cards): Tasks 1–9 shipped 2026-08-05.** Both cards build and render (browser-verified). **Task 10 (Tier-2) BLOCKED on Docker. Task 11 deliberately DEFERRED** (§5).
+2. **S2 (recipe card): design approved + spec + plan + Tasks 1–8 ALL SHIPPED 2026-08-06.** The month-old brainstorming gate was cleared by user approval; spec written and reviewer-folded, 9-task plan written, then Tasks 1–8 executed under subagent-driven-development. **54 tests green, typecheck clean, browser-verified. Task 9 (Tier-2) BLOCKED on the same Docker gate.**
 
-**The immediate next action:** start Docker and run **Task 10** (§4). If Docker isn't available, the remaining offline work on this branch is thin — S2 needs user design approval, not code.
+**The immediate next action: start Docker and run ONE joint Tier-2 session** covering S1 Task 10 + S2 Task 9 together (§4). Standing up Grocy once resolves all seven open questions — S1's OQ-1/2/3 and S2's OQ-S2-1..4. **Do not schedule them separately; the stand-up cost would be paid twice for no benefit.**
+
+**Nothing meaningful is left to do offline on this branch.** Both slices' non-Docker work is complete.
 
 > This is a feature-branch handoff, not the project-wide cold-open. The formal `docs/session-state/README.md` cold-open describes main; this file covers the `feat/grocy-chores` work-arc. Post-merge, rewrite the project cold-open from main's perspective.
 
@@ -14,9 +16,25 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `b6d3d06` — `docs: refresh S1 handoff — Tasks 1-9 shipped, Task 10 next (Docker-gated)` (this file) **+ this refresh's fix-up commit on top.** Last code commit was `4b07f20` (Task 9).
+- **HEAD:** `1bd9230` — `feat: Option-A rest-sensor recipe proxy + INSTALL steps` (S2 Task 8) **+ this refresh's commit and its fix-up on top.**
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** **26** commits. Worktree clean.
+- **Ahead of main:** **43** commits. Worktree clean.
+
+### S2 execution arc — 2026-08-06, newest first (Tasks 1–8, plus spec + plan)
+Executed under `superpowers:subagent-driven-development`: a fresh implementer per task, then spec-compliance and code-quality review. **Four tasks required post-review fixes — all four were real defects caught by review, not cosmetic.**
+  - `1bd9230` — Task 8: Option-A rest sensor (`homeassistant/packages/grocy_recipes.yaml`) + INSTALL Phase B2 step 7
+  - `246111f` — Task 7: demo harness extended, **browser-verified**
+  - `4a8c5f5` — **FIX**: "Recipe not found" was a dead end with no focusable escape (keyboard-only screen) + `_open` id guard
+  - `8190aa8` — Task 6: `grocy-recipe-card` element (LIST + DETAIL)
+  - `60d527d` — **FIX**: `parseIngredients` returned phantom `"(unknown)"` rows when `recipeId` was unresolved
+  - `e28bae7` — Task 5: `parseIngredients`
+  - `a788bcd` — Task 4: `parseRecipes`
+  - `7150fe5` — **FIX**: `stripTags` silently deleted prose between a bare `<` and `>` (data loss); entities undecoded
+  - `249ea74` — Task 3: `stripTags`
+  - `4b962da` — **FIX**: `scaleIngredients` emitted literal `"Infinity"` on overflow; null rows became `{}`
+  - `0f121b0` — Task 2: `scaleIngredients`
+  - `48e688d` — Task 1: provisional fixtures
+  - `1f40a2b` — the S2 plan · `103e87b` + `bda8e0f` — the S2 spec (written and reviewer-folded same day)
 - **Slice 1 execution arc — 2026-08-05, newest first (Tasks 1–9):**
   - `4b07f20` — Task 9: Grocy compose + INSTALL Phase B2 + gitignore for runtime state
   - `d0d1174` — Task 8: offline demo harness **+ the `./shared.js` build fix** (see §2)
@@ -33,13 +51,20 @@
 
 ---
 
-## 2. Empirical state (verified 2026-08-05)
+## 2. Empirical state (verified 2026-08-06)
 
-Package is now `custom_cards/grocy-food-card/` (renamed from `grocy-chores-card` in Task 1). All commands below run from that directory.
+Package is `custom_cards/grocy-food-card/`. All commands below run from that directory.
 
-- **Tier-1 tests: 16 passing across 3 files** (`npx vitest run`) — `shopping-parse.test.ts` (6), `mealplan-parse.test.ts` (7), `checkoff.test.ts` (3).
+- **Tier-1 tests: 54 passing across 7 files** (`npx vitest run`) — S1: `shopping-parse` (6), `mealplan-parse` (7), `checkoff` (3). S2: `scale-ingredients` (12), `strip-tags` (11), `recipe-parse` (7), `ingredient-parse` (8).
 - **Typecheck: clean** (`npm run typecheck` → 0 errors).
-- **Build: clean** (`npm run build` → emits `dist/shared.js`, `dist/mealplan-card.js`, `dist/shopping-card.js`).
+- **Build: clean** — emits `dist/shared.js`, `dist/mealplan-card.js`, `dist/shopping-card.js`, `dist/recipe-card.js`.
+- **All three cards browser-verified** (2026-08-06), 0 console errors / 0 failed requests. Recipe card specifics: LIST shows 2 real-`<button>` tiles with placeholder thumbs; DETAIL shows `2.25 lb Ground beef` and `18 Tortillas` (correct ×1.5 scaling from base 4 → desired 6), `Salt` with a blank quantity (the documented `"a pinch"` limitation), and two-line instructions with computed `white-space: pre-line`. **Keyboard fully works**: tile focuses → Enter and Space open DETAIL; back focuses → Enter returns to LIST.
+
+### ⚠️ S2's four accepted v1 limitations (documented, NOT defects)
+1. A **string amount** (`"a pinch"`) renders as a **blank quantity** with the name intact. `scaleIngredients` passes it through; `formatAmount` blanks it.
+2. **Extreme overflow** falls back to the original unscaled amount. (Correction to an earlier note: the fix removed literal `"Infinity"`; scientific-notation rendering of huge finite numbers is inherited, untouched S1 `formatAmount` behavior.)
+3. **Unmapped HTML entities** (`&frac12;`, numeric `&#8212;`) pass through literally. `decodeEntities` is a small fixed map by design, not a general decoder.
+4. **Ingredients render empty** until OQ-S2-3 is settled and a second `rest` entry is added.
 - **Browser-verified 2026-08-05** — both cards render, **0 console errors / 0 failed requests**. Meal rows `Wed Tacos` / `Thu Leftovers night` / `Thu Dinner` (the section row proves the open-set default branch); shopping rows `2 Eggs` / `1.5 Milk` / `1 (unnamed)` (integer-float strip, non-integer passthrough, nested-name fail-safe). **Guard confirmed:** 3 ✓ buttons with `shopping_list_id` set, **0** without it.
 - **Docker: still NOT running** on the Mac (verified 2026-08-05 — CLI present at `/usr/local/bin/docker`, daemon down). **This gates Tier-2 (Task 10).**
 - `dist/` is **gitignored** repo-wide (`.gitignore:24`) — same convention as `screensaver-card`. It must be rebuilt on any machine that installs the card; INSTALL Phase B2 step 5 says so.
@@ -100,7 +125,13 @@ The user pivoted Grocy's role. **Chores moved to ChoreOps** (separate HACS integ
 
 ## 4. The next move (literal first action)
 
-**Start Docker Desktop, then execute Task 10 (Tier-2 live round-trip).** It is the only thing standing between this slice and "verified working," and it resolves all three OQs at once.
+**Start Docker Desktop, then run ONE joint Tier-2 session covering S1 Task 10 AND S2 Task 9.** One Grocy stand-up resolves all seven open questions across both slices. Doing them separately pays the stand-up cost twice.
+
+- **S1 Task 10** — plan `docs/superpowers/plans/2026-07-02-grocy-food-slice1.md`, lines 663-692. Resolves OQ-1 (sensor field shapes), OQ-2 (check-off entry id), OQ-3 (shopping-list id).
+- **S2 Task 9** — plan `docs/superpowers/plans/2026-08-05-grocy-food-slice2.md`, Chunk 6. Resolves OQ-S2-1 (measure the payload → confirm Option A vs B), OQ-S2-2 (recipe field shapes), OQ-S2-3 (**where the ingredient join happens** — the one with a design-level fallback), OQ-S2-4 (is `description` really HTML).
+- **Author test recipes covering:** one with a picture, one without, one with fractional amounts, and instructions entered as a **numbered list** so the `<ol><li>` path is exercised against real editor output.
+
+**Below is S1 Task 10's detail, retained verbatim:**
 
 **Read first (absolute paths):**
 - Plan — **Task 10 is at lines 663–692**: `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/plans/2026-07-02-grocy-food-slice1.md`
@@ -165,15 +196,20 @@ Memory dir (OUTSIDE the repo): `/Users/jdehart1/.claude/projects/-Users-jdehart1
 
 ---
 
-## 7. Session-close verification (re-verified 2026-08-05)
+## 7. Session-close verification (re-verified 2026-08-06)
 
-Every number below was re-run at session close, not carried forward from memory:
+Every number below was re-run at session close, not carried forward:
 
-- **HEAD** `b6d3d06` (this refresh) + its fix-up commit; **branch** `feat/grocy-chores`; **ahead of main 26** — all `git`-verified.
+- **HEAD** `1bd9230` + this refresh + its fix-up; **branch** `feat/grocy-chores`; **ahead of main 43** — all `git`-verified.
 - **Worktree clean** (`git status --short` empty).
-- **Tier-1: 16 tests passing / 3 files** (`npx vitest run`); **typecheck 0 errors**; **build emits 3 files** — all re-run at close.
-- **Demo browser-verified** over `http://localhost:8777` — 0 console errors, 0 failed requests; guard confirmed (3 ✓ buttons with list id, 0 without).
-- **Other window still on `feat/choreops-chores`** and clean — worktree isolation held across the whole session.
-- **Docker still down** (`docker info` fails; CLI present) — Task 10 remains blocked.
-- **S2 recipe spec (`2026-07-02-grocy-recipe-card-design.md`) still does NOT exist** — `ls`-verified (correct: awaiting user approval, brainstorming HARD-GATE).
-- **Task 10 + Task 11 are the only S1 tasks not executed** — 10 blocked, 11 deferred by choice (§5).
+- **54 tests / 7 files**; **typecheck 0 errors**; **build emits 4 files** — all re-run at close.
+- **Every emitted local import carries `.js`** — `grep 'from "./shared' dist/*.js` across all three cards. This is the Slice-1 blank-card regression guard.
+- **All three cards browser-verified** over `http://localhost:8778`, 0 console errors / 0 failed requests.
+- **Other window still on `feat/choreops-chores`** and clean — worktree isolation held across the entire session.
+- **Docker still down** (`docker info` fails; CLI present at `/usr/local/bin/docker`) — both Tier-2 tasks remain blocked.
+- **S2 spec and plan now EXIST** — `docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md` and `docs/superpowers/plans/2026-08-05-grocy-food-slice2.md`, both `ls`-verified. (Superseding the prior note that the spec was gated on approval — approval was given 2026-08-05.)
+- **Final whole-slice review: 0 findings at any severity.** Spec coverage complete; all four fix cycles left the code internally consistent.
+- **Not executed: S1 Task 10, S1 Task 11, S2 Task 9** — the two Task-10/9 items are Docker-blocked; Task 11 is deferred by choice (§5).
+
+### Process note — subagent-driven-development earned its cost on S2
+Four of the eight tasks required post-review fixes, and **all four were real defects that the implementer's own self-review had passed**: literal `"Infinity"` rendering, silent prose deletion between bare `<`/`>`, phantom ingredient rows, and a keyboard dead-end with no escape. Each was caught by an independent reviewer probing adversarially rather than reading the code, and each was verified by the controller before dispatching a fix. On a slice this small, per-task review found roughly one real defect per two tasks.
