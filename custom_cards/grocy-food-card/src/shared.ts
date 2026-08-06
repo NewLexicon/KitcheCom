@@ -102,6 +102,21 @@ export function scaleIngredients(
   });
 }
 
+// Decode the entities a WYSIWYG editor actually emits. Deliberately a small
+// fixed map, not a general HTML entity decoder — this is a readability pass
+// for one field, not a parser. &amp; is decoded LAST so "&amp;lt;" yields
+// "&lt;" rather than "<".
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&deg;/g, "°")
+    .replace(/&amp;/g, "&");
+}
+
 // Grocy's recipe `description` is WYSIWYG-authored HTML. We render it as PLAIN
 // TEXT (spec §5.4) — unsafeHTML on user-authored content is an injection surface
 // and a sanitizer dependency is disproportionate for one field.
@@ -109,14 +124,25 @@ export function scaleIngredients(
 // The separator rule is load-bearing: deleting tags without inserting newlines
 // turns <ol><li>Preheat</li><li>Mix</li></ol> into "PreheatMix". The DETAIL view
 // must render the result with `white-space: pre-line` or step 1 is wasted.
+//
+// Two fixed defects, both deliberate (not luck): (1) the tag-removal regex
+// requires a tag-like start (letter, /, or !) so a literal "<200 ... >5" in
+// recipe prose is not mistaken for a tag and silently deleted; (2) common HTML
+// entities (&amp;, &nbsp;, &deg;, etc.) are decoded after tag removal so they
+// don't render literally on the kitchen screen.
 export function stripTags(html?: string | null): string {
   if (typeof html !== "string" || html.length === 0) return "";
   return html
     // 1. block-level closers + line breaks become newlines
     .replace(/<\/(li|p|div|h[1-6]|tr)\s*>|<br\s*\/?>/gi, "\n")
-    // 2. remove every remaining tag
-    .replace(/<[^>]*>/g, "")
-    // 3. collapse runs of newlines (incl. surrounding spaces), then trim
+    // 2. remove every remaining tag. Require a tag-like start (letter, /, or !)
+    // so a literal "<200 ... >5" in prose is not mistaken for a tag and
+    // silently deleted.
+    .replace(/<\/?[a-zA-Z!][^>]*>/g, "")
+    // 3. decode entities AFTER tag removal, BEFORE newline-collapse so a
+    // decoded &nbsp; participates in whitespace collapsing.
+    .replace(/&[a-zA-Z#0-9]+;/g, (m) => decodeEntities(m))
+    // 4. collapse runs of newlines (incl. surrounding spaces), then trim
     .replace(/[ \t]*\n[ \t]*(\n[ \t]*)+/g, "\n")
     .trim();
 }

@@ -26,4 +26,19 @@ describe("stripTags", () => {
     expect(stripTags(null)).toBe("");
     expect(stripTags("")).toBe("");
   });
+  it("does not eat text between bare < and > in prose", () => {
+    expect(stripTags("Cook if temp <200 and time >5 min, then serve"))
+      .toBe("Cook if temp <200 and time >5 min, then serve");
+  });
+  it("decodes the entities a WYSIWYG editor emits", () => {
+    expect(stripTags("salt &amp; pepper")).toBe("salt & pepper");
+    expect(stripTags("Preheat to 200&deg;C")).toBe("Preheat to 200°C");
+    expect(stripTags("a&nbsp;b")).toBe("a b");
+  });
+  it("decodes &amp; last so &amp;lt; does not become a bracket", () => {
+    expect(stripTags("&amp;lt;")).toBe("&lt;");
+  });
+  it("still strips real tags with attributes", () => {
+    expect(stripTags('<li class="step">Preheat</li><li>Mix</li>')).toBe("Preheat\nMix");
+  });
 });
