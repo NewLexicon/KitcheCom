@@ -146,3 +146,39 @@ export function stripTags(html?: string | null): string {
     .replace(/[ \t]*\n[ \t]*(\n[ \t]*)+/g, "\n")
     .trim();
 }
+
+export type RecipeRow = {
+  id: number;
+  name: string;
+  pictureUrl: string | null;
+  baseServings: number;
+  desiredServings: number;
+  instructions: string;
+};
+
+// Grocy serves recipe pictures from this path. Loaded via <img src> — image
+// loads are NOT CORS-gated, unlike a fetch (spec §2.1).
+const PICTURE_BASE = "/api/files/recipepictures/";
+
+export function parseRecipes(recipes?: any[] | null): RecipeRow[] {
+  if (!Array.isArray(recipes)) return [];
+  return recipes.map((r) => {
+    // base is a DIVISOR in scaleIngredients — 0/negative/missing must become 1.
+    const rawBase = r?.base_servings;
+    const baseServings =
+      typeof rawBase === "number" && Number.isFinite(rawBase) && rawBase > 0 ? rawBase : 1;
+    const rawDesired = r?.desired_servings;
+    const desiredServings =
+      typeof rawDesired === "number" && Number.isFinite(rawDesired) && rawDesired > 0
+        ? rawDesired
+        : baseServings;
+    return {
+      id: r?.id,
+      name: r?.name ?? "(untitled recipe)",
+      pictureUrl: r?.picture_file_name ? PICTURE_BASE + r.picture_file_name : null,
+      baseServings,
+      desiredServings,
+      instructions: stripTags(r?.description),
+    };
+  });
+}
