@@ -16,7 +16,7 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `1bd9230` — `feat: Option-A rest-sensor recipe proxy + INSTALL steps` (S2 Task 8) **+ this refresh's commit and its fix-up on top.**
+- **HEAD:** `0d3d2fd` — `docs: refresh handoff — S2 Tasks 1-8 shipped` (this file) **+ this refresh's fix-up commit on top.** Last code commit was `1bd9230` (S2 Task 8).
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
 - **Ahead of main:** **43** commits. Worktree clean.
 
@@ -200,7 +200,7 @@ Memory dir (OUTSIDE the repo): `/Users/jdehart1/.claude/projects/-Users-jdehart1
 
 Every number below was re-run at session close, not carried forward:
 
-- **HEAD** `1bd9230` + this refresh + its fix-up; **branch** `feat/grocy-chores`; **ahead of main 43** — all `git`-verified.
+- **HEAD** `0d3d2fd` (this refresh) + its fix-up commit; **branch** `feat/grocy-chores`; **ahead of main 43** — all `git`-verified.
 - **Worktree clean** (`git status --short` empty).
 - **54 tests / 7 files**; **typecheck 0 errors**; **build emits 4 files** — all re-run at close.
 - **Every emitted local import carries `.js`** — `grep 'from "./shared' dist/*.js` across all three cards. This is the Slice-1 blank-card regression guard.
