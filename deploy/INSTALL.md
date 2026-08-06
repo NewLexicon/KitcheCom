@@ -67,6 +67,30 @@ native Grocy UI is never shown on the kitchen screen.
    > fail. `"1"` is Grocy's default list id and is **unconfirmed against a live instance**
    > (slice-1 open question OQ-3) — verify in Grocy's UI if check-off does not work.
 
+7. **Recipe proxy (Slice 2).** The recipe card needs a server-side proxy, because the
+   grocy integration exposes **no recipe sensor** — recipe content lives only in Grocy's
+   REST API. Deploy `homeassistant/packages/grocy_recipes.yaml` (it lands automatically
+   with the Phase C copy of `homeassistant/*`), then add two entries to
+   `/config/secrets.yaml`:
+   ```yaml
+   grocy_api_key: <the API key from step 1>
+   grocy_recipes_url: http://<pi-host>:9283/api/objects/recipes
+   ```
+   > `secrets.yaml` is gitignored — enter these on the target machine, never commit them.
+
+   Restart HA, then confirm in Developer Tools → States that `sensor.grocy_recipes` exists
+   and carries a `recipes` attribute. Register `/local/recipe-card.js` (module) alongside
+   the step-5 resources, and add the card:
+   ```yaml
+   - type: custom:grocy-recipe-card
+     entity: sensor.grocy_recipes
+   ```
+   > **Ingredients will be empty until a second `rest` entry is added.** Which Grocy
+   > endpoint returns ingredient rows with product/unit names already resolved — rather
+   > than bare `product_id`/`qu_id` — is an open question (slice-2 OQ-S2-3), settled by
+   > live verification. The card already reads `attributes.recipes_pos` and needs no
+   > change once that entry exists.
+
 ## Phase C — Deploy these files
 1. Copy `homeassistant/*` into HA's `/config`.
 2. Copy `custom_cards/screensaver-card` build output into `/config/www/`; **register the

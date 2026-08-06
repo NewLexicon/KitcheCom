@@ -1,0 +1,39 @@
+# Slice 2 recipe proxy (Option A — spec §2.1).
+#
+# WHY THIS FILE EXISTS: the custom-components/grocy HACS integration exposes NO
+# recipe sensor — recipes and recipes_pos are absent from its entity definitions
+# (verified against its const.py). Recipe content lives only in Grocy's own REST
+# API, so HA polls it server-side here and parks the payload in ATTRIBUTES for
+# grocy-recipe-card to read via hass.states[...]. The API key stays in HA
+# secrets; the browser never talks to Grocy directly and never sees the key.
+#
+# Two constraints this file must respect:
+#   1. HA state is capped at 255 chars — hence value_template's constant "ok"
+#      with the real data in json_attributes. Putting JSON in the state breaks it.
+#   2. Attribute blobs bloat the recorder DB — hence the recorder exclude below.
+#
+# ⚠️ PROVISIONAL: the recipes[] field shape is unconfirmed against a live Grocy
+# (OQ-S2-2). Confirm at Tier-2 and correct the card's fixtures if it drifts.
+rest:
+  - resource: !secret grocy_recipes_url        # e.g. http://<host>:9283/api/objects/recipes
+    scan_interval: 600                          # recipes change rarely
+    headers:
+      GROCY-API-KEY: !secret grocy_api_key
+    sensor:
+      - name: "Grocy Recipes"
+        unique_id: grocy_recipes_proxy
+        value_template: "ok"                    # 255-char cap: never put JSON here
+        json_attributes_path: "$"
+        json_attributes:
+          - recipes
+
+recorder:
+  exclude:
+    entities:
+      - sensor.grocy_recipes                    # attribute blob would bloat the DB
+
+# NOTE: ingredients (recipes_pos) are NOT fetched yet. Which endpoint returns
+# rows with product/unit names already resolved — rather than bare product_id /
+# qu_id — is an open question (OQ-S2-3), settled at Tier-2 against a live Grocy.
+# Add a second `rest:` entry once the shape is known; grocy-recipe-card already
+# reads attributes.recipes_pos and needs no change when it appears.
