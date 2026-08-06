@@ -182,3 +182,19 @@ export function parseRecipes(recipes?: any[] | null): RecipeRow[] {
     };
   });
 }
+
+// Written for the PRE-JOINED payload (name/unit resolved HA-side — spec §4.2's
+// preferred path). OQ-S2-3 fallback if Tier-2 forces a card-side join: add a
+// second arg carrying product/unit lookup maps and resolve here. IngredientRow
+// stays the same either way, so no downstream consumer changes.
+export function parseIngredients(rows?: any[] | null, recipeId?: number): IngredientRow[] {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter((r) => r?.recipe_id === recipeId)
+    .map((r) => ({
+      id: r?.id,
+      name: r?.name ?? "(unknown)",
+      amount: r?.amount,
+      unit: r?.unit ?? "",
+    }));
+}
