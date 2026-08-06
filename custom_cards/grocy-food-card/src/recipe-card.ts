@@ -31,7 +31,13 @@ export class GrocyRecipeCard extends LitElement {
     return this._recipes.find((r) => r.id === this._selectedId);
   }
 
-  private _open(id: number): void { this._selectedId = id; }
+  private _open(id: number): void {
+    // parseRecipes passes `id` through unguarded (upstream shape is an open
+    // question), and a non-numeric id would route to a DETAIL view that can
+    // never resolve. Ignore the click rather than enter an unresolvable state.
+    if (typeof id !== "number" || !Number.isFinite(id)) return;
+    this._selectedId = id;
+  }
   private _back(): void { this._selectedId = null; }
 
   render() {
@@ -55,7 +61,15 @@ export class GrocyRecipeCard extends LitElement {
 
   private _renderDetail() {
     const r = this._selected;
-    if (!r) return html`<div class="empty">Recipe not found</div>`;
+    // This state is reachable when the sensor refreshes and drops the open
+    // recipe. It MUST keep a focusable escape — the kitchen screen has no
+    // working touch input, so a view with no button is a dead end.
+    if (!r)
+      return html`
+        <div class="detail">
+          <button class="back" @click=${this._back}>← Back</button>
+          <div class="empty">Recipe not found</div>
+        </div>`;
     const scaled = scaleIngredients(
       parseIngredients(this._attrs.recipes_pos, r.id),
       r.baseServings,
