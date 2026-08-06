@@ -101,3 +101,22 @@ export function scaleIngredients(
     return Number.isFinite(scaled) ? { ...r, amount: scaled } : { ...r };
   });
 }
+
+// Grocy's recipe `description` is WYSIWYG-authored HTML. We render it as PLAIN
+// TEXT (spec §5.4) — unsafeHTML on user-authored content is an injection surface
+// and a sanitizer dependency is disproportionate for one field.
+//
+// The separator rule is load-bearing: deleting tags without inserting newlines
+// turns <ol><li>Preheat</li><li>Mix</li></ol> into "PreheatMix". The DETAIL view
+// must render the result with `white-space: pre-line` or step 1 is wasted.
+export function stripTags(html?: string | null): string {
+  if (typeof html !== "string" || html.length === 0) return "";
+  return html
+    // 1. block-level closers + line breaks become newlines
+    .replace(/<\/(li|p|div|h[1-6]|tr)\s*>|<br\s*\/?>/gi, "\n")
+    // 2. remove every remaining tag
+    .replace(/<[^>]*>/g, "")
+    // 3. collapse runs of newlines (incl. surrounding spaces), then trim
+    .replace(/[ \t]*\n[ \t]*(\n[ \t]*)+/g, "\n")
+    .trim();
+}
