@@ -27,4 +27,14 @@ describe("parseIngredients", () => {
     expect(parseIngredients(undefined, 1)).toEqual([]);
     expect(parseIngredients(fixture.recipes_pos as any, 999)).toEqual([]);
   });
+  it("returns [] when recipeId is unresolved (no phantom matches)", () => {
+    // undefined === undefined must NOT match rows that also lack recipe_id
+    expect(parseIngredients([{ id: 1, name: "Mystery", amount: 2, unit: "cup" }] as any))
+      .toEqual([]);
+  });
+  it("drops null/undefined row entries instead of making phantom rows", () => {
+    const out = parseIngredients(
+      [null, undefined, { id: 2, recipe_id: 1, name: "OK", amount: 2, unit: "c" }] as any, 1);
+    expect(out).toEqual([{ id: 2, name: "OK", amount: 2, unit: "c" }]);
+  });
 });

@@ -189,8 +189,12 @@ export function parseRecipes(recipes?: any[] | null): RecipeRow[] {
 // stays the same either way, so no downstream consumer changes.
 export function parseIngredients(rows?: any[] | null, recipeId?: number): IngredientRow[] {
   if (!Array.isArray(rows)) return [];
+  // An unresolved recipeId must yield [], not "every row whose recipe_id is also
+  // missing". Without this, `undefined === undefined` matches — and null entries
+  // (null?.recipe_id is undefined) become phantom "(unknown)" rows.
+  if (recipeId === undefined || recipeId === null) return [];
   return rows
-    .filter((r) => r?.recipe_id === recipeId)
+    .filter((r) => r != null && r.recipe_id === recipeId)
     .map((r) => ({
       id: r?.id,
       name: r?.name ?? "(unknown)",
