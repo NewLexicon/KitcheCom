@@ -16,9 +16,9 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `5ca17ca` — `docs: cold-start sanity-check fix-ups` **+ the 2026-08-07 findings/refresh commits on top** (this refresh's own fix-up lands last). Last **code** commit is still `1bd9230` (S2 Task 8) — **2026-08-07 shipped no code.**
+- **HEAD:** `56adbf6` — `docs: Tier-2 findings + handoff refresh — two S2 decisions need amending`, **plus this fix-up commit on top.** Last **code** commit is still `1bd9230` (S2 Task 8) — **2026-08-07 shipped no code.**
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** **43** commits at the start of the 2026-08-07 refresh; +2 after it (findings + this refresh), +1 more after the fix-up.
+- **Ahead of main:** **45** commits (44 at `56adbf6`, +1 for this fix-up). Worktree clean.
 
 ### 2026-08-07 — Tier-2 probing session (no code)
 Stood up Grocy 4.6.0 in Docker, authored 4 recipes / 10 ingredient rows, and probed the four S2 open questions against live data. **Findings: `docs/session-state/2026-08-07-grocy-tier2-s2-findings.md`** — read it before acting; §4 below is only the summary.
