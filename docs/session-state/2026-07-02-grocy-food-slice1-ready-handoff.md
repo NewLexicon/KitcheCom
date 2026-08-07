@@ -1,14 +1,14 @@
-# Cold-open handoff — Grocy Food-Ops (S1 + S2 offline work COMPLETE; both blocked on the same Docker gate)
+# Cold-open handoff — Grocy Food-Ops (S2 Tier-2 DONE; two design decisions now need amending)
 
-**Date:** 2026-07-02 (last refreshed **2026-08-06**)
+**Date:** 2026-07-02 (last refreshed **2026-08-07**)
 **Branch:** `feat/grocy-chores` (in the worktree `.worktrees/grocy-chores`)
-**Status (two threads, both now at the same gate):**
-1. **S1 (meal-plan + shopping cards): Tasks 1–9 shipped 2026-08-05.** Both cards build and render (browser-verified). **Task 10 (Tier-2) BLOCKED on Docker. Task 11 deliberately DEFERRED** (§5).
-2. **S2 (recipe card): design approved + spec + plan + Tasks 1–8 ALL SHIPPED 2026-08-06.** The month-old brainstorming gate was cleared by user approval; spec written and reviewer-folded, 9-task plan written, then Tasks 1–8 executed under subagent-driven-development. **54 tests green, typecheck clean, browser-verified. Task 9 (Tier-2) BLOCKED on the same Docker gate.**
+**Status (two threads, now at DIFFERENT gates):**
+1. **S1 (meal-plan + shopping cards): Tasks 1–9 shipped 2026-08-05. Task 10 (Tier-2) STILL NOT RUN** — it needs a dev-HA container, which was deliberately out of scope on 2026-08-07. **S1's OQ-1/2/3 remain open. Task 11 deliberately DEFERRED** (§5).
+2. **S2 (recipe card): Tasks 1–8 shipped 2026-08-06; Tier-2 probing RUN 2026-08-07 against a live Grocy 4.6.0. All four S2 OQs are RESOLVED.** But the answers **invalidate two decisions the S2 spec locked in** (§4.1). 54 tests still green, typecheck clean — no code changed on 2026-08-07.
 
-**The immediate next action: start Docker and run ONE joint Tier-2 session** covering S1 Task 10 + S2 Task 9 together (§4). Standing up Grocy once resolves all seven open questions — S1's OQ-1/2/3 and S2's OQ-S2-1..4. **Do not schedule them separately; the stand-up cost would be paid twice for no benefit.**
+**The immediate next action is NOT more code. It is a spec amendment + a plan, because two design-level decisions changed** (§4). The findings are written up in full; the plan that acts on them **does not exist yet** — see the ⚠️ in §4.
 
-**Nothing meaningful is left to do offline on this branch.** Both slices' non-Docker work is complete.
+**The Grocy container is still running with all test data** (`localhost:9283`) — do not re-derive the environment; §6 has the reconnect recipe and the API key location.
 
 > This is a feature-branch handoff, not the project-wide cold-open. The formal `docs/session-state/README.md` cold-open describes main; this file covers the `feat/grocy-chores` work-arc. Post-merge, rewrite the project cold-open from main's perspective.
 
@@ -16,9 +16,12 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `0d3d2fd` — `docs: refresh handoff — S2 Tasks 1-8 shipped` (this file) **+ this refresh's fix-up commit on top.** Last code commit was `1bd9230` (S2 Task 8).
+- **HEAD:** `5ca17ca` — `docs: cold-start sanity-check fix-ups` **+ the 2026-08-07 findings/refresh commits on top** (this refresh's own fix-up lands last). Last **code** commit is still `1bd9230` (S2 Task 8) — **2026-08-07 shipped no code.**
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** **43** commits. Worktree clean.
+- **Ahead of main:** **43** commits at the start of the 2026-08-07 refresh; +2 after it (findings + this refresh), +1 more after the fix-up.
+
+### 2026-08-07 — Tier-2 probing session (no code)
+Stood up Grocy 4.6.0 in Docker, authored 4 recipes / 10 ingredient rows, and probed the four S2 open questions against live data. **Findings: `docs/session-state/2026-08-07-grocy-tier2-s2-findings.md`** — read it before acting; §4 below is only the summary.
 
 ### S2 execution arc — 2026-08-06, newest first (Tasks 1–8, plus spec + plan)
 Executed under `superpowers:subagent-driven-development`: a fresh implementer per task, then spec-compliance and code-quality review. **Four tasks required post-review fixes — all four were real defects caught by review, not cosmetic.**
@@ -51,7 +54,10 @@ Executed under `superpowers:subagent-driven-development`: a fresh implementer pe
 
 ---
 
-## 2. Empirical state (verified 2026-08-06)
+## 2. Empirical state (re-verified 2026-08-07)
+
+> **Re-run on 2026-08-07:** `npm test` → **54 passed (7 files)**; `npm run typecheck` → **clean**. Unchanged from 2026-08-06 because no code shipped. **The tests passing does NOT mean the card works against real data** — see the live defect in §4.1.
+
 
 Package is `custom_cards/grocy-food-card/`. All commands below run from that directory.
 
@@ -63,8 +69,8 @@ Package is `custom_cards/grocy-food-card/`. All commands below run from that dir
 ### ⚠️ S2's four accepted v1 limitations (documented, NOT defects)
 1. A **string amount** (`"a pinch"`) renders as a **blank quantity** with the name intact. `scaleIngredients` passes it through; `formatAmount` blanks it.
 2. **Extreme overflow** falls back to the original unscaled amount. (Correction to an earlier note: the fix removed literal `"Infinity"`; scientific-notation rendering of huge finite numbers is inherited, untouched S1 `formatAmount` behavior.)
-3. **Unmapped HTML entities** (`&frac12;`, numeric `&#8212;`) pass through literally. `decodeEntities` is a small fixed map by design, not a general decoder.
-4. **Ingredients render empty** until OQ-S2-3 is settled and a second `rest` entry is added.
+3. **Unmapped HTML entities** (`&frac12;`, numeric `&#8212;`) pass through literally. `decodeEntities` is a small fixed map by design, not a general decoder. — **2026-08-07: largely MOOT.** Grocy's API decodes entities on write (posted `&amp;`/`&deg;` came back as `&`/`°`), so the fixed map is rarely exercised.
+4. ~~Ingredients render empty until OQ-S2-3 is settled.~~ — **2026-08-07: this is now a CONFIRMED LIVE DEFECT, not a pending limitation.** `parseIngredients` reads `r.name`/`r.unit`, which **exist on no Grocy payload**; every live row returns `"(unknown)"` with a blank unit. Fix is part of the §4.1 amendment.
 - **Browser-verified 2026-08-05** — both cards render, **0 console errors / 0 failed requests**. Meal rows `Wed Tacos` / `Thu Leftovers night` / `Thu Dinner` (the section row proves the open-set default branch); shopping rows `2 Eggs` / `1.5 Milk` / `1 (unnamed)` (integer-float strip, non-integer passthrough, nested-name fail-safe). **Guard confirmed:** 3 ✓ buttons with `shopping_list_id` set, **0** without it.
 - **Docker: still NOT running** on the Mac (verified 2026-08-05 — CLI present at `/usr/local/bin/docker`, daemon down). **This gates Tier-2 (Task 10).**
 - `dist/` is **gitignored** repo-wide (`.gitignore:24`) — same convention as `screensaver-card`. It must be rebuilt on any machine that installs the card; INSTALL Phase B2 step 5 says so.
@@ -125,11 +131,39 @@ The user pivoted Grocy's role. **Chores moved to ChoreOps** (separate HACS integ
 
 ## 4. The next move (literal first action)
 
-**Start Docker Desktop, then run ONE joint Tier-2 session covering S1 Task 10 AND S2 Task 9.** One Grocy stand-up resolves all seven open questions across both slices. Doing them separately pays the stand-up cost twice.
+### 4.1 ⚠️ Two S2 design decisions are now invalidated — amend the spec BEFORE writing code
 
-- **S1 Task 10** — plan `docs/superpowers/plans/2026-07-02-grocy-food-slice1.md`, lines 663-692. Resolves OQ-1 (sensor field shapes), OQ-2 (check-off entry id), OQ-3 (shopping-list id).
-- **S2 Task 9** — plan `docs/superpowers/plans/2026-08-05-grocy-food-slice2.md`, Chunk 6. Resolves OQ-S2-1 (measure the payload → confirm Option A vs B), OQ-S2-2 (recipe field shapes), OQ-S2-3 (**where the ingredient join happens** — the one with a design-level fallback), OQ-S2-4 (is `description` really HTML).
-- **Author test recipes covering:** one with a picture, one without, one with fractional amounts, and instructions entered as a **numbered list** so the `<ol><li>` path is exercised against real editor output.
+The 2026-08-07 Tier-2 probe resolved all four S2 OQs. Two answers **contradict decisions the spec locked in**, so this is a spec amendment, not a patch:
+
+1. **Ingredient source → `recipes_pos_resolved`.** The spec's §4.2 assumed a join had to be built (HA-side or card-side). **Grocy ships `GET /api/objects/recipes_pos_resolved`, which the spec never found.** It returns `product_name` already joined **and `recipe_amount` already scaled server-side** (verified: Tacos 1.5→**2.25**, 12→**18**, 0.25→**0.375** at the 4→6 factor). Consequences: it **fixes the live `"(unknown)"` defect**, and it makes **client-side `scaleIngredients` redundant for display**. It does **not** carry unit names — `qu_id` is still a bare int, so a `quantity_units` lookup is still required (6 rows, **861 bytes**, static and cacheable; ids→names `{2:Piece, 3:Pack, 4:Pound, 5:Tablespoon, 6:Cup, 7:Gram}`).
+   - **Verified again 2026-08-07 at cold-open time.** An earlier probe of mine falsely reported a unit name on the resolved row — that was a substring false-positive on `only_check_single_unit_in_stock`. A full key dump confirms **there is no unit name**; the lookup is genuinely needed.
+   - **Do not delete `scaleIngredients`.** It stays the tested fallback and is still needed if a future slice adds on-screen servings adjustment (spec §5.3 explicitly parameterized it for that).
+
+2. **Transport → Option A does not scale.** Measured 6.4 KB for 4 recipes/10 ingredients; extrapolation puts a **25-recipe library at ~85 KB against an HA attribute ceiling of ~16 KB — ~5× over**. The Task 8 rest sensor works on a toy dataset and **degrades quietly** (truncated/dropped attribute, no loud error). Mitigation is verified: **`?query[]=recipe_id=N` server-side filtering works** (5,084 B unfiltered → 1,526 B for one recipe), which makes an on-demand per-recipe fetch practical.
+
+**These two interact — do not fix the join before the transport is settled, or the fix gets redone.**
+
+> **⚠️ The findings file's §8 points to `docs/superpowers/plans/2026-08-07-grocy-s2-resolved-switch.md`. That file DOES NOT EXIST.** It was named but never written. **Writing it is the first action of the next session** — after the spec amendment, via `superpowers:writing-plans`.
+
+**Sequence for tomorrow:**
+1. Read the findings file end-to-end (absolute path in §4.3).
+2. Amend `2026-07-02-grocy-recipe-card-design.md` §4.2 (ingredient source) and §2.1 (transport A-vs-B → resolved).
+3. Write the plan at the path above.
+4. Only then touch code.
+
+### 4.2 S1 Task 10 is still unrun — and now needs its own session
+
+The old "do both in one Docker session" advice is **spent**: the Grocy half is done, but S1 Task 10 additionally needs **a throwaway dev-HA with HACS + the grocy integration**, which was never stood up. **S1's OQ-1/2/3 remain open.** OQ-2 in particular (does check-off want `id` or `product_id`?) can only be proven by pressing ✓ and watching the row vanish in Grocy's UI.
+
+**The Grocy container is already up with test data**, so S1 Task 10 now only costs the dev-HA stand-up. Detail retained below.
+
+### 4.3 Read first (absolute paths)
+
+- **Findings — read before anything:** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/session-state/2026-08-07-grocy-tier2-s2-findings.md`
+- S2 spec (amend §2.1 + §4.2): `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md`
+- S2 plan (Tasks 1–8 done; Chunk 6 = Task 9): `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/plans/2026-08-05-grocy-food-slice2.md`
+- The shipped Option-A sensor (the thing §4.1.2 changes): `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/homeassistant/packages/grocy_recipes.yaml`
+- The defective parse fn: `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/custom_cards/grocy-food-card/src/shared.ts`
 
 **Below is S1 Task 10's detail, retained verbatim:**
 
@@ -150,26 +184,44 @@ The user pivoted Grocy's role. **Chores moved to ChoreOps** (separate HACS integ
 
 **Then Task 11** (plan lines 698–736) — deferred this session; see §5 before running its Step 2.
 
-**If Docker is unavailable:** there is no meaningful offline work left on this branch. S2 needs the user's design approval (§4 S2 block below), not code.
+> **The S2 "awaiting user approval / no spec yet" block that used to sit here is DELETED as of 2026-08-07.** It was stale: the design was approved 2026-08-05, the spec and plan were written, and Tasks 1–8 shipped 2026-08-06. Ignore any older copy of it.
 
-**S2 (recipe repository) is pre-de-risked** — roadmap §8 (`docs/superpowers/specs/2026-07-02-grocy-food-ops-roadmap.md`) holds source-verified groundwork: the HA integration has NO recipe sensor, so S2 proxies Grocy REST through HA (Option A rest-sensor mirrors the S1 card shape, or Option B response-returning rest_command — A-vs-B is OQ-S2-1, resolved at S2 impl by measuring live payload size). The S2 spec brainstorm (recipe-card UX) still needs the user in the loop; do NOT write the S2 spec without them. Don't start S2 until S1 executes.
+---
 
-**S2 UX brainstorm — DESIGN PRESENTED, awaiting user approval (2026-07-02).** The full UX design has been laid out (5 sections) and is waiting on the user's OK before the spec is written. NO SPEC WRITTEN YET (brainstorming HARD-GATE). **Decisions locked from the brainstorm:**
-- **Touch:** screen IS touch-capable; touch temporarily cable-blocked → **touch-first design, degrade gracefully** to a usable no-touch view for now.
-- **Purpose:** BOTH — browse-list → tap → cook-reference detail (full recipe experience).
-- **Two views:** LIST = recipe grid, handles BOTH picture-forward (`picture_file_name` present) and text fallback (absent). DETAIL = picture + name + servings + scaled ingredients + instructions (from recipe `description` field).
-- **Ingredients:** SCALED to servings = `recipes_pos.amount × (desired_servings / base_servings)`, v1 uses recipe's `desired_servings`. This is the one real **pure function** (Tier-1 TDD target). Adjustable servings (touch +/−) deferred (YAGNI).
-- **Fields:** handle-both picture/text (resolved on best-judgment while user away — robust default, not a preference guess; picture-emphasis is an impl observation vs live data).
-- **Testing:** same 3 tiers as S1.
+## 4.5 Reconnecting to the live Grocy (already running)
 
-**New source-finding this session:** pygrocy has NO recipe-ingredient model → `recipes_pos` is raw Grocy REST (`product_id` + `qu_id` + `amount` as IDs, NOT names). So the HA-proxy layer likely fetches + **joins** recipes/recipes_pos/products/quantity_units, OR uses `/recipes/{id}/fulfillment` if it pre-resolves. That join = **OQ-S2-2**, confirmed at impl. Pictures via `<img src=/api/files/recipepictures/...>` (not CORS-gated).
+The container was **left up with all test data** — 4 recipes, 10 ingredient rows, 8 products, 6 quantity units, covering prose instructions, `<ol><li>` instructions, fractional amounts, and a plain-text description.
 
-**Resume:** re-present the 5-section design (or read it from this handoff), get user approval, then write spec to `docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md`, self-review, spec-review gate, writing-plans. Task tracker: #9 done (queue complete); #10 = present-design/write-spec (in progress). Do NOT start S2 impl until S1 executes.
+```bash
+cd /Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores
+docker compose -f deploy/grocy/docker-compose.grocy.yml up -d   # no-op if still up
+# http://localhost:9283 — admin/admin
+```
+
+**API key** (already created; don't make a new one):
+```bash
+sqlite3 deploy/grocy/grocy-config/data/grocy.db "select api_key from api_keys;"
+```
+
+**Two gotchas that cost time on 2026-08-07:**
+- The **`Add` button on `/manageapikeys` is `href="#"` and JS-driven — it does not fire under browser automation.** The working route is `GET /manageapikeys/new`.
+- **Unit-conversion integrity is enforced on `recipes_pos` writes.** An ingredient whose `qu_id` is neither the product's `qu_id_stock` nor a defined conversion fails with `SQLSTATE[23000] ... doesn't have a related conversion`. Four of ten seed rows hit this. Any seeding script must use `qu_id_stock` or define conversions first.
+- Also: **`desired_servings` is ignored on POST** but settable via a follow-up `PUT` (204). Affects seeding only, not the card.
+
+**Teardown when truly done:** `docker compose -f deploy/grocy/docker-compose.grocy.yml down`. The bind dir `deploy/grocy/grocy-config/` persists (gitignored) and holds the test data.
 
 ---
 
 ## 5. Carry-forwards (deferred gates / latent risks)
 
+### New 2026-08-07
+- **The `recipes_pos_resolved` switch + transport rework are UNWRITTEN work** (§4.1). The findings exist; the spec amendment and plan do not. **The named plan file does not exist** — writing it is the first action.
+- **The picture path is STILL unproven against live data.** All 4 test recipes had `picture_file_name: null`, so the LIST view's picture-forward branch and the `<img src="/api/files/recipepictures/…">` fetch were never exercised. **Upload an image to a test recipe** during the next Grocy session.
+- **`scaleIngredients` becomes display-redundant but must NOT be deleted** — `recipes_pos_resolved` pre-scales, but the function stays the tested fallback and is the hook for the deferred on-screen servings control (spec §5.3).
+- **S1's three OQs are still open** and now need a dev-HA session of their own (§4.2). The old "one joint Tier-2 session" plan is spent.
+- **The old `docs/session-state/2026-08-07-grocy-tier2-s2-findings.md` was untracked** at the time of this refresh — it is committed as part of this close-out.
+
+### Pre-existing
 - **Task 10 (Tier-2) is the one blocked gate.** Needs Docker running + a fresh Grocy container + a dev-HA on the Mac. It resolves three OQs that everything downstream trusts:
   - **OQ-1** — the live sensor field names may DRIFT from the provisional pygrocy-derived fixtures (integration `as_dict()` mapper may flatten/rename/camelCase; `day`'s serialized form unconfirmed). If drifted → correct fixtures + parse fns + re-run suite. **Tests are written NOT to over-fit** to guessed keys.
   - **OQ-2** — whether `remove_product_in_shopping_list` wants the entry `id` or `product_id`.
