@@ -70,13 +70,34 @@ native Grocy UI is never shown on the kitchen screen.
 7. **Recipe proxy (Slice 2).** The recipe card needs a server-side proxy, because the
    grocy integration exposes **no recipe sensor** — recipe content lives only in Grocy's
    REST API. Deploy `homeassistant/packages/grocy_recipes.yaml` (it lands automatically
-   with the Phase C copy of `homeassistant/*`), then add two entries to
+   with the Phase C copy of `homeassistant/*`), then add three entries to
    `/config/secrets.yaml`:
    ```yaml
+   # Recipe list — LIST view (polled every 600s into sensor.grocy_recipes)
+   grocy_recipes_url: "http://<pi-host>:9283/api/objects/recipes"
+
+   # One recipe's resolved ingredients — DETAIL view, fetched on open.
+   # The query[] filter is Grocy's server-side filtering (1,526 B vs 5,084 B
+   # unfiltered). {{ recipe_id }} is templated by the card's service call.
+   grocy_recipe_ingredients_url: >-
+     http://<pi-host>:9283/api/objects/recipes_pos_resolved?query%5B%5D=recipe_id%3D{{ recipe_id }}
+
+   # Unit names for qu_id — fetched once per card load, ~900 B, static.
+   grocy_quantity_units_url: "http://<pi-host>:9283/api/objects/quantity_units"
+
+   # API key (shared by all three)
    grocy_api_key: <the API key from step 1>
-   grocy_recipes_url: http://<pi-host>:9283/api/objects/recipes
    ```
    > `secrets.yaml` is gitignored — enter these on the target machine, never commit them.
+   >
+   > **Why three URLs and not one sensor:** the whole recipe library in a single sensor's
+   > attributes measures ~85 KB at 25 recipes against HA's ~16 KB attribute ceiling, and
+   > it **truncates silently** rather than erroring. The list is small (~8 KB) and stays in
+   > the sensor; ingredients are fetched one recipe at a time. See spec §2.1.
+   >
+   > **The `%5B%5D` and `%3D` are required** — they are URL-encoded `[]` and `=`. Grocy's
+   > filter syntax is `query[]=recipe_id=N`, and an unencoded `[` will not survive the
+   > request.
 
    Restart HA, then confirm in Developer Tools → States that `sensor.grocy_recipes` exists
    and carries a `recipes` attribute. Register `/local/recipe-card.js` (module) alongside
@@ -85,11 +106,7 @@ native Grocy UI is never shown on the kitchen screen.
    - type: custom:grocy-recipe-card
      entity: sensor.grocy_recipes
    ```
-   > **Ingredients will be empty until a second `rest` entry is added.** Which Grocy
-   > endpoint returns ingredient rows with product/unit names already resolved — rather
-   > than bare `product_id`/`qu_id` — is an open question (slice-2 OQ-S2-3), settled by
-   > live verification. The card already reads `attributes.recipes_pos` and needs no
-   > change once that entry exists.
+   > The card will now fetch ingredients and units on demand when a recipe opens.
 
 ## Phase C — Deploy these files
 1. Copy `homeassistant/*` into HA's `/config`.
