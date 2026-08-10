@@ -29,9 +29,9 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `f867130` — `docs: amend S2 spec for resolved endpoint + hybrid transport, add the plan`, **plus this refresh's fix-up commit on top.** Last **code** commit is still `1bd9230` (S2 Task 8) — **neither 2026-08-07 nor 2026-08-10 shipped code.**
+- **HEAD:** `996ba27` — `docs: refresh cold-open — spec amended, plan written, next move is execution`, **plus the fix-up commit that set this line.** Last **code** commit is still `1bd9230` (S2 Task 8) — **neither 2026-08-07 nor 2026-08-10 shipped code.**
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** **47** commits (46 at `f867130`, +1 for this refresh's fix-up). Worktree clean.
+- **Ahead of main:** **48** commits (47 at `996ba27`, +1 for the fix-up). Worktree clean.
 
 ### 2026-08-10 — spec amendment + plan (no code)
 Amended the S2 spec's two overturned sections and wrote the implementation plan the 2026-08-07 findings had named but never produced.
@@ -292,7 +292,7 @@ Memory dir (OUTSIDE the repo): `/Users/jdehart1/.claude/projects/-Users-jdehart1
 
 Every claim below was run at close, not carried forward:
 
-- **HEAD** `f867130` + this refresh's fix-up commit; **branch** `feat/grocy-chores`; **ahead of main 47** — `git`-verified.
+- **HEAD** `996ba27` + its fix-up commit; **branch** `feat/grocy-chores`; **ahead of main 48** — `git`-verified.
 - **Worktree clean** (`git status --short` empty).
 - **54 tests / 7 files passing; typecheck 0 errors** — re-run at close and **unchanged, because no code was touched.** The 62-test figure in the plan is a *prediction* for post-Task-3, not a current measurement.
 - **Every file path cited in the plan `ls`-verified to exist** (10 paths).
