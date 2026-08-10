@@ -28,6 +28,40 @@
 #
 # Field shapes CONFIRMED against live Grocy 4.6.0 on 2026-08-07 — the provisional
 # guesses did not drift (findings §2). This is no longer provisional.
+#
+# ⚠️ KNOWN BROKEN (found in review 2026-08-10) — the `rest` sensor below emits NO
+# `recipes` attribute. It always resolves to {}, so the LIST view renders
+# "No recipes" forever.
+#
+# WHY: HA's `rest` sensor parses `json_attributes` from the RAW response body
+# BEFORE `value_template` runs (components/rest/sensor.py:170-175 in
+# reference/core-dev), via `parse_json_attributes` (components/rest/util.py:13-40):
+#   1. if json_attrs_path is set, run it through `jsonpath()`
+#   2. if the result is a list, take ONLY `[0]` (util.py:28-29, "jsonpath will
+#      always store the result in json_dict[0]")
+#   3. if what's left is a dict, pull out the named `json_attrs` keys
+# Grocy's GET /api/objects/recipes returns a BARE JSON ARRAY of recipe objects,
+# not a dict. Empirically verified against HA's pinned `jsonpath==0.82.2`:
+#   jsonpath([{...},{...}], "$")     -> False   (not a list or dict at all)
+#   jsonpath([{...},{...}], "$[*]")  -> [{...},{...}]   (a LIST of recipes)
+#   jsonpath([{...},{...}], "$.*")   -> [{...},{...}]   (same)
+#   jsonpath([{...},{...}], "$..*")  -> [{...},{...}, ...scalars]  (same)
+# Every path that matches multiple recipes returns a LIST, and step 2 above then
+# collapses it to JUST recipe [0] — which has no `recipes` key, so step 3 yields
+# {}. `$` on a bare array isn't even a list/dict per jsonpath 0.82.2, so it's {}
+# too. No `json_attributes_path` expression can carry the full array through.
+# value_template cannot help either: it only sets the STATE (capped at 255
+# chars) and runs AFTER json_attributes is already parsed from the raw body.
+#
+# CONCLUSION: there is no `rest`-platform-only fix. Getting the full recipe
+# array into the card requires bypassing `json_attributes` entirely — e.g. an
+# on-demand fetch via `rest_command` + `hass.callService(..., returnResponse:
+# true)`, which returns the RAW response body (`res.response.content`) with no
+# json_attributes extraction step at all. This is the exact pattern already
+# proven working for DETAIL in this same file (`grocy_recipe_ingredients` /
+# `grocy_quantity_units`, consumed by `fetchIngredients`/`fetchUnitMap` in
+# custom_cards/grocy-food-card/src/shared.ts). Changing LIST to that pattern is
+# a design decision beyond this review fix — left for a follow-up task.
 rest:
   - resource: !secret grocy_recipes_url        # e.g. http://<host>:9283/api/objects/recipes
     scan_interval: 600                          # recipes change rarely
