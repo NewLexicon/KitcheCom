@@ -124,6 +124,8 @@ SUPERSEDED as the card's live source (spec §4.2, amended 2026-08-10) — the ca
 Run: `npx vitest run`
 Expected: **54 passed** — no test reads the new fixtures yet, so this must be unchanged.
 
+> **`resolveJsonModule` is absent from `tsconfig.json` — this is fine, do not add it.** `moduleResolution: "bundler"` (tsconfig.json:6) enables JSON module imports by default, and `ingredient-parse.test.ts` already imports a JSON fixture under a passing typecheck. Checked so nobody "fixes" a non-problem when the new fixture imports land in Tasks 2–3.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -378,12 +380,21 @@ export function parseIngredients(
 Add this helper immediately above it:
 
 ```typescript
-/** 2dp rounding that passes non-numeric amounts through untouched (spec §4.3). */
-function roundAmount(amount: unknown): unknown {
-  if (typeof amount !== "number" || !Number.isFinite(amount)) return amount;
+/** 2dp rounding that passes non-numeric amounts through untouched (spec §4.3).
+ *
+ * ⚠️ The return type is `number | string`, NOT `unknown`. `IngredientRow.amount`
+ * is `number | string` (shared.ts:68) and the project runs `strict: true`, so an
+ * `unknown` return fails the build with:
+ *   TS2322: Type '{ …; amount: unknown; … }[]' is not assignable to 'IngredientRow[]'
+ * The `as` cast is doing real work: the non-numeric branch genuinely widens an
+ * `unknown` input, and the row contract is what constrains it to a string. */
+function roundAmount(amount: unknown): number | string {
+  if (typeof amount !== "number" || !Number.isFinite(amount)) return amount as number | string;
   return Math.round(amount * 100) / 100;
 }
 ```
+
+**Both forms were compiled against this project before this plan shipped:** the `unknown` version reproduces TS2322 at `src/shared.ts:202`; the `number | string` version typechecks with **0 errors**. Runtime behavior is identical between them — every assertion in Step 1 passes either way — so **the tests cannot catch this one.** It is only visible at Step 4's typecheck gate, which is the reason that gate is listed separately from the test run rather than folded into it.
 
 **`scaleIngredients` rounds inline** at `shared.ts:99` — `Math.round(r.amount * factor * 100) / 100`. **Leave that line alone.** It is guarded on both sides by an overflow check (`Number.isFinite(scaled)`) and a non-numeric early return that `roundAmount` does not replicate, so refactoring the two into one helper would either lose those guards or complicate this one. Two three-line roundings with different guard requirements is the cheaper shape; note the duplication in the commit body so it stays visible.
 
@@ -392,9 +403,16 @@ function roundAmount(amount: unknown): unknown {
 Run: `npx vitest run test/ingredient-parse.test.ts`
 Expected: **12 passed**
 
-Then: `npx vitest run` → **62 passed**. The arithmetic: 54 baseline − 8 old `ingredient-parse` tests + 12 new ones + 4 from Task 2's `unit-map` = 62. `npm run typecheck` → 0 errors.
+Then: `npx vitest run` → **62 passed**. The arithmetic: 54 baseline − 8 old `ingredient-parse` tests + 12 new ones + 4 from Task 2's `unit-map` = 62.
 
 > If the total differs, **do not adjust the number to match** — reconcile which test moved and say so in the commit body.
+
+**Then run the typecheck as a SEPARATE gate:**
+
+Run: `npm run typecheck`
+Expected: **0 errors.**
+
+> **Do not treat green tests as standing in for this.** `roundAmount`'s return type is invisible to every assertion above — both the correct and the broken version pass all 12 — and shows up only here. If you see `TS2322 … amount: unknown … not assignable to 'IngredientRow[]'`, the return type was written as `unknown`; use `number | string` per Step 3.
 
 - [ ] **Step 5: Commit**
 
