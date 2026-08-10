@@ -36,19 +36,45 @@
   // picture_file_name is null on BOTH recipes on purpose: the demo has no HA to
   // serve /api/files/..., so a real filename would render a broken image. The
   // placeholder-tile path is what gets exercised offline.
-  const recipes = { states: { "sensor.grocy_recipes": { attributes: {
-    recipes: [
-      { id: 1, name: "Tacos", description: "<ol><li>Brown the beef</li><li>Warm tortillas</li></ol>",
-        picture_file_name: null, base_servings: 4, desired_servings: 6 },
-      { id: 2, name: "Pancakes", description: "<p>Mix.</p><p>Fry.</p>",
-        picture_file_name: null, base_servings: 2, desired_servings: 2 }
-    ],
-    recipes_pos: [
-      { id: 10, recipe_id: 1, amount: 1.5, name: "Ground beef", unit: "lb" },
-      { id: 11, recipe_id: 1, amount: 12, name: "Tortillas", unit: "" },
-      { id: 12, recipe_id: 1, amount: "a pinch", name: "Salt", unit: "" }
-    ]
-  } } } };
+  const RECIPES = [
+    { id: 1, name: "Tacos", description: "<ol><li>Brown the beef</li><li>Warm tortillas</li></ol>",
+      picture_file_name: null, base_servings: 4, desired_servings: 6 },
+    { id: 2, name: "Pancakes", description: "<p>Mix.</p><p>Fry.</p>",
+      picture_file_name: null, base_servings: 2, desired_servings: 2 }
+  ];
+
+  // Resolved-shape rows: product_name joined, recipe_amount ALREADY SCALED
+  // server-side, and NO unit name (qu_id is a bare int) — spec §4.2. Tacos'
+  // amounts are the 4->6 scaled values Grocy itself returns (1.5 -> 2.25,
+  // 12 -> 18), NOT the base amounts: the card must not scale them again.
+  const RESOLVED = [
+    { id: 10, recipe_id: 1, product_name: "Ground beef", recipe_amount: 2.25, qu_id: 4 },
+    { id: 11, recipe_id: 1, product_name: "Tortillas",   recipe_amount: 18,   qu_id: 2 },
+    { id: 12, recipe_id: 1, product_name: "Salt",        recipe_amount: "a pinch", qu_id: 5 },
+    { id: 13, recipe_id: 2, product_name: "Flour",       recipe_amount: 2,    qu_id: 6 },
+    { id: 14, recipe_id: 2, product_name: "Butter",      recipe_amount: 0.49950000000000006, qu_id: 4 }
+  ];
+  const UNITS = [
+    { id: 2, name: "Piece" }, { id: 4, name: "Pound" },
+    { id: 5, name: "Tablespoon" }, { id: 6, name: "Cup" }
+  ];
+
+  // Answers the two rest_commands the card calls. The 120ms delay is deliberate:
+  // it makes the DETAIL loading state visible instead of flashing past.
+  const fakeCallService = (domain, service, data, target, notify, returnResponse) => {
+    console.log("callService", domain, service, data);
+    const content =
+      service === "grocy_recipe_ingredients"
+        ? RESOLVED.filter((r) => r.recipe_id === data.recipe_id)
+        : service === "grocy_quantity_units" ? UNITS : [];
+    return new Promise((resolve) =>
+      setTimeout(() => resolve({ response: { content } }), 120));
+  };
+
+  const recipes = {
+    states: { "sensor.grocy_recipes": { attributes: { recipes: RECIPES } } },
+    callService: fakeCallService,
+  };
 
   const rc = document.createElement("grocy-recipe-card");
   rc.setConfig({}); rc.hass = recipes;
