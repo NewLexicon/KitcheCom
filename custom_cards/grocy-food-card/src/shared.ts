@@ -202,3 +202,25 @@ export function parseIngredients(rows?: any[] | null, recipeId?: number): Ingred
       unit: r?.unit ?? "",
     }));
 }
+
+/** qu_id → unit name. Built once per card lifetime from /objects/quantity_units.
+ *
+ * WHY THIS EXISTS: recipes_pos_resolved pre-joins product_name but carries NO
+ * unit name — qu_id stays a bare int (spec §4.2). An earlier probe reported a
+ * unit name on the resolved row; that was a substring false-positive on
+ * `only_check_single_unit_in_stock`. A full key dump confirmed otherwise.
+ *
+ * v1 uses the singular `name` for every amount. Pluralizing on amount !== 1 is
+ * a deliberate non-goal (YAGNI) — "2 Pound Ground beef" reads acceptably on a
+ * kitchen screen and `name_plural` can be wired later without a shape change.
+ */
+export function buildUnitMap(rows?: any[] | null): Record<number, string> {
+  if (!Array.isArray(rows)) return {};
+  const map: Record<number, string> = {};
+  for (const r of rows) {
+    if (r == null) continue;
+    if (typeof r.id !== "number" || typeof r.name !== "string") continue;
+    map[r.id] = r.name;
+  }
+  return map;
+}
