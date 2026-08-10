@@ -158,13 +158,21 @@ Two changes follow from the above. **Neither is a bug fix — both change decisi
 1. **Switch the ingredient source to `recipes_pos_resolved`.** Kills the `"(unknown)"` defect, and lets client-side scaling be dropped (Grocy pre-scales `recipe_amount`). Still needs a `quantity_units` lookup for unit names.
 2. **Rework the transport.** Option A's all-recipes-in-one-sensor shape is not viable past a toy library. `query[]=recipe_id=N` makes an on-demand per-recipe fetch practical.
 
-These interact — there is no point fixing the join if the transport changes underneath it. The plan is in `docs/superpowers/plans/2026-08-07-grocy-s2-resolved-switch.md`.
+These interact — there is no point fixing the join if the transport changes underneath it.
+
+> **⚠️ CORRECTION (2026-08-10).** This line originally pointed at `docs/superpowers/plans/2026-08-07-grocy-s2-resolved-switch.md`. **That file was never written** — the path was named here in anticipation and no plan existed behind it. It was written on **2026-08-10** at the corrected date:
+>
+> **`docs/superpowers/plans/2026-08-10-grocy-s2-resolved-switch.md`**
+>
+> The spec amendments it implements are in `docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md` §2.1 and §4.2 (both amended 2026-08-10). **Transport decision made 2026-08-10: hybrid** — thin list sensor for LIST, per-recipe `rest_command` for DETAIL. This findings file established that Option A *fails*; it did not choose the replacement.
 
 ---
 
 ## 9. Reproducing this environment
 
-The container is left **running** with all test data. To get back to it:
+> **⚠️ CORRECTION (2026-08-10): the container is NOT running.** It was left up at 2026-08-07 close, but **Docker Desktop is down** as of 2026-08-10 (`docker info` → `Cannot connect to the Docker daemon`), so the container is gone with it. **The test data survives** — it lives on disk in the gitignored bind dir `deploy/grocy/grocy-config/`, so `compose up -d` restores the 4 recipes / 10 ingredient rows rather than rebuilding them. **Docker Desktop must be started by hand first** (a GUI app; it cannot be launched from this session).
+
+The container was left **running** with all test data. To get back to it:
 
 ```bash
 cd /Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores
