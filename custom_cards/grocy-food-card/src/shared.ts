@@ -183,6 +183,19 @@ export function parseRecipes(recipes?: any[] | null): RecipeRow[] {
   });
 }
 
+/** Unit name for a qu_id, or "" when unresolvable.
+ *
+ * Guards the prototype chain: `unitsById[qu_id]` alone would return an inherited
+ * Object.prototype member (a function) for a qu_id of "constructor"/"toString",
+ * and `?? ""` does not catch that because a function is not nullish. */
+function resolveUnit(unitsById: Record<number, string>, quId: unknown): string {
+  if (quId === null || quId === undefined) return "";
+  const key = quId as PropertyKey;
+  if (!Object.prototype.hasOwnProperty.call(unitsById, key)) return "";
+  const name = (unitsById as Record<PropertyKey, unknown>)[key];
+  return typeof name === "string" ? name : "";
+}
+
 /** 2dp rounding that passes non-numeric amounts through untouched (spec §4.3).
  *
  * ⚠️ The return type is `number | string`, NOT `unknown`. `IngredientRow.amount`
@@ -205,6 +218,9 @@ function roundAmount(amount: unknown): number | string {
  *
  * The IngredientRow contract is deliberately unchanged so downstream consumers
  * — scaleIngredients and the DETAIL render — need no edit.
+ *
+ * `??` (not `||`) on product_name: an empty-string name passes through as empty,
+ * matching parseShoppingItems' posture. Only null/undefined become "(unknown)".
  */
 export function parseIngredients(
   rows?: any[] | null,
@@ -225,7 +241,10 @@ export function parseIngredients(
       // (0.333 lb x 1.5 came back as 0.49950000000000006). Round here for the
       // same reason scaleIngredients does — formatAmount would print every digit.
       amount: roundAmount(r?.recipe_amount),
-      unit: unitsById[r?.qu_id] ?? "",
+      // Own-property + string check, NOT just `?? ""`: a qu_id of "constructor"
+      // or "toString" would otherwise resolve to an inherited Object.prototype
+      // FUNCTION, which Lit renders as "[native code]" on the kitchen screen.
+      unit: resolveUnit(unitsById, r?.qu_id),
     }));
 }
 

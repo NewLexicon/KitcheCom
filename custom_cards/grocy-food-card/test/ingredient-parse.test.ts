@@ -76,4 +76,30 @@ describe("parseIngredients (recipes_pos_resolved)", () => {
     const rows = parseIngredients(ROWS, 1);
     expect(rows[0].unit).toBe("");
   });
+
+  it("never renders an inherited prototype member as a unit", () => {
+    // A string qu_id matching Object.prototype would otherwise resolve to a
+    // FUNCTION, which Lit interpolates as "[native code]" on the screen.
+    for (const quId of ["constructor", "toString", "hasOwnProperty", "__proto__"]) {
+      const out = parseIngredients(
+        [{ id: 1, recipe_id: 1, product_name: "X", recipe_amount: 1, qu_id: quId }] as any,
+        1, UNITS);
+      expect(out[0].unit).toBe("");
+    }
+  });
+
+  it("resolves a unit given as a numeric string, since object keys are strings", () => {
+    const out = parseIngredients(
+      [{ id: 1, recipe_id: 1, product_name: "X", recipe_amount: 1, qu_id: "4" }] as any,
+      1, UNITS);
+    expect(out[0].unit).toBe("Pound");
+  });
+
+  it("passes an empty-string product_name through as empty, not (unknown)", () => {
+    // Documented behavior of `??` vs `||` — pinned so a future change is deliberate.
+    const out = parseIngredients(
+      [{ id: 1, recipe_id: 1, product_name: "", recipe_amount: 1, qu_id: 4 }] as any,
+      1, UNITS);
+    expect(out[0].name).toBe("");
+  });
 });
