@@ -52,9 +52,9 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `1d5b18c` — `docs: refresh cold-open — plan executed (Tasks 1-8), CRITICAL LIST defect open`, **plus the fix-up commit that set this line.** Last **code** commit is `ee8b237` (review fixes) — **2026-08-10 session 2 shipped Tasks 1–8.**
+- **HEAD:** `5512cc4` — `docs: record rest_command non-2xx semantics + refute the URL double-encoding claim`, **plus the fix-up commit that set this line.** Last **code** commit is `ee8b237` (review fixes) — **2026-08-10 session 2 shipped Tasks 1–8.**
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** **62** commits (61 at `1d5b18c`, +1 for the fix-up). Worktree clean.
+- **Ahead of main:** **64** commits (63 at `5512cc4`, +1 for the fix-up). Worktree clean.
 
 ### 2026-08-10 session 2 — plan EXECUTED (Tasks 1–8), newest first
 Executed under `superpowers:subagent-driven-development`. **All code below is committed and green.**
@@ -346,7 +346,7 @@ Memory dir (OUTSIDE the repo): `/Users/jdehart1/.claude/projects/-Users-jdehart1
 
 Every claim below was run at close, not carried forward:
 
-- **HEAD** `1d5b18c` + its fix-up commit; **branch** `feat/grocy-chores`; **ahead of main 62** — `git`-verified.
+- **HEAD** `5512cc4` + its fix-up commit; **branch** `feat/grocy-chores`; **ahead of main 64** — `git`-verified.
 - **Plan reviewed and one real defect fixed (`91e1365`).** Task 3's `roundAmount` was drafted returning `unknown`, which is unassignable to `IngredientRow.amount` (`number | string`) under `strict: true` — it would have failed the build at TS2322. Both forms were compiled against the project to confirm. **Runtime behavior was identical, so no test could have caught it**; Task 3 Step 4 now runs typecheck as an explicitly separate gate.
 - **Worktree clean** (`git status --short` empty).
 - **54 tests / 7 files passing; typecheck 0 errors** — re-run at close and **unchanged, because no code was touched.** The 62-test figure in the plan is a *prediction* for post-Task-3, not a current measurement.
