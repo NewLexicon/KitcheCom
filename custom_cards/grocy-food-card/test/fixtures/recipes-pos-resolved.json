@@ -1,0 +1,10 @@
+{
+  "_note": "CAPTURED SHAPE — GET /api/objects/recipes_pos_resolved against live Grocy 4.6.0 (2026-08-07, findings §4). recipe_amount is ALREADY SCALED server-side. There is NO unit name on these rows — qu_id is a bare int and units come from quantity-units.json. Do not add a `name` or `unit` key to these rows: the previous fixture invented both and the tests passed against data Grocy never returns.",
+  "recipes_pos_resolved": [
+    { "id": 10, "recipe_id": 1, "product_id": 3, "product_name": "Ground beef", "recipe_amount": 2.25, "qu_id": 4, "only_check_single_unit_in_stock": 0 },
+    { "id": 11, "recipe_id": 1, "product_id": 8, "product_name": "Tortillas", "recipe_amount": 18, "qu_id": 2, "only_check_single_unit_in_stock": 0 },
+    { "id": 12, "recipe_id": 1, "product_id": 9, "product_name": "Salt", "recipe_amount": "a pinch", "qu_id": 5, "only_check_single_unit_in_stock": 0 },
+    { "id": 13, "recipe_id": 3, "product_id": 4, "product_name": "Butter", "recipe_amount": 0.49950000000000006, "qu_id": 4, "only_check_single_unit_in_stock": 0 },
+    { "id": 14, "recipe_id": 3, "product_id": 5, "recipe_amount": 2, "qu_id": 99, "only_check_single_unit_in_stock": 0 }
+  ]
+}

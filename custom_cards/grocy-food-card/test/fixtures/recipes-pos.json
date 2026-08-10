@@ -1,5 +1,5 @@
 {
-  "_note": "PROVISIONAL — see recipes.json. Rows are shown PRE-JOINED (name/unit resolved HA-side, spec §4.2 preferred path). If Tier-2 forces the card-side join, OQ-S2-3's fallback applies.",
+  "_note": "SUPERSEDED as the card's live source (spec §4.2, amended 2026-08-10) — the card now reads recipes_pos_resolved. RETAINED because the raw recipes_pos field names WERE confirmed correct at Tier-2. ⚠️ The `name` and `unit` keys on these rows are FICTION: no Grocy payload carries them. That fiction is exactly why every live ingredient rendered \"(unknown)\". Do not use this fixture for new tests.",
   "recipes_pos": [
     { "id": 10, "recipe_id": 1, "product_id": 3, "amount": 1.5, "qu_id": 2, "name": "Ground beef", "unit": "lb" },
     { "id": 11, "recipe_id": 1, "product_id": 8, "amount": 12, "qu_id": 5, "name": "Tortillas", "unit": "" },
