@@ -1,27 +1,50 @@
-# Cold-open handoff — Grocy Food-Ops (spec AMENDED + plan WRITTEN; ready to implement)
+# Cold-open handoff — Grocy Food-Ops (plan EXECUTED Tasks 1–8; ⚠️ CRITICAL LIST-sensor defect open)
 
 **Date:** 2026-07-02 (last refreshed **2026-08-10**)
 **Branch:** `feat/grocy-chores` (in the worktree `.worktrees/grocy-chores`)
 **Status (two threads, at DIFFERENT gates):**
 1. **S1 (meal-plan + shopping cards): Tasks 1–9 shipped 2026-08-05. Task 10 (Tier-2) STILL NOT RUN** — it needs a dev-HA container, never stood up. **S1's OQ-1/2/3 remain open. Task 11 deliberately DEFERRED** (§5).
-2. **S2 (recipe card): Tasks 1–8 shipped 2026-08-06; Tier-2 probing RUN 2026-08-07. All four S2 OQs RESOLVED.** Two answers overturned locked spec decisions — **both amendments are now WRITTEN (2026-08-10), and so is the implementation plan.** 54 tests green, typecheck clean; **no code has changed since 2026-08-06.**
+2. **S2 (recipe card): the `recipes_pos_resolved` + hybrid-transport plan was EXECUTED 2026-08-10 (Tasks 1–8 of 9).** The `"(unknown)"` ingredient defect is **FIXED and verified**. **Task 9 (Tier-2) is BLOCKED on Docker.** ⚠️ **A CRITICAL pre-existing LIST-sensor defect was found in final review and is NOT fixed — see §4.0.** 78 tests green, typecheck clean.
 
-## ▶ START HERE (2026-08-10)
+## ▶ START HERE (2026-08-10, session 2 — plan EXECUTED)
 
-**The spec amendment and the plan are DONE. The next action is to execute the plan.**
+**Tasks 1–8 of the plan are DONE and committed. Task 9 (Tier-2) is BLOCKED on Docker.**
+**One CRITICAL defect was found in final review and is NOT fixed — read §4.0 before anything else.**
+
+**The next action is one of two things:**
+1. **Fix the LIST sensor** (§4.0) — it is the blocking user-facing bug, OR
+2. **Run Task 9** if you start Docker Desktop first (Tier-2 verification, plan Task 9).
 
 **Read, in order:**
-1. **The plan (9 tasks, start at Task 1):** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/plans/2026-08-10-grocy-s2-resolved-switch.md`
-2. **The amended spec — read the amendment blocks, NOT the superseded text beneath them:** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md` §2.1 and §4.2
-3. **The empirical basis (only if you need to re-derive a number):** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/session-state/2026-08-07-grocy-tier2-s2-findings.md`
+1. **The CRITICAL defect:** §4.0 below, plus the `⚠️ KNOWN BROKEN` block at the top of the `rest:` section in `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/homeassistant/packages/grocy_recipes.yaml`
+2. **The plan (Task 9 is all that remains):** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/plans/2026-08-10-grocy-s2-resolved-switch.md`
+3. **The amended spec:** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md` §2.1, §4.2
 
-**Execute under `superpowers:subagent-driven-development`** (the plan's header says so) — that workflow found 4 real defects across 8 tasks on this same slice.
+**Empirical state:** 78 tests / 11 files passing, typecheck 0 errors, build clean, all local imports carry `.js`.
 
-**Tasks 1–8 are entirely offline.** Only **Task 9** (Tier-2 verification) needs Docker.
+**⚠️ Docker Desktop is DOWN.** Test data survives in the gitignored `deploy/grocy/grocy-config/` bind dir, so `compose up -d` restores the 4 recipes — but Docker Desktop must be started **by hand** (GUI app; an agent session cannot launch it). §4.5 has the reconnect recipe.
 
-> **⚠️ The one thing to hold onto:** Tasks 1–8 will end green — 62 tests, clean typecheck, a demo that renders. **That does not prove the fix works.** A green suite over invented fixtures is exactly what let the `"(unknown)"` defect ship. Task 9 is where the claim gets earned.
+---
 
-**⚠️ The Grocy container is NOT running** (corrected 2026-08-10). Prior refreshes said it was left up; **Docker Desktop is down**, so it is not. **The test data survives** in the gitignored bind dir `deploy/grocy/grocy-config/`, so `compose up -d` restores the 4 recipes rather than rebuilding them — but **Docker Desktop must be started by hand** (GUI app; an agent session cannot launch it). §4.5 has the reconnect recipe and the API key location.
+## 4.0 ⚠️ CRITICAL — the LIST sensor emits NO attributes ("No recipes" forever)
+
+**Found by final whole-implementation review, 2026-08-10. NOT fixed. This is the top-priority next action.**
+
+`sensor.grocy_recipes` always resolves to `{}`, so `attributes.recipes` is undefined, `parseRecipes(undefined)` returns `[]`, and the kitchen screen shows **"No recipes"** permanently. DETAIL is unreachable, which means **the whole S2 slice is non-functional on-screen** despite 78 green tests.
+
+**Why (verified against vendored HA source in `/Users/jdehart1/___Code_DEV/KitchenCOM/reference/core-dev/`):**
+- `components/rest/sensor.py:170-175` — `json_attributes` are parsed from the RAW body **before** `value_template` runs, so a template cannot reshape the payload.
+- `components/rest/util.py:28-31` — `parse_json_attributes` takes `json_dict[0]` when the result is a list, then extracts named keys only if that is a dict.
+- Grocy's `GET /api/objects/recipes` returns a **bare JSON array**. So `[0]` is a single recipe object with no `recipes` key → `{}`.
+- Tested against HA's pinned `jsonpath==0.82.2`: `jsonpath(array, "$")` returns **`False`**; `$[*]`, `$..*`, `$.*` all return lists that then collapse to `[0]`. **No jsonpath expression works** — every path yields `{}`.
+
+**This is PRE-EXISTING, from `1bd9230` (2026-08-06 Task 8), not introduced by this session.** But it was latent then and is load-bearing now, because the hybrid transport makes this sensor the sole source for LIST.
+
+**Recommended fix (not implemented — it is a design decision, not a review fix):** migrate LIST to the same on-demand `rest_command` + `returnResponse` pattern DETAIL already uses. The machinery exists and is proven: `fetchIngredients`/`fetchUnitMap` in `custom_cards/grocy-food-card/src/shared.ts`, and two working `rest_command` entries in `grocy_recipes.yaml`. A `rest_command` returns the raw body and bypasses `json_attributes` entirely. Spec §2.1 would need a matching amendment, since it currently specifies a polled sensor for LIST.
+
+**Do not report S2 as working until this is fixed AND Task 9 has run.**
+
+---
 
 > This is a feature-branch handoff, not the project-wide cold-open. The formal `docs/session-state/README.md` cold-open describes main; this file covers the `feat/grocy-chores` work-arc. Post-merge, rewrite the project cold-open from main's perspective.
 
@@ -33,9 +56,24 @@
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
 - **Ahead of main:** **50** commits (49 at `91e1365`, +1 for the fix-up). Worktree clean.
 
-### 2026-08-10 — spec amendment + plan (no code)
-Amended the S2 spec's two overturned sections and wrote the implementation plan the 2026-08-07 findings had named but never produced.
-- `f867130` — spec §2.1 (hybrid transport) + §4.2 (resolved endpoint) amended; §4.3/§6/§8 consequences; plan `2026-08-10-grocy-s2-resolved-switch.md` added; two stale claims in the findings file corrected.
+### 2026-08-10 session 2 — plan EXECUTED (Tasks 1–8), newest first
+Executed under `superpowers:subagent-driven-development`. **All code below is committed and green.**
+- `ee8b237` — **FIX (review)**: self-healing unit-map cache (a transient failure no longer latches an empty map for the card's lifetime) + monotonic `_fetchSeq` token (closes a `1→2→1` stale-overwrite race that showed the wrong recipe's quantities)
+- `c0c152f` — **documents the §4.0 CRITICAL defect** in the YAML; the defect itself is NOT fixed
+- `de73545` — Task 8: demo harness answers both rest_commands, **browser-verified** (0 console errors)
+- `ffc8bac` — Task 7: INSTALL Phase B2 secrets
+- `c8fbb1e` — Task 6: hybrid HA package (list sensor + 2 rest_commands)
+- `3cf041b` — Tasks 4+5: on-demand ingredient fetch; removes the double-scale
+- `833f963` — **FIX (review)**: prototype-chain guard on the unit lookup (a `qu_id` of `"constructor"` rendered `[native code]` on screen)
+- `d9fe333` — **Task 3: THE DEFECT FIX** — `parseIngredients` reads `recipes_pos_resolved`
+- `508516c` — Task 2: `buildUnitMap`
+- `3af93f2` — Task 1: captured-shape fixtures replacing the invented ones
+
+**Review found 3 real defects the implementers' self-reviews passed** (prototype-key rendering, unit-map poisoning, the stale-fetch race) — plus the §4.0 CRITICAL, which review caught and which no test could have.
+
+### 2026-08-10 session 1 — spec amendment + plan (no code)
+- `f867130` — spec §2.1 (hybrid transport) + §4.2 (resolved endpoint) amended; plan added; two stale claims in the findings file corrected.
+- `91e1365` — corrected `roundAmount`'s return type in the plan (would have failed the build with TS2322).
 
 **Transport decision made this session (it was NOT in the findings):** the findings established only that Option A *fails*. The replacement chosen was **hybrid** — thin list sensor for LIST, per-recipe `rest_command` for DETAIL — over full-Option-B (rejected: puts a loading state on the primary kitchen view and abandons S1's card pattern for no measured gain) and cap-the-library (rejected: the cap is ~5–8 recipes and breaching it truncates silently).
 
@@ -246,7 +284,14 @@ sqlite3 deploy/grocy/grocy-config/data/grocy.db "select api_key from api_keys;"
 
 ## 5. Carry-forwards (deferred gates / latent risks)
 
-### New 2026-08-10
+### New 2026-08-10 session 2 (plan execution)
+- **⚠️ CRITICAL: the LIST sensor is broken — see §4.0.** Top-priority next action. Pre-existing from `1bd9230`, but load-bearing now.
+- **`scaleIngredients` is now OFF the render path but deliberately retained** — tested fallback + the hook for the deferred on-screen servings control. 12 tests still cover it. Do not delete it as "dead code".
+- **`test/recipe-fetch-race.test.ts` MIRRORS `_open`'s logic** rather than driving the Lit element, because vitest runs `environment: "node"` with no DOM library installed. **If `_open` changes, that mirror must change too** or the tests silently stop testing reality.
+- **The demo harness now fakes `callService`** with a 120ms delay so the loading state is visible. Recipe 2 gained ingredients incl. the float-noise value that proves 2dp rounding.
+- **Verified fixed this session:** the `"(unknown)"` defect (real Grocy rows now render `2.25 Pound Ground beef`), double-scaling, prototype-key rendering, unit-map poisoning, and the `1→2→1` stale-fetch race — the last confirmed with a control test showing the pre-fix logic corrupts under the same scenario.
+
+### New 2026-08-10 session 1 (docs)
 - **⚠️ The live `"(unknown)"` ingredient defect is STILL SHIPPED.** The spec now describes the fix and the plan sequences it, but **no code has changed** — the card on `feat/grocy-chores` still reads `r.name`/`r.unit` and would render every ingredient as `"(unknown)"` against real Grocy. **Do not merge this branch believing S2 works.** Plan Task 3 is the fix.
 - **The fixtures encode the very fiction that hid the defect.** `test/fixtures/recipes-pos.json` invents pre-joined `name`/`unit` keys, so 54 tests pass green over data Grocy never returns. Plan Task 1 replaces them with captured shapes **before** any behavior changes — deliberately, so the tests can't keep passing against a fiction.
 - **The list sensor has a ceiling of its own** at ~50 recipes (~17 KB vs the ~16 KB attribute cap) — same silent-truncation failure mode as the original Option A, just further out. Tripwire: if the household passes ~40 recipes, move LIST to on-demand fetch too. Recorded in spec §8.
@@ -288,7 +333,14 @@ Memory dir (OUTSIDE the repo): `/Users/jdehart1/.claude/projects/-Users-jdehart1
 
 ## 7. Session-close verification
 
-### 2026-08-10 (this session — docs only, no code)
+### 2026-08-10 session 2 (plan execution)
+
+- **78 tests / 11 files passing; typecheck 0 errors; build clean; all 3 emitted local imports carry `.js`** (the blank-card regression guard) — all re-run at close.
+- **Tasks 1–8 committed; Task 9 NOT run** (Docker down — `docker info` fails).
+- **Outer checkout verified clean and still on `feat/choreops-chores`** — worktree isolation held all session.
+- **⚠️ Reported honestly: S2 does NOT work on-screen yet** because of §4.0, despite every gate being green. That gap is exactly what the plan warned about — a green suite over a config no test exercises.
+
+### 2026-08-10 session 1 (docs only, no code)
 
 Every claim below was run at close, not carried forward:
 
