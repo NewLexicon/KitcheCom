@@ -29,6 +29,7 @@ export class GrocyRecipeCard extends LitElement {
   private _loading = false;
   private _unitMap: Record<number, string> = {};
   private _unitMapLoaded = false;
+  private _fetchSeq = 0;
 
   setConfig(config: Record<string, unknown>): void {
     if (typeof config?.entity === "string" && config.entity) this._entity = config.entity;
@@ -49,22 +50,30 @@ export class GrocyRecipeCard extends LitElement {
     // question), and a non-numeric id would route to a DETAIL view that can
     // never resolve. Ignore the click rather than enter an unresolvable state.
     if (typeof id !== "number" || !Number.isFinite(id)) return;
+    // Monotonic token: comparing _selectedId alone is not enough, because
+    // navigating 1 -> 2 -> 1 makes the FIRST recipe-1 fetch look current again
+    // when it finally lands, overwriting the correct rows with stale ones.
+    const seq = ++this._fetchSeq;
     this._selectedId = id;
     this._ingredients = [];
     this._loading = true;
     try {
-      // Units are static — fetch once per card lifetime, then reuse.
+      // Only latch on success: fetchUnitMap returns {} on failure, and this
+      // screen runs for weeks without a reload — latching an empty map would
+      // mean every ingredient renders unit-less until the Pi is power-cycled.
       if (!this._unitMapLoaded) {
-        this._unitMap = await fetchUnitMap(this.hass);
-        this._unitMapLoaded = true;
+        const units = await fetchUnitMap(this.hass);
+        if (Object.keys(units).length > 0) {
+          this._unitMap = units;
+          this._unitMapLoaded = true;
+        }
       }
       const raw = await fetchIngredients(this.hass, id);
-      // Guard against a fast back-then-forward: if the user left this recipe
-      // while the fetch was in flight, its rows must not land in the new view.
-      if (this._selectedId !== id) return;
+      // Superseded by a newer open (or a back) while in flight — drop the result.
+      if (seq !== this._fetchSeq || this._selectedId !== id) return;
       this._ingredients = parseIngredients(raw, id, this._unitMap);
     } finally {
-      if (this._selectedId === id) this._loading = false;
+      if (seq === this._fetchSeq && this._selectedId === id) this._loading = false;
     }
   }
   private _back(): void {
