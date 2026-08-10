@@ -269,3 +269,46 @@ export function buildUnitMap(rows?: any[] | null): Record<number, string> {
   }
   return map;
 }
+
+type CallServiceHass = {
+  callService?: (
+    domain: string, service: string, data?: unknown,
+    target?: unknown, notify?: boolean, returnResponse?: boolean,
+  ) => Promise<any>;
+};
+
+/** One recipe's resolved ingredient rows, fetched on demand.
+ *
+ * WHY ON DEMAND (spec §2.1): the whole library's ingredients measure ~76 KB at
+ * 25 recipes against a ~16 KB HA attribute ceiling, and the overflow failure
+ * mode is silent truncation. Server-side `query[]=recipe_id=N` filtering brings
+ * one recipe down to ~1.5 KB, so DETAIL fetches only what it is showing.
+ *
+ * Every failure resolves to [] rather than rejecting: a kitchen screen shows an
+ * empty ingredient list far more gracefully than an unhandled rejection.
+ */
+export async function fetchIngredients(hass: CallServiceHass | undefined, recipeId: number): Promise<any[]> {
+  if (typeof hass?.callService !== "function") return [];
+  try {
+    const res = await hass.callService(
+      "rest_command", "grocy_recipe_ingredients", { recipe_id: recipeId },
+      undefined, false, true);
+    const content = res?.response?.content;
+    return Array.isArray(content) ? content : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The qu_id -> name map, fetched once and cached by the caller.
+ *  ~900 B and static, so a failure degrades to blank units, not a broken view. */
+export async function fetchUnitMap(hass: CallServiceHass | undefined): Promise<Record<number, string>> {
+  if (typeof hass?.callService !== "function") return {};
+  try {
+    const res = await hass.callService(
+      "rest_command", "grocy_quantity_units", {}, undefined, false, true);
+    return buildUnitMap(res?.response?.content);
+  } catch {
+    return {};
+  }
+}
