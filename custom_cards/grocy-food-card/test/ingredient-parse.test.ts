@@ -1,40 +1,79 @@
 import { describe, it, expect } from "vitest";
-import { parseIngredients } from "../src/shared";
-import fixture from "./fixtures/recipes-pos.json";
+import { parseIngredients, buildUnitMap } from "../src/shared";
+import fixture from "./fixtures/recipes-pos-resolved.json";
+import units from "./fixtures/quantity-units.json";
 
-describe("parseIngredients", () => {
+const ROWS = fixture.recipes_pos_resolved as any;
+const UNITS = buildUnitMap(units.quantity_units as any);
+
+describe("parseIngredients (recipes_pos_resolved)", () => {
   it("filters rows to the requested recipe", () => {
-    expect(parseIngredients(fixture.recipes_pos as any, 1).length).toBe(3);
-    expect(parseIngredients(fixture.recipes_pos as any, 2).length).toBe(1);
+    expect(parseIngredients(ROWS, 1, UNITS).length).toBe(3);
+    expect(parseIngredients(ROWS, 3, UNITS).length).toBe(2);
   });
-  it("maps a pre-joined row to name/amount/unit", () => {
-    const rows = parseIngredients(fixture.recipes_pos as any, 1);
-    expect(rows[0]).toEqual({ id: 10, name: "Ground beef", amount: 1.5, unit: "lb" });
+
+  it("maps product_name -> name and resolves the unit via qu_id", () => {
+    const rows = parseIngredients(ROWS, 1, UNITS);
+    expect(rows[0]).toEqual({ id: 10, name: "Ground beef", amount: 2.25, unit: "Pound" });
   });
-  it("name fail-safes to (unknown) when the join is unresolved", () => {
-    const rows = parseIngredients(fixture.recipes_pos as any, 2);
-    expect(rows[0].name).toBe("(unknown)");
+
+  it("takes recipe_amount as-is — Grocy already scaled it server-side", () => {
+    // Live Tacos at its 4->6 factor: base 1.5 arrives as 2.25, base 12 as 18.
+    // The card must NOT scale again or a 6-serving recipe renders as 9.
+    const rows = parseIngredients(ROWS, 1, UNITS);
+    expect(rows[0].amount).toBe(2.25);
+    expect(rows[1].amount).toBe(18);
   });
-  it("unit fail-safes to empty string", () => {
-    const rows = parseIngredients(fixture.recipes_pos as any, 2);
+
+  it("rounds server-side float noise to 2dp", () => {
+    // Real value Grocy returned for Shortbread butter (0.333 lb x 1.5).
+    // Scaling moving server-side did NOT remove the need to round.
+    const rows = parseIngredients(ROWS, 3, UNITS);
+    expect(rows[0].amount).toBe(0.5);
+  });
+
+  it("name fail-safes to (unknown) when product_name is absent", () => {
+    const rows = parseIngredients(ROWS, 3, UNITS);
+    expect(rows[1].name).toBe("(unknown)");
+  });
+
+  it("unit fail-safes to empty string for an unmapped qu_id", () => {
+    const rows = parseIngredients(ROWS, 3, UNITS);
+    expect(rows[1].unit).toBe("");
+  });
+
+  it("unit fail-safes to empty string when the unit map has not loaded yet", () => {
+    // DETAIL can render before the quantity_units fetch resolves. That must
+    // show a bare amount, not crash and not print "undefined".
+    const rows = parseIngredients(ROWS, 1, {});
     expect(rows[0].unit).toBe("");
+    expect(rows[0].name).toBe("Ground beef");
   });
-  it("preserves a non-numeric amount for scaleIngredients to pass through", () => {
-    const rows = parseIngredients(fixture.recipes_pos as any, 1);
+
+  it("preserves a non-numeric amount for formatAmount to blank (spec §4.3)", () => {
+    const rows = parseIngredients(ROWS, 1, UNITS);
     expect(rows[2].amount).toBe("a pinch");
   });
+
   it("returns [] for nullish input or an unmatched recipe id (never throws)", () => {
-    expect(parseIngredients(undefined, 1)).toEqual([]);
-    expect(parseIngredients(fixture.recipes_pos as any, 999)).toEqual([]);
+    expect(parseIngredients(undefined, 1, UNITS)).toEqual([]);
+    expect(parseIngredients(ROWS, 999, UNITS)).toEqual([]);
   });
+
   it("returns [] when recipeId is unresolved (no phantom matches)", () => {
-    // undefined === undefined must NOT match rows that also lack recipe_id
-    expect(parseIngredients([{ id: 1, name: "Mystery", amount: 2, unit: "cup" }] as any))
+    expect(parseIngredients([{ id: 1, product_name: "Mystery" }] as any, undefined, UNITS))
       .toEqual([]);
   });
-  it("drops null/undefined row entries instead of making phantom rows", () => {
+
+  it("drops null row entries instead of making phantom rows", () => {
     const out = parseIngredients(
-      [null, undefined, { id: 2, recipe_id: 1, name: "OK", amount: 2, unit: "c" }] as any, 1);
-    expect(out).toEqual([{ id: 2, name: "OK", amount: 2, unit: "c" }]);
+      [null, undefined, { id: 2, recipe_id: 1, product_name: "OK", recipe_amount: 2, qu_id: 6 }] as any,
+      1, UNITS);
+    expect(out).toEqual([{ id: 2, name: "OK", amount: 2, unit: "Cup" }]);
+  });
+
+  it("tolerates a missing unit map argument entirely", () => {
+    const rows = parseIngredients(ROWS, 1);
+    expect(rows[0].unit).toBe("");
   });
 });

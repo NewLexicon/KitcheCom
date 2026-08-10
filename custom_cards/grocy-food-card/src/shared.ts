@@ -183,23 +183,49 @@ export function parseRecipes(recipes?: any[] | null): RecipeRow[] {
   });
 }
 
-// Written for the PRE-JOINED payload (name/unit resolved HA-side — spec §4.2's
-// preferred path). OQ-S2-3 fallback if Tier-2 forces a card-side join: add a
-// second arg carrying product/unit lookup maps and resolve here. IngredientRow
-// stays the same either way, so no downstream consumer changes.
-export function parseIngredients(rows?: any[] | null, recipeId?: number): IngredientRow[] {
+/** 2dp rounding that passes non-numeric amounts through untouched (spec §4.3).
+ *
+ * ⚠️ The return type is `number | string`, NOT `unknown`. `IngredientRow.amount`
+ * is `number | string` (shared.ts:68) and the project runs `strict: true`, so an
+ * `unknown` return fails the build with:
+ *   TS2322: Type '{ …; amount: unknown; … }[]' is not assignable to 'IngredientRow[]'
+ * The `as` cast is doing real work: the non-numeric branch genuinely widens an
+ * `unknown` input, and the row contract is what constrains it to a string. */
+function roundAmount(amount: unknown): number | string {
+  if (typeof amount !== "number" || !Number.isFinite(amount)) return amount as number | string;
+  return Math.round(amount * 100) / 100;
+}
+
+/** Rows from /objects/recipes_pos_resolved -> IngredientRow[] for one recipe.
+ *
+ * AMENDED 2026-08-10 (spec §4.2). Previously read `r.name` / `r.unit`, which
+ * exist on NO Grocy payload — every live ingredient rendered "(unknown)" with a
+ * blank unit. The resolved endpoint supplies `product_name` (joined) and
+ * `recipe_amount` (ALREADY SCALED server-side); units come from `unitsById`.
+ *
+ * The IngredientRow contract is deliberately unchanged so downstream consumers
+ * — scaleIngredients and the DETAIL render — need no edit.
+ */
+export function parseIngredients(
+  rows?: any[] | null,
+  recipeId?: number,
+  unitsById: Record<number, string> = {},
+): IngredientRow[] {
   if (!Array.isArray(rows)) return [];
   // An unresolved recipeId must yield [], not "every row whose recipe_id is also
   // missing". Without this, `undefined === undefined` matches — and null entries
-  // (null?.recipe_id is undefined) become phantom "(unknown)" rows.
+  // (null?.recipe_id is undefined) become phantom rows.
   if (recipeId === undefined || recipeId === null) return [];
   return rows
     .filter((r) => r != null && r.recipe_id === recipeId)
     .map((r) => ({
       id: r?.id,
-      name: r?.name ?? "(unknown)",
-      amount: r?.amount,
-      unit: r?.unit ?? "",
+      name: r?.product_name ?? "(unknown)",
+      // Grocy pre-scales, but it also emits float noise doing so
+      // (0.333 lb x 1.5 came back as 0.49950000000000006). Round here for the
+      // same reason scaleIngredients does — formatAmount would print every digit.
+      amount: roundAmount(r?.recipe_amount),
+      unit: unitsById[r?.qu_id] ?? "",
     }));
 }
 
