@@ -70,9 +70,33 @@ Worth keeping in mind: `status` (200 here) rides alongside `content`. Per Tier-2
 
 ## 6. What this does NOT cover
 
-- **The card rendering inside an HA dashboard.** The three services are verified through HA's API, and the modules are staged in `/config/www/`, but no dashboard was built and no browser loaded the card here. Rendering is separately covered by the demo harness (2026-08-10, 0 console errors); what was never covered — the transport — is what this session closed.
+- **The card rendering inside an HA dashboard — ATTEMPTED, BLOCKED BY TOOLING.** See §6a. The transport is verified; the in-HA *render* is not. Rendering is separately covered by the demo harness (2026-08-10, 0 console errors).
 - **The WebSocket `callService` path specifically.** Verified over the REST API. Both funnel into the same service layer and the same `service_response`, but the card's exact `hass.callService(..., returnResponse=true)` call was not driven from a browser.
 - **S1's OQ-1/2/3** — untouched; they need HACS + the grocy integration, neither installed here.
+
+## 6a. The in-HA render attempt — server side DONE, browser side blocked
+
+**Everything server-side is in place and persisted.** A future session does not need to redo any of it:
+
+- **Resource registered:** `/local/recipe-card.js`, type `module`, id `fe537002b11e4a178671914b898cca10` (in `.storage/lovelace_resources`).
+- **Dashboard written:** the default storage-mode dashboard holds one view `Recipes` with a single `custom:grocy-recipe-card` (in `.storage/lovelace`). The card takes **no `entity`**.
+- **Onboarding fully complete** — all four steps (`user`, `core_config`, `analytics`, `integration`). *Creating the user alone is not enough*: HA redirects to `onboarding.html` until all four are done, which looks exactly like a broken dashboard.
+- **The module is served and fetched:** `/local/recipe-card.js` returns **200**, and the browser was observed requesting it twice while loading the dashboard.
+
+**Why the render could not be confirmed:** the automation browser (patchright, a stealth Playwright fork) **nulls `customElements`** as an anti-detection measure. Probed directly:
+
+```
+customElements:        "NULLED"
+hasHomeAssistantTag:   true      <home-assistant> is in the DOM
+homeAssistantHasShadow: true     with a shadow root
+bodyLen:               0         ...rendering nothing
+```
+
+HA's entire frontend is custom elements, so with the registry nulled **no HA dashboard can render in this browser** — ours or anyone's. Zero console errors and zero failed requests throughout: nothing suggests a card defect. Two red herrings on the way, both harness-side, both fixed: Chrome's Local Network Access policy blocking `ws://localhost` (`ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS` — needs `--disable-features=LocalNetworkAccessChecks`), and evaluates throwing `Cannot read properties of null (reading 'get')` whenever they touched `customElements`.
+
+**To finish this in ~2 minutes: open `http://localhost:8124/lovelace/recipes` in a normal browser** (login `dev` / `devdevdev`). The dashboard is already built. Expect 4 recipe tiles; click one for pre-scaled ingredients. A real browser has no stealth patching, so this is purely a "look at it" step.
+
+Do not re-attempt with the `browser-automation` skill — it resolves the same patchright driver and will fail identically.
 
 ## 7. Reproducing
 

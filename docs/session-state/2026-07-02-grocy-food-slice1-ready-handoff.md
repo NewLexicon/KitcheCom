@@ -18,11 +18,11 @@
 - Recipe 1 renders end-to-end through HA as `2.25 Pound Ground beef` / `18 Piece Tortillas`.
 
 **What is still NOT covered** (be precise about this — do not overclaim S2 as shipped):
-- **The card has never rendered in an HA dashboard.** Services are verified through HA's API and the modules are staged in `/config/www/`, but no dashboard was built and no browser loaded the card there. Rendering is separately covered by the demo harness (0 console errors, 2026-08-10).
+- **The card has never been SEEN rendering in an HA dashboard.** The dashboard is **already built and waiting** (see next move); the render could not be confirmed because the automation browser nulls `customElements`, so no HA dashboard renders in it. Zero console errors, and `/local/recipe-card.js` served 200 — nothing points at a card defect, but nobody has looked at it. Rendering is separately covered by the demo harness (0 console errors, 2026-08-10).
 - The card's **WebSocket** `callService` path specifically — verified over REST; both share the same service layer and envelope.
 
 **Next move — pick one:**
-- **Render the card in the dev-HA dashboard** (closes the last honest gap): container is already configured, add `/local/recipe-card.js` as a **module** resource, then drop `custom:grocy-recipe-card` on a dashboard. It takes **no `entity`**.
+- **⭐ Look at the dashboard in a NORMAL browser — ~2 minutes.** Open `http://localhost:8124/lovelace/recipes`, login `dev` / `devdevdev`. **The resource is registered and the dashboard is built** — nothing to configure. Expect 4 tiles; click one for pre-scaled ingredients. **Do not retry this with the `browser-automation` skill** — it uses patchright, which nulls `customElements` and cannot render any HA frontend (details in the HA-gate doc §6a).
 - **S1 Task 10 (Tier-2)** — newly unblocked by the same dev-HA.
 - **Merge** — see §5 / `superpowers:finishing-a-development-branch`.
 
