@@ -25,7 +25,15 @@ Reported after deployment: "the screen goes to black with clock." **That is the 
 
 **Why fallback: `/config/media/` did not exist.** The dashboard passes `media_path: media` (`kitchen.yaml:20`), and the card browses `media-source://media_source/local/media`. That directory was absent on the Pi, so there was nothing to cycle. **Created 2026-08-11** at `/home/garrettdehart/homeassistant/media` (visible in-container as `/config/media`). `media_source` itself is provided by `default_config:`; no config change needed.
 
-**To get photos: drop image files in `/config/media/`.** Supported extensions (`SUPPORTED`, screensaver-card.ts:19):
+### ✅ PHOTOS DEPLOYED 2026-08-11 — 26 Maine JPEGs
+
+Source: `/Users/jdehart1/GSU Dropbox Dropbox/Jonathan DeHart/Garrett/Photos/Maine` — **all 26 already JPEG** at 1920×1440, 15 MB total, so **no HEIC conversion was needed** for this set.
+
+Copied to `/home/garrettdehart/homeassistant/media/` (in-container `/config/media/`), **verified 26 files present and visible inside the container**, owned `1000:1000`, mode `644` — readable by HA.
+
+**Filenames were normalized on the way over**: `IMG_2816 copy.jpg` → `IMG_2816.jpg` (spaces dropped, since they complicate media URLs). Staged copy kept at the session scratchpad `maine-photos/` if a re-push is needed.
+
+**To add more later: drop image files in `/config/media/`.** Supported extensions (`SUPPORTED`, screensaver-card.ts:19):
 
 ```
 .jpg  .jpeg  .png  .webp  .mp4  .webm
@@ -54,9 +62,19 @@ The running process was launched by the **old** script at boot, 34 minutes befor
 1. No "Unlock Keyring" dialog.
 2. The kiosk lands on the dashboard unattended.
 
-A faster check without a full reboot: `pkill chromium` over ssh — the supervisor loop respawns it from the new script within ~3s. That exercises the flag but *not* the boot path, so a real reboot is still the honest test.
+**Partly resolved 2026-08-11:** `pkill chromium` was run over ssh; the supervisor loop respawned it, and `ps` then showed **`password-store` present in the running process** where it had been absent before. So the flag *is* being applied by the new script. A full reboot is still the honest test of the **boot** path (and the only way to see whether the keyring dialog is truly gone at power-on), but the mechanism is confirmed working.
+
+**Supporting evidence that HA auth was never the problem:** `.storage/auth` holds **9 `normal` refresh tokens** and **0 long-lived tokens**. HA login persistence is working exactly as `pi-power-and-kiosk-login.md` describes; the reboot prompt was the keyring, as diagnosed.
 
 The screensaver tile itself is already confirmed fixed (it renders its clock fallback).
+
+### ⚠️ The direct-ethernet link is INTERMITTENT
+
+Observed repeatedly on 2026-08-11: ssh works for several commands, then `Operation timed out`, then recovers on its own a few minutes later. The interface stays `status: active` at `1000baseT <full-duplex>` throughout. When it drops, the Pi genuinely leaves the neighbor table (`ping6 -c 3 -I en22 ff02::1` returns only the Mac's own `d8:ec:5e:74:cf:f2`), and when it returns `fe80::2ecf:67ff:fee2:f266` / `2c:cf:67:e2:f2:66` reappears with state `D`.
+
+**Practical effect: keep commands short and re-runnable, and expect to retry.** Do not conclude the Pi is down from a single timeout — re-run the multicast ping first. This is distinct from the known macOS resolver quirk in `pi-direct-ethernet-fallback.md`, where ping6 fails but ssh works; here *both* fail together and then both recover.
+
+**Also note:** `192.168.1.234` now returns **"Connection refused"** (not a timeout) from the work network — some other host holds that IP there. Do not read that as the Pi being up.
 
 ---
 
