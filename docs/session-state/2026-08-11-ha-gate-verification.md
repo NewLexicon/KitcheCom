@@ -94,7 +94,17 @@ Relative references must start with either "/", "./", or "../".
 
 The module never evaluates → the custom element never registers → HA renders a bare **"Configuration error"** with no hint at the cause.
 
-**Scope: all four cards** — recipe, mealplan, shopping, and the screensaver (which had two bad specifiers). S1's cards had it, and the screensaver **may be broken on the Pi right now** if it was deployed from a `tsc` build. INSTALL Phase C carries the rebuild warning.
+**Scope: all four cards** — recipe, mealplan, shopping, and the screensaver (which had two bad specifiers). S1's cards had it too.
+
+### ✅ CONFIRMED BROKEN ON THE PI — the screensaver has never once worked
+
+Garrett photographed the kitchen display on 2026-08-11: the hero grid shows the clock (13:08), the weather placeholder, "Hold to talk" — and a **"Configuration error"** tile exactly where `custom:screensaver-card` sits in `homeassistant/dashboards/kitchen.yaml:19`. It is the only custom card on that dashboard, so the failing tile is unambiguously the screensaver.
+
+**"I've never seen the screensaver come up."** That is this defect, not an idle-automation problem: the module was deployed from a `tsc` build, so it never loaded and the element never registered. It could never have rendered, idle or not. **Do not debug `input_boolean.kitchen_idle` or `packages/screensaver.yaml` over this** — they were never reached.
+
+**The fix is committed** (`b008280` — vite build, 52 tests green). It needs **deploying**: rebuild, copy `dist/screensaver-card.js` to the Pi's `/config/www/`, and **bump the resource URL version** (`/local/screensaver-card.js?v=2`) or the Pi's browser will serve the cached broken module exactly as the dev box did (§6c).
+
+Not yet verified on the Pi — it was unreachable at `192.168.1.234` (ssh timeout) when this was written.
 
 **Why every prior check passed.** Both supplied a resolution HA does not:
 - **Vitest** resolves through `node_modules`.

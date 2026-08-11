@@ -22,7 +22,7 @@
 **Getting there surfaced a defect that would have shipped broken to the Pi:**
 - **Every card was unloadable in any browser.** `tsc` emitted bare `import ... from "lit"`, which no browser can resolve — HA showed only "Configuration error". **All four cards** (recipe, mealplan, shopping, screensaver) were affected. Fixed by bundling with vite (`b008280`); guarded by `test/dist-browser-loadable.test.ts` in both packages.
 - **Both prior checks masked it** — Vitest resolves through `node_modules`, and the demo declared an importmap pointing `"lit"` at a CDN. The card was "browser-verified" on 2026-08-10 and still could not load in HA. The demo's importmap is now removed.
-- **⚠️ The screensaver card may be broken on the Pi right now** if it was deployed from a `tsc` build. INSTALL Phase C carries the rebuild warning. **Verify this next time you touch the Pi.**
+- **🔴 CONFIRMED: the screensaver card has NEVER worked on the Pi.** Garrett photographed the kitchen display on 2026-08-11 — a **"Configuration error"** tile sits exactly where `custom:screensaver-card` is placed (`homeassistant/dashboards/kitchen.yaml:19`), the only custom card on that dashboard. "I've never seen the screensaver come up" is this defect: the module never loaded, so the element never registered. **Do not debug the idle automation over this** — it was never reached. Fix is committed (`b008280`); it needs **deploying** (rebuild → copy → **bump the resource `?v=`**, or the Pi serves the cached broken module).
 
 **What is still NOT covered:**
 - The card's **WebSocket** `callService` path specifically — verified over REST; both share the same service layer and envelope.
