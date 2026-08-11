@@ -19,14 +19,44 @@
 - **Zero `frontend.js` errors** in the HA log after restart (the only errors are an unrelated `habluetooth` scanner quirk and `metno` DNS failures — expected, since direct-ethernet has no internet).
 - Backups left on the Pi: `.storage/lovelace_resources.bak.20260811`, `start-kiosk-wayland.sh.bak.20260811`.
 
+## ✅ The screensaver LOADS now — the black screen with a clock IS the card
+
+Reported after deployment: "the screen goes to black with clock." **That is the screensaver working.** It is the card's documented `"fallback"` display mode: `selectDisplayMode()` returns `"fallback"` when it finds no usable media, and the card shows a clock instead of photos. Before this deploy the card could not load at all, so this is the first time it has ever rendered.
+
+**Why fallback: `/config/media/` did not exist.** The dashboard passes `media_path: media` (`kitchen.yaml:20`), and the card browses `media-source://media_source/local/media`. That directory was absent on the Pi, so there was nothing to cycle. **Created 2026-08-11** at `/home/garrettdehart/homeassistant/media` (visible in-container as `/config/media`). `media_source` itself is provided by `default_config:`; no config change needed.
+
+**To get photos: drop image files in `/config/media/`.** Supported extensions (`SUPPORTED`, screensaver-card.ts:19):
+
+```
+.jpg  .jpeg  .png  .webp  .mp4  .webm
+```
+
+⚠️ **`.HEIC` is NOT supported** — iPhone photos must be converted to JPEG first. Subdirectories are fine; the card recurses into expandable dirs.
+
+Copy over the ethernet link with:
+```bash
+scp photos/*.jpg kitchencom-eth:/home/garrettdehart/homeassistant/media/
+```
+
 ## ⏳ Still owed: one reboot
 
-The keyring fix cannot be verified without rebooting — the running chromium was launched by the *old* script. **Reboot with no keyboard attached/touched** and confirm:
+**Verified 2026-08-11 that the fix is NOT yet in effect, and why.** The login prompt was reported again after deployment; the cause is simply that chromium had not been restarted:
+
+```
+boot:            2026-07-12 13:11
+script deployed: 2026-07-12 13:45
+running chromium flags: --ozone-platform=wayland --kiosk   (NO --password-store)
+```
+
+The running process was launched by the **old** script at boot, 34 minutes before the new one landed. The flag is on disk (line 79) and takes effect on the next chromium launch. **This is expected, not a failure of the fix** — but it does mean the fix remains **unverified**.
+
+**Reboot with no keyboard attached/touched** and confirm:
 1. No "Unlock Keyring" dialog.
 2. The kiosk lands on the dashboard unattended.
-3. The screensaver tile no longer reads "Configuration error".
 
-If the tile is clean but the screensaver still never *appears*, that is the **separate, never-yet-exercised** idle-automation question (`input_boolean.kitchen_idle`) — not this defect.
+A faster check without a full reboot: `pkill chromium` over ssh — the supervisor loop respawns it from the new script within ~3s. That exercises the flag but *not* the boot path, so a real reboot is still the honest test.
+
+The screensaver tile itself is already confirmed fixed (it renders its clock fallback).
 
 ---
 
