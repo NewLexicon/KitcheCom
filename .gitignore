@@ -28,6 +28,11 @@ dist/
 # bind-mount in deploy/grocy/, never committed
 deploy/grocy/grocy-config/
 
+# Dev-HA container config dir — assembled by deploy/homeassistant/dev-setup.sh.
+# Holds generated copies of the committed packages, the built card modules, the
+# HA database, and secrets.yaml. All generated; none of it is committed.
+deploy/homeassistant/dev-config/
+
 # Python (for any custom_components dev)
 __pycache__/
 *.pyc
