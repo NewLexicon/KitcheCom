@@ -79,4 +79,11 @@ EOF
 echo
 echo "Staged. Next:"
 echo "  docker compose -f deploy/homeassistant/docker-compose.ha-dev.yml up -d"
-echo "  open http://localhost:8124   # first run: create an account, then add /local/recipe-card.js as a resource"
+echo "  open http://localhost:8124   # first run: create an account, then add the resource"
+echo
+echo "⚠️  If the card was ALREADY registered as a resource, bump its version:"
+echo "      Settings -> Dashboards -> Resources -> /local/recipe-card.js?v=<n+1>"
+echo "    Browsers cache Lovelace modules through a hard refresh; changing the URL is"
+echo "    what forces a re-fetch. A stale module shows as 'Configuration error' even"
+echo "    though the file on disk is correct. HA logs the browser's real error under"
+echo "    frontend.js.modern in /config/home-assistant.log."

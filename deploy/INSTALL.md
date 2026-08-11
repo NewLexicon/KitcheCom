@@ -59,6 +59,15 @@ native Grocy UI is never shown on the kitchen screen.
    > module never evaluates and the card never registers. HA reports only a generic
    > **"Configuration error"** on the card with no hint at the cause. `npm test` guards
    > this (`test/dist-browser-loadable.test.ts`).
+   >
+   > 💡 **Append a version to each resource URL** — `/local/recipe-card.js?v=1` — and bump
+   > it every time you copy a new build in. Browsers cache Lovelace modules hard enough
+   > that even a hard refresh can keep serving the old file; the URL is what busts it.
+   > Observed 2026-08-11: a fixed module was deployed and the browser still threw the old
+   > `"lit"` error six minutes later. **When a card misbehaves right after a redeploy,
+   > suspect the cache before you suspect the code** — HA logs the browser's real error
+   > under `frontend.js.modern`, which is the fastest way to tell them apart:
+   > `docker exec <ha> grep frontend.js /config/home-assistant.log | tail`
 
 6. **Add the cards** to a dashboard:
    ```yaml
