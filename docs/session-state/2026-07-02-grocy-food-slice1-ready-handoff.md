@@ -1,25 +1,44 @@
-# Cold-open handoff — Grocy Food-Ops (S2 plan COMPLETE + Tier-2 verified; one HA gate owed)
+# Cold-open handoff — Grocy Food-Ops (S2 COMPLETE: plan + Tier-2 + the HA gate)
 
-**Date:** 2026-07-02 (last refreshed **2026-08-11**)
+**Date:** 2026-07-02 (last refreshed **2026-08-11**, after the HA gate closed)
 **Branch:** `feat/grocy-chores` (in the worktree `.worktrees/grocy-chores`)
 **Status (two threads, at DIFFERENT gates):**
-1. **S1 (meal-plan + shopping cards): Tasks 1–9 shipped 2026-08-05. Task 10 (Tier-2) STILL NOT RUN** — it needs a dev-HA container, never stood up. **S1's OQ-1/2/3 remain open. Task 11 deliberately DEFERRED** (§5).
-2. **S2 (recipe card): all 9 plan tasks COMPLETE, and Tier-2-verified against live Grocy 4.6.0 on 2026-08-11.** The `"(unknown)"` defect is fixed and confirmed against real data; the CRITICAL LIST-sensor defect is **resolved** (§4.0); two further live findings (text amounts, pictures) were fixed or scoped out. 92 tests green, typecheck clean. **Owed: verification inside a real Home Assistant** — see START HERE.
+1. **S1 (meal-plan + shopping cards): Tasks 1–9 shipped 2026-08-05. Task 10 (Tier-2) STILL NOT RUN.** It needed a dev-HA container — **one now exists** (`deploy/homeassistant/`), so this is newly unblocked. **S1's OQ-1/2/3 remain open** (they additionally need HACS + the grocy integration). **Task 11 deliberately DEFERRED** (§5).
+2. **S2 (recipe card): COMPLETE.** All 9 plan tasks done, Tier-2-verified against live Grocy 4.6.0, **and the transport verified inside a real HA 2025.7 on 2026-08-11.** The `"(unknown)"` defect is fixed; the CRITICAL LIST-sensor defect is **resolved** (§4.0); text amounts fixed, pictures scoped out. 92 tests green, typecheck clean.
 
-## ▶ START HERE (2026-08-11 — plan COMPLETE, Tier-2 verified)
+## ▶ START HERE (2026-08-11 — S2's last gate is CLOSED)
 
-**All 9 plan tasks are DONE. The §4.0 CRITICAL defect is FIXED. S2 is functionally complete pending one gate.**
+**All 9 plan tasks are DONE and the HA gate is CLOSED. No known blocker remains on S2.**
 
 **Empirical state:** 92 tests / 13 files passing, typecheck 0 errors, build clean, all local imports carry `.js`.
 
-**The one thing still owed: verify the card inside a real Home Assistant.** Everything is confirmed at the Grocy end (curl reproduces exactly what HA fetches) and in a browser via the demo harness, but **HA's templating of `{{ recipe_id }}` into the secret URL and `returnResponse` delivery are source-read only.** That needs a dev-HA with the package installed. **Do not report S2 as shipped until that runs.**
+**The HA gate that was owed is now closed.** Both source-read assumptions are confirmed against a running HA:
+- **`{{ recipe_id }}` templating WORKS** — `recipe_id` 1 vs 2 returned 3 rows each with distinct ids `[1]` / `[2]`. Had templating failed, both would have returned all 10 rows.
+- **`returnResponse` shape is as coded** — `service_response` = `{content, status}`; `content` is the array the card reads.
+- Recipe 1 renders end-to-end through HA as `2.25 Pound Ground beef` / `18 Piece Tortillas`.
+
+**What is still NOT covered** (be precise about this — do not overclaim S2 as shipped):
+- **The card has never rendered in an HA dashboard.** Services are verified through HA's API and the modules are staged in `/config/www/`, but no dashboard was built and no browser loaded the card there. Rendering is separately covered by the demo harness (0 console errors, 2026-08-10).
+- The card's **WebSocket** `callService` path specifically — verified over REST; both share the same service layer and envelope.
+
+**Next move — pick one:**
+- **Render the card in the dev-HA dashboard** (closes the last honest gap): container is already configured, add `/local/recipe-card.js` as a **module** resource, then drop `custom:grocy-recipe-card` on a dashboard. It takes **no `entity`**.
+- **S1 Task 10 (Tier-2)** — newly unblocked by the same dev-HA.
+- **Merge** — see §5 / `superpowers:finishing-a-development-branch`.
 
 **Read, in order:**
-1. **What Tier-2 found (newest empirical truth):** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/session-state/2026-08-11-grocy-tier2-verification.md`
-2. **The spec — §2.1 was amended TWICE; read the 2026-08-11 block, not the 2026-08-10 one beneath it:** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md`
-3. The plan (all tasks complete; kept for provenance): `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/plans/2026-08-10-grocy-s2-resolved-switch.md`
+1. **The HA gate result (newest):** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/session-state/2026-08-11-ha-gate-verification.md`
+2. **What Tier-2 found:** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/session-state/2026-08-11-grocy-tier2-verification.md`
+3. **The spec — §2.1 was amended TWICE; read the 2026-08-11 block, not the 2026-08-10 one beneath it:** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md`
+4. The plan (all tasks complete; kept for provenance): `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/plans/2026-08-10-grocy-s2-resolved-switch.md`
 
-**Grocy is UP** with the 4-recipe test data (`localhost:9283`, admin/admin). Teardown when done: `docker compose -f deploy/grocy/docker-compose.grocy.yml down` from the worktree. Data persists in the gitignored bind dir either way.
+**⚠️ The repo's `homeassistant/configuration.yaml` is a MERGE FRAGMENT** with no `default_config:` (`homeassistant/README.md:24-26`). Mounted alone as an HA `/config` it produces an HA with **no `rest_command` service at all**. Any future dev-HA must use `deploy/homeassistant/dev-configuration.yaml` (fragment + `default_config:`), which `dev-setup.sh` handles. Do not "fix" the fragment — the Pi needs it as-is.
+
+**Both containers are UP.**
+- **Grocy** — `localhost:9283`, admin/admin, 4-recipe test data. Teardown: `docker compose -f deploy/grocy/docker-compose.grocy.yml down`
+- **dev-HA** — `localhost:8124`, throwaway login `dev` / `devdevdev`. Teardown: `docker compose -f deploy/homeassistant/docker-compose.ha-dev.yml down`
+
+Both persist data in gitignored dirs, so teardown is safe. To rebuild the dev-HA from scratch, delete `deploy/homeassistant/dev-config/` and re-run `dev-setup.sh` (needs `GROCY_API_KEY` — see that doc §7).
 
 ## 4.0 ✅ RESOLVED 2026-08-11 — the LIST sensor defect
 
@@ -41,9 +60,12 @@
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `928b048` — `docs: refresh cold-open — S2 plan complete, Tier-2 verified, §4.0 resolved`, **plus the fix-up commit that set this line.** Last **code** commit is `759b905` (pictures disabled) — **2026-08-11 shipped the Tier-2 fixes.**
+- **HEAD:** `6962635` — `test: close the HA gate — rest_command transport verified inside real HA`, **plus the fix-up commit that set this line.** Last **card-code** commit is still `759b905` (pictures disabled); the HA gate needed no code change.
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** **75** commits (74 at `928b048`, +1 for the fix-up). Worktree clean.
+- **Ahead of main:** **77** commits (76 at `6962635`, +1 for the fix-up). Worktree clean.
+
+### 2026-08-11 (later) — the HA gate
+- `6962635` — **dev-HA harness + the gate result.** `{{ recipe_id }}` templating and the `returnResponse` shape both CONFIRMED inside HA 2025.7. Adds `deploy/homeassistant/` (compose + `dev-configuration.yaml` + `dev-setup.sh`); no card code changed. Found that the repo's `configuration.yaml` is a merge fragment with no `default_config:`.
 
 ### 2026-08-11 — Tier-2 verification + the fixes it forced, newest first
 - `98500c6` — picture-path probe recorded: **disabled in v1** (base64 filename + API key that `<img src>` can't send; query-param key would leak a full read+write key)
