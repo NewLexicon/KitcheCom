@@ -1,7 +1,36 @@
-# Pi follow-ups — two things to fix when the Pi is next reachable
+# Pi follow-ups — BOTH DEPLOYED 2026-08-11
 
 **Date:** 2026-08-11
-**Pi state at time of writing:** UNREACHABLE. `ssh kitchencom` (192.168.1.234) times out and `kitchencom.local` does not resolve — powered down or off the LAN. Neither item below could be verified live.
+**Pi state:** reached over **direct ethernet** (`ssh kitchencom-eth`, `en22` link-local) from the work laptop — the home LAN `192.168.1.234` was unreachable, per `pi-direct-ethernet-fallback.md`. **Both fixes below are deployed and verified on the hardware.** One reboot is still owed to confirm the keyring fix hands-off.
+
+## ✅ Deployment record (2026-08-11)
+
+| Item | Before | After |
+|---|---|---|
+| `www/screensaver-card.js` | 13,969 B, **2 bare imports**, dated **Jun 15** — never rebuilt | 30,663 B, **0 imports**, `customElements.define` present |
+| Lovelace resource URL | `/local/screensaver-card.js` | `/local/screensaver-card.js?v=2` |
+| `deploy/kiosk/start-kiosk-wayland.sh` | no `--password-store` | `--password-store=basic` at line 79 |
+
+**The screensaver diagnosis is confirmed on the hardware, not inferred:** the deployed file's first line was literally `import { LitElement, html, css, nothing } from "lit";`, dated **June 15** — the original `tsc` build, never rebuilt since. It could never have loaded.
+
+- HA config lives at **`/home/garrettdehart/homeassistant`** (bind-mounted to `/config`); `.storage` is **root-owned**, so resource edits need `sudo`. Passwordless sudo works.
+- HA was restarted to pick up the changed resource URL; came back **200 in ~3s**.
+- `curl "http://localhost:8123/local/screensaver-card.js?v=2"` → **0 imports**. The card is now loadable.
+- **Zero `frontend.js` errors** in the HA log after restart (the only errors are an unrelated `habluetooth` scanner quirk and `metno` DNS failures — expected, since direct-ethernet has no internet).
+- Backups left on the Pi: `.storage/lovelace_resources.bak.20260811`, `start-kiosk-wayland.sh.bak.20260811`.
+
+## ⏳ Still owed: one reboot
+
+The keyring fix cannot be verified without rebooting — the running chromium was launched by the *old* script. **Reboot with no keyboard attached/touched** and confirm:
+1. No "Unlock Keyring" dialog.
+2. The kiosk lands on the dashboard unattended.
+3. The screensaver tile no longer reads "Configuration error".
+
+If the tile is clean but the screensaver still never *appears*, that is the **separate, never-yet-exercised** idle-automation question (`input_boolean.kitchen_idle`) — not this defect.
+
+---
+
+## Original diagnosis follows (kept for provenance)
 
 ---
 
