@@ -1,50 +1,39 @@
-# Cold-open handoff — Grocy Food-Ops (plan EXECUTED Tasks 1–8; ⚠️ CRITICAL LIST-sensor defect open)
+# Cold-open handoff — Grocy Food-Ops (S2 plan COMPLETE + Tier-2 verified; one HA gate owed)
 
-**Date:** 2026-07-02 (last refreshed **2026-08-10**)
+**Date:** 2026-07-02 (last refreshed **2026-08-11**)
 **Branch:** `feat/grocy-chores` (in the worktree `.worktrees/grocy-chores`)
 **Status (two threads, at DIFFERENT gates):**
 1. **S1 (meal-plan + shopping cards): Tasks 1–9 shipped 2026-08-05. Task 10 (Tier-2) STILL NOT RUN** — it needs a dev-HA container, never stood up. **S1's OQ-1/2/3 remain open. Task 11 deliberately DEFERRED** (§5).
-2. **S2 (recipe card): the `recipes_pos_resolved` + hybrid-transport plan was EXECUTED 2026-08-10 (Tasks 1–8 of 9).** The `"(unknown)"` ingredient defect is **FIXED and verified**. **Task 9 (Tier-2) is BLOCKED on Docker.** ⚠️ **A CRITICAL pre-existing LIST-sensor defect was found in final review and is NOT fixed — see §4.0.** 78 tests green, typecheck clean.
+2. **S2 (recipe card): all 9 plan tasks COMPLETE, and Tier-2-verified against live Grocy 4.6.0 on 2026-08-11.** The `"(unknown)"` defect is fixed and confirmed against real data; the CRITICAL LIST-sensor defect is **resolved** (§4.0); two further live findings (text amounts, pictures) were fixed or scoped out. 92 tests green, typecheck clean. **Owed: verification inside a real Home Assistant** — see START HERE.
 
-## ▶ START HERE (2026-08-10, session 2 — plan EXECUTED)
+## ▶ START HERE (2026-08-11 — plan COMPLETE, Tier-2 verified)
 
-**Tasks 1–8 of the plan are DONE and committed. Task 9 (Tier-2) is BLOCKED on Docker.**
-**One CRITICAL defect was found in final review and is NOT fixed — read §4.0 before anything else.**
+**All 9 plan tasks are DONE. The §4.0 CRITICAL defect is FIXED. S2 is functionally complete pending one gate.**
 
-**The next action is one of two things:**
-1. **Fix the LIST sensor** (§4.0) — it is the blocking user-facing bug, OR
-2. **Run Task 9** if you start Docker Desktop first (Tier-2 verification, plan Task 9).
+**Empirical state:** 92 tests / 13 files passing, typecheck 0 errors, build clean, all local imports carry `.js`.
+
+**The one thing still owed: verify the card inside a real Home Assistant.** Everything is confirmed at the Grocy end (curl reproduces exactly what HA fetches) and in a browser via the demo harness, but **HA's templating of `{{ recipe_id }}` into the secret URL and `returnResponse` delivery are source-read only.** That needs a dev-HA with the package installed. **Do not report S2 as shipped until that runs.**
 
 **Read, in order:**
-1. **The CRITICAL defect:** §4.0 below, plus the `⚠️ KNOWN BROKEN` block at the top of the `rest:` section in `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/homeassistant/packages/grocy_recipes.yaml`
-2. **The plan (Task 9 is all that remains):** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/plans/2026-08-10-grocy-s2-resolved-switch.md`
-3. **The amended spec:** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md` §2.1, §4.2
+1. **What Tier-2 found (newest empirical truth):** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/session-state/2026-08-11-grocy-tier2-verification.md`
+2. **The spec — §2.1 was amended TWICE; read the 2026-08-11 block, not the 2026-08-10 one beneath it:** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/specs/2026-07-02-grocy-recipe-card-design.md`
+3. The plan (all tasks complete; kept for provenance): `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/superpowers/plans/2026-08-10-grocy-s2-resolved-switch.md`
 
-**Empirical state:** 78 tests / 11 files passing, typecheck 0 errors, build clean, all local imports carry `.js`.
+**Grocy is UP** with the 4-recipe test data (`localhost:9283`, admin/admin). Teardown when done: `docker compose -f deploy/grocy/docker-compose.grocy.yml down` from the worktree. Data persists in the gitignored bind dir either way.
 
-**⚠️ Docker Desktop is DOWN.** Test data survives in the gitignored `deploy/grocy/grocy-config/` bind dir, so `compose up -d` restores the 4 recipes — but Docker Desktop must be started **by hand** (GUI app; an agent session cannot launch it). §4.5 has the reconnect recipe.
+## 4.0 ✅ RESOLVED 2026-08-11 — the LIST sensor defect
 
----
+**Was:** `sensor.grocy_recipes` emitted no attributes, so LIST showed "No recipes" forever and DETAIL was unreachable.
 
-## 4.0 ⚠️ CRITICAL — the LIST sensor emits NO attributes ("No recipes" forever)
+**Confirmed live:** `GET /api/objects/recipes` returns a **bare JSON array**, and HA's `parse_json_attributes` (`components/rest/util.py:28-31`) takes `json_dict[0]` of a list, then extracts named keys only if that is a dict — so it yielded the first *recipe*, which has no `recipes` key. No jsonpath expression works (`$` returns `False` on an array under HA's pinned `jsonpath==0.82.2`).
 
-**Found by final whole-implementation review, 2026-08-10. NOT fixed. This is the top-priority next action.**
+**Fixed by migrating LIST to `rest_command.grocy_recipe_list`** (`3c7bef4`, `d6f6f7c`). The sensor and its `recorder:` exclude are deleted. Verified end-to-end: the exact 1,334-byte bare array that broke the sensor now produces 4 recipe tiles through the fetch path.
 
-`sensor.grocy_recipes` always resolves to `{}`, so `attributes.recipes` is undefined, `parseRecipes(undefined)` returns `[]`, and the kitchen screen shows **"No recipes"** permanently. DETAIL is unreachable, which means **the whole S2 slice is non-functional on-screen** despite 78 green tests.
+### Everything else that changed 2026-08-11 (all live-verified)
 
-**Why (verified against vendored HA source in `/Users/jdehart1/___Code_DEV/KitchenCOM/reference/core-dev/`):**
-- `components/rest/sensor.py:170-175` — `json_attributes` are parsed from the RAW body **before** `value_template` runs, so a template cannot reshape the payload.
-- `components/rest/util.py:28-31` — `parse_json_attributes` takes `json_dict[0]` when the result is a list, then extracts named keys only if that is a dict.
-- Grocy's `GET /api/objects/recipes` returns a **bare JSON array**. So `[0]` is a single recipe object with no `recipes` key → `{}`.
-- Tested against HA's pinned `jsonpath==0.82.2`: `jsonpath(array, "$")` returns **`False`**; `$[*]`, `$..*`, `$.*` all return lists that then collapse to `[0]`. **No jsonpath expression works** — every path yields `{}`.
-
-**This is PRE-EXISTING, from `1bd9230` (2026-08-06 Task 8), not introduced by this session.** But it was latent then and is load-bearing now, because the hybrid transport makes this sensor the sole source for LIST.
-
-**Recommended fix (not implemented — it is a design decision, not a review fix):** migrate LIST to the same on-demand `rest_command` + `returnResponse` pattern DETAIL already uses. The machinery exists and is proven: `fetchIngredients`/`fetchUnitMap` in `custom_cards/grocy-food-card/src/shared.ts`, and two working `rest_command` entries in `grocy_recipes.yaml`. A `rest_command` returns the raw body and bypasses `json_attributes` entirely. Spec §2.1 would need a matching amendment, since it currently specifies a polled sensor for LIST.
-
-**Do not report S2 as working until this is fixed AND Task 9 has run.**
-
----
+- **The `"(unknown)"` defect is VERIFIED FIXED against real data** — renders `2.25 Pound Ground beef`, `18 Piece Tortillas`.
+- **NEW: text amounts.** `recipe_amount` is **never** non-numeric — posting text coerces it to `0`. Grocy stores free text in `variable_amount`. Left unhandled a row rendered `0 Pound Salt` (a *wrong quantity*, worse than the blank the spec documented). Fixed in both parse and render layers; now renders `a pinch Salt` with the unit suppressed.
+- **NEW: pictures are DISABLED in v1.** The files API needs a base64-encoded filename **and** the API key, which `<img src>` cannot send. The query-param form works but would leak a full read+write key into the DOM — rejected. Tiles use the placeholder. §5.1's picture branch is dead code until an HA-side image proxy or a scoped read-only key exists.
 
 > This is a feature-branch handoff, not the project-wide cold-open. The formal `docs/session-state/README.md` cold-open describes main; this file covers the `feat/grocy-chores` work-arc. Post-merge, rewrite the project cold-open from main's perspective.
 
@@ -56,7 +45,18 @@
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
 - **Ahead of main:** **64** commits (63 at `5512cc4`, +1 for the fix-up). Worktree clean.
 
-### 2026-08-10 session 2 — plan EXECUTED (Tasks 1–8), newest first
+### 2026-08-11 — Tier-2 verification + the fixes it forced, newest first
+- `98500c6` — picture-path probe recorded: **disabled in v1** (base64 filename + API key that `<img src>` can't send; query-param key would leak a full read+write key)
+- `759b905` — **FIX**: `pictureUrl` always null; tiles use the tested placeholder
+- `781fdc0` — INSTALL: no sensor to look for, card takes no `entity`
+- `a6e4f6d` — spec §2.1 (fully on-demand) + §4.3 (text amounts) amended
+- `d6f6f7c` — **drops the impossible sensor**, adds `grocy_recipe_list`
+- `3c7bef4` — **FIX (§4.0)**: LIST fetches on demand instead of reading a sensor
+- `2eae1bf` — **FIX**: DETAIL renders text amounts instead of blanking them
+- `e3632a8` — **FIX**: read text amounts from `variable_amount`, not `recipe_amount`
+- `dc1ceb2` — Tier-2 findings: defect fixed live, §4.0 confirmed, text-amount finding
+
+### 2026-08-10 session 2 — plan executed (Tasks 1–8), newest first
 Executed under `superpowers:subagent-driven-development`. **All code below is committed and green.**
 - `ee8b237` — **FIX (review)**: self-healing unit-map cache (a transient failure no longer latches an empty map for the card's lifetime) + monotonic `_fetchSeq` token (closes a `1→2→1` stale-overwrite race that showed the wrong recipe's quantities)
 - `c0c152f` — **documents the §4.0 CRITICAL defect** in the YAML; the defect itself is NOT fixed
@@ -284,8 +284,15 @@ sqlite3 deploy/grocy/grocy-config/data/grocy.db "select api_key from api_keys;"
 
 ## 5. Carry-forwards (deferred gates / latent risks)
 
-### New 2026-08-10 session 2 (plan execution)
-- **⚠️ CRITICAL: the LIST sensor is broken — see §4.0.** Top-priority next action. Pre-existing from `1bd9230`, but load-bearing now.
+### New 2026-08-11 (Tier-2)
+- **⚠️ OWED: verify inside a real Home Assistant.** The `rest_command` → Grocy round-trip is confirmed only at the Grocy end. HA's `{{ recipe_id }}` templating and `returnResponse` delivery are **source-read, never executed**. This is the last gate before S2 can be called shipped.
+- **Pictures are dead code in v1** (§5.1's picture-forward tile). Needs an HA-side image proxy or a scoped read-only Grocy key. `RecipeRow.pictureUrl` keeps `string | null` so re-enabling needs no contract change.
+- **A Grocy 401 looks like success to the card** — HA's `rest_command` only logs on ≥400 and still returns the parsed body. Code degrades safely to `[]`, but cannot tell the operator "no ingredients" from "bad API key". `response.status` is the only signal.
+- **LIST no longer survives a Grocy outage.** Nothing is cached in HA state any more, so an outage shows "No recipes" rather than stale tiles. Accepted trade-off — it was the only transport that works at all.
+- **`test/recipe-render-amount.test.ts` and `test/recipe-fetch-race.test.ts` MIRROR card logic** rather than driving the Lit element (vitest runs `environment: "node"`, no DOM library). **If `_open` or the DETAIL `<li>` changes, update those mirrors** or they silently stop testing reality.
+
+### Resolved 2026-08-10 session 2 (superseded by the above)
+- ~~**CRITICAL: the LIST sensor is broken.**~~ **FIXED 2026-08-11** — see §4.0.
 - **`scaleIngredients` is now OFF the render path but deliberately retained** — tested fallback + the hook for the deferred on-screen servings control. 12 tests still cover it. Do not delete it as "dead code".
 - **`test/recipe-fetch-race.test.ts` MIRRORS `_open`'s logic** rather than driving the Lit element, because vitest runs `environment: "node"` with no DOM library installed. **If `_open` changes, that mirror must change too** or the tests silently stop testing reality.
 - **The demo harness now fakes `callService`** with a 120ms delay so the loading state is visible. Recipe 2 gained ingredients incl. the float-noise value that proves 2dp rounding.
