@@ -79,11 +79,28 @@ So **`recipe_amount` is never a non-numeric value.** Grocy has a dedicated `vari
 
 **Our code already degrades safely** — `Array.isArray` guard in `fetchIngredients`, `buildUnitMap` returning `{}` for non-arrays; both verified against a 401 body and an HTML 500 page on 2026-08-10. **No fix needed, but `response.status` is the only signal** that distinguishes "no ingredients" from "bad API key."
 
-## 6. Still unproven: the picture path
+## 6. The picture path — PROBED, and it CANNOT work as designed
 
-All 4 recipes still have `picture_file_name: null`. **No image was uploaded**, so the LIST view's picture branch and the `<img src="/api/files/recipepictures/…">` fetch remain unexercised.
+Uploaded a 1×1 PNG, attached it to recipe 1, and probed the fetch. **Two independent blockers:**
 
-**The open question is whether that fetch needs the API key** — an `<img src>` cannot send a header. If it does, the picture design needs rethinking, not just testing. **Upload one image and re-probe** next session.
+| Request | Result |
+|---|---|
+| `/api/files/recipepictures/test.png` (raw filename, **what our code built**) | **404** |
+| `/api/files/recipepictures/dGVzdC5wbmc=` (base64, **with** key header) | **200**, `image/png` |
+| same base64 URL, **no** key | **401** |
+| same base64 URL + `?GROCY-API-KEY=<key>` | **200** |
+| same base64 URL + `?api_key=<key>` | 401 (wrong param name) |
+
+1. **The filename must be base64-encoded.** `parseRecipes` concatenated the raw name — every picture would have 404'd.
+2. **The fetch requires the API key, and `<img src>` cannot send a header.** The query-param form works, but it would put a **full-scope read+write key** into the DOM, browser history, and Grocy's access logs — exactly the exposure spec §2 rejected when it chose to proxy through HA rather than let the browser talk to Grocy.
+
+**DECISION (2026-08-11): pictures are DISABLED in v1.** `pictureUrl` is now always `null`, so every tile uses the already-tested placeholder branch. No key exposure, no broken images. `RecipeRow.pictureUrl` keeps its `string | null` type, so re-enabling needs no contract change.
+
+**To re-enable, one of:**
+- an **HA-side image proxy** that adds the key server-side (no built-in exists for streaming binary to a card — real work), or
+- a **scoped read-only Grocy API key**, if Grocy supports one (unverified), which would make the query-param form acceptable.
+
+**Test data restored:** the picture was detached and `recipes.picture_file_name` is `null` on all 4 again.
 
 ## 7. What this session did NOT verify
 

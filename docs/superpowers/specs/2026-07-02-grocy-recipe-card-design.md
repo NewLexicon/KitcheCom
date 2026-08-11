@@ -312,9 +312,14 @@ No tier's claim is made until that tier has actually run (verification-before-co
 
 ## 8. Carry-forwards
 
+### Added 2026-08-11 (from Tier-2 verification)
+
+- **⚠️ PICTURES ARE DISABLED IN v1 — and cannot be re-enabled without new machinery.** Probed live 2026-08-11: Grocy's files API needs the filename **base64-encoded** (raw name → 404), **and** requires the `GROCY-API-KEY` header (→ 401), which an `<img src>` cannot send. `?GROCY-API-KEY=<key>` works but would expose a **full-scope read+write key** in the DOM, history, and access logs — the exact exposure §2 rejected. `pictureUrl` is now always `null`; tiles use the placeholder branch. **§5.1's picture-forward tile is therefore dead code for now** (kept: `RecipeRow.pictureUrl` stays `string | null`, so re-enabling needs no contract change). **To re-enable:** an HA-side image proxy that adds the key server-side, or a scoped read-only Grocy key if one exists (unverified).
+- **The card is NOT yet verified inside real Home Assistant.** The `rest_command` → Grocy round-trip is confirmed at the Grocy end (curl reproduces exactly what HA would fetch), but HA's templating of `{{ recipe_id }}` into the secret URL and `returnResponse` delivery remain **source-read only**. A dev-HA session is still owed.
+- **A Grocy 401 looks like success to the card.** HA's `rest_command` only *logs* on ≥400 and still returns the parsed body, so `response.status` is the only signal separating "no ingredients" from "bad API key". Current code degrades safely to `[]`, but cannot tell the operator which happened.
+
 ### Added 2026-08-10 (from the Tier-2 amendments)
 
-- **⚠️ The picture path is UNPROVEN against live data.** All 4 test recipes had `picture_file_name: null`, so the LIST view's picture-forward branch (§5.1) and the `<img src="/api/files/recipepictures/…">` fetch have **never run against a real image**. `parseRecipes` builds the URL from the filename and that logic is straightforward, but the fetch itself — path shape, auth behavior, whether the API key is needed on an `<img>` request — is untested. **Upload one image to a test recipe at the next Grocy session.**
 - **The list sensor has a ceiling of its own, roughly 3× further out.** The hybrid's LIST payload is ~8 KB at 25 recipes against ~16 KB — comfortable. At **50 recipes it is ~17 KB and breaches**. Same silent-truncation failure mode as the original Option A, just at a larger library. If this household's recipe count approaches ~40, move LIST to on-demand fetch too (full Option B). **Not a v1 concern; a tripwire to remember.**
 - **`quantity_units` byte size is cited inconsistently in the source docs** — the findings say ~944 B in one place and the handoff ~861 B. Both are "small and static," so nothing turns on it, but **re-measure rather than trusting either number** if it ever becomes load-bearing.
 - **Grocy's `desired_servings` is write-ignored on POST, settable via a follow-up `PUT`** (HTTP 204). Affects **test-data seeding only**, not the card — but any future seeding script must PUT after POST or every recipe silently gets `base_servings` as its desired value.
