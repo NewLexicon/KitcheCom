@@ -1,86 +1,38 @@
-# Slice 2 recipe proxy — HYBRID transport (spec §2.1, amended 2026-08-10).
+# Slice 2 recipe proxy — FULLY ON-DEMAND (spec §2.1, amended 2026-08-11).
 #
 # WHY THIS FILE EXISTS: the custom-components/grocy HACS integration exposes NO
 # recipe sensor — recipes and recipes_pos are absent from its entity definitions
 # (verified against its const.py). Recipe content lives only in Grocy's own REST
-# API, so HA polls it server-side here. The API key stays in HA secrets; the
-# browser never talks to Grocy directly and never sees the key.
+# API, so HA proxies it here. The API key stays in HA secrets; the browser never
+# talks to Grocy directly and never sees the key.
 #
-# ⚠️ WHY THIS IS A HYBRID AND NOT ONE SENSOR (measured 2026-08-07):
-#   The whole library in one sensor's attributes measured ~85 KB at 25 recipes
-#   against an HA attribute ceiling of ~16 KB — about 5x over. The failure mode
-#   is a TRUNCATED OR DROPPED ATTRIBUTE, NOT AN ERROR, so it would look fine on
-#   a small library and quietly lose recipes as it grew.
-#   The bulk is ingredients (~76 KB of that ~85 KB), not recipes (~8 KB). So:
-#     - LIST  -> this sensor, recipes only, ~8 KB at 25 recipes. Card reads
-#                hass.states[...] exactly as S1's two cards do.
-#     - DETAIL -> the rest_commands below, one recipe at a time (~1.5 KB),
-#                using Grocy's verified server-side query[] filtering.
+# ⚠️ WHY THERE IS NO `rest:` SENSOR ANY MORE (verified twice, 2026-08-11):
+#   1. Live Grocy 4.6.0: GET /api/objects/recipes returns a BARE JSON ARRAY.
+#   2. HA source: `json_attributes` are parsed from the RAW body BEFORE
+#      value_template runs (components/rest/sensor.py:170-175), so no template
+#      can reshape the payload. parse_json_attributes (util.py:28-31) then takes
+#      json_dict[0] of a list and extracts named keys only if that is a dict —
+#      so a bare array yields the FIRST RECIPE, which has no `recipes` key, and
+#      the sensor is permanently {}. Tested against HA's pinned jsonpath==0.82.2:
+#      "$" returns False on an array; "$[*]", "$..*", "$.*" all collapse to [0].
+#   A `rest` sensor CANNOT carry this payload. The card fetches on demand instead.
 #
-# ⚠️ CEILING TRIPWIRE: the recipe list itself reaches ~17 KB at ~50 recipes and
-# would then breach the same ceiling. If this household passes ~40 recipes,
-# move LIST to an on-demand fetch too (spec §8 carry-forward).
+# Trade-off, accepted deliberately: LIST no longer renders instantly from cached
+# HA state and does NOT survive a Grocy outage (an outage shows "No recipes"
+# rather than stale tiles). That is the cost of the only transport that works.
 #
-# Two constraints this file must respect:
-#   1. HA state is capped at 255 chars — hence value_template's constant "ok"
-#      with the real data in json_attributes. Putting JSON in the state breaks it.
-#   2. Attribute blobs bloat the recorder DB — hence the recorder exclude below.
-#
-# Field shapes CONFIRMED against live Grocy 4.6.0 on 2026-08-07 — the provisional
-# guesses did not drift (findings §2). This is no longer provisional.
-#
-# ⚠️ KNOWN BROKEN (found in review 2026-08-10) — the `rest` sensor below emits NO
-# `recipes` attribute. It always resolves to {}, so the LIST view renders
-# "No recipes" forever.
-#
-# WHY: HA's `rest` sensor parses `json_attributes` from the RAW response body
-# BEFORE `value_template` runs (components/rest/sensor.py:170-175 in
-# reference/core-dev), via `parse_json_attributes` (components/rest/util.py:13-40):
-#   1. if json_attrs_path is set, run it through `jsonpath()`
-#   2. if the result is a list, take ONLY `[0]` (util.py:28-29, "jsonpath will
-#      always store the result in json_dict[0]")
-#   3. if what's left is a dict, pull out the named `json_attrs` keys
-# Grocy's GET /api/objects/recipes returns a BARE JSON ARRAY of recipe objects,
-# not a dict. Empirically verified against HA's pinned `jsonpath==0.82.2`:
-#   jsonpath([{...},{...}], "$")     -> False   (not a list or dict at all)
-#   jsonpath([{...},{...}], "$[*]")  -> [{...},{...}]   (a LIST of recipes)
-#   jsonpath([{...},{...}], "$.*")   -> [{...},{...}]   (same)
-#   jsonpath([{...},{...}], "$..*")  -> [{...},{...}, ...scalars]  (same)
-# Every path that matches multiple recipes returns a LIST, and step 2 above then
-# collapses it to JUST recipe [0] — which has no `recipes` key, so step 3 yields
-# {}. `$` on a bare array isn't even a list/dict per jsonpath 0.82.2, so it's {}
-# too. No `json_attributes_path` expression can carry the full array through.
-# value_template cannot help either: it only sets the STATE (capped at 255
-# chars) and runs AFTER json_attributes is already parsed from the raw body.
-#
-# CONCLUSION: there is no `rest`-platform-only fix. Getting the full recipe
-# array into the card requires bypassing `json_attributes` entirely — e.g. an
-# on-demand fetch via `rest_command` + `hass.callService(..., returnResponse:
-# true)`, which returns the RAW response body (`res.response.content`) with no
-# json_attributes extraction step at all. This is the exact pattern already
-# proven working for DETAIL in this same file (`grocy_recipe_ingredients` /
-# `grocy_quantity_units`, consumed by `fetchIngredients`/`fetchUnitMap` in
-# custom_cards/grocy-food-card/src/shared.ts). Changing LIST to that pattern is
-# a design decision beyond this review fix — left for a follow-up task.
-rest:
-  - resource: !secret grocy_recipes_url        # e.g. http://<host>:9283/api/objects/recipes
-    scan_interval: 600                          # recipes change rarely
-    headers:
-      GROCY-API-KEY: !secret grocy_api_key
-    sensor:
-      - name: "Grocy Recipes"
-        unique_id: grocy_recipes_proxy
-        value_template: "ok"                    # 255-char cap: never put JSON here
-        json_attributes_path: "$"
-        json_attributes:
-          - recipes
-
-recorder:
-  exclude:
-    entities:
-      - sensor.grocy_recipes                    # attribute blob would bloat the DB
+# Because nothing enters HA state, the ~16 KB attribute ceiling and the recorder
+# exclude are both moot and have been removed with the sensor.
 
 rest_command:
+  # LIST calls this on mount. Measured 1,334 B for 4 recipes; ~8 KB at 25.
+  grocy_recipe_list:
+    url: !secret grocy_recipes_url
+    method: GET
+    headers:
+      GROCY-API-KEY: !secret grocy_api_key
+    content_type: "application/json"
+
   # DETAIL calls this when a recipe opens. query[]=recipe_id=N is Grocy's own
   # server-side filter — VERIFIED: 5,084 B unfiltered vs 1,526 B for one recipe.
   # The card sends recipe_id; never interpolate anything else into this URL.
@@ -92,7 +44,7 @@ rest_command:
     content_type: "application/json"
 
   # Unit names for qu_id. recipes_pos_resolved joins product_name but NOT the
-  # unit (spec §4.2). 6 rows / ~900 B / static — the card fetches this once.
+  # unit (spec §4.2). 6 rows / 861 B / static — the card fetches this once.
   grocy_quantity_units:
     url: !secret grocy_quantity_units_url
     method: GET
