@@ -156,9 +156,19 @@ export type RecipeRow = {
   instructions: string;
 };
 
-// Grocy serves recipe pictures from this path. Loaded via <img src> — image
-// loads are NOT CORS-gated, unlike a fetch (spec §2.1).
-const PICTURE_BASE = "/api/files/recipepictures/";
+// ⚠️ PICTURES ARE DISABLED IN v1 (decided 2026-08-11 after live probing).
+//
+// Grocy's file API needs the filename BASE64-encoded — `/api/files/recipepictures/
+// test.png` 404s while the base64 form returns 200 — AND it requires the
+// GROCY-API-KEY header, returning 401 without it. An <img src> cannot send a
+// header. Grocy does accept `?GROCY-API-KEY=<key>` as a query param (200), but
+// that would put a FULL-SCOPE READ+WRITE key into the DOM, browser history, and
+// Grocy's access logs — precisely the exposure spec §2 rejected when it chose to
+// proxy through HA rather than let the browser talk to Grocy directly.
+//
+// So pictureUrl is always null and every tile uses the placeholder branch, which
+// is already implemented and tested. Re-enabling needs an HA-side image proxy or
+// a scoped read-only Grocy key; see the carry-forward in the spec.
 
 export function parseRecipes(recipes?: any[] | null): RecipeRow[] {
   if (!Array.isArray(recipes)) return [];
@@ -175,7 +185,7 @@ export function parseRecipes(recipes?: any[] | null): RecipeRow[] {
     return {
       id: r?.id,
       name: r?.name ?? "(untitled recipe)",
-      pictureUrl: r?.picture_file_name ? PICTURE_BASE + r.picture_file_name : null,
+      pictureUrl: null,
       baseServings,
       desiredServings,
       instructions: stripTags(r?.description),

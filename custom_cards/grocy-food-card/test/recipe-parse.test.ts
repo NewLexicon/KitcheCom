@@ -6,9 +6,18 @@ describe("parseRecipes", () => {
   it("maps each recipe to a row", () => {
     expect(parseRecipes(fixture.recipes as any).length).toBe(3);
   });
-  it("builds pictureUrl from picture_file_name", () => {
-    const rows = parseRecipes(fixture.recipes as any);
-    expect(rows[0].pictureUrl).toContain("tacos.jpg");
+  it("never builds a picture URL — the picture path is disabled in v1", () => {
+    // Two live-verified blockers (2026-08-11): Grocy's files API needs the
+    // filename BASE64-encoded (raw name -> 404), and the fetch requires the API
+    // key (-> 401), which an <img src> cannot send as a header. A query-param key
+    // works but would expose a full read+write key in the DOM — rejected, same
+    // reasoning as spec §2's proxy decision. Tiles use the placeholder instead.
+    const rows = parseRecipes([
+      { id: 1, name: "Tacos", picture_file_name: "tacos.jpg", base_servings: 4 },
+      { id: 2, name: "Pancakes", picture_file_name: null, base_servings: 2 },
+    ] as any);
+    expect(rows[0].pictureUrl).toBeNull();
+    expect(rows[1].pictureUrl).toBeNull();
   });
   it("pictureUrl is null when picture_file_name is absent (LIST branches on this)", () => {
     const rows = parseRecipes(fixture.recipes as any);
