@@ -71,9 +71,9 @@ Both persist data in gitignored dirs, so teardown is safe. To rebuild the dev-HA
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `9c26485` — `docs: the browser cache masks a fixed card as 'Configuration error'`, **plus the docs + fix-up commits that set this line.** Last **card-code** commit is `b008280` (the bundling fix — the first card-code change since `759b905`).
+- **HEAD:** `68aa047` — `docs: the card renders in a real HA — gate fully closed`, **plus the fix-up commit that set this line.** Last **card-code** commit is `b008280` (the bundling fix — the first card-code change since `759b905`).
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** **82** commits (82 at `9c26485`, +1 for the close-out, +1 for the fix-up). Worktree clean.
+- **Ahead of main:** **84** commits (83 at `68aa047`, +1 for the fix-up). Worktree clean.
 
 ### 2026-08-11 (latest) — the render, and the defect it caught
 - `9c26485` — the browser cache masks a fixed card as "Configuration error"; `frontend.js.modern` in the HA log is how to tell cache from code
