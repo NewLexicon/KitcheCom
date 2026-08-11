@@ -36,36 +36,37 @@ Then in HA: **Settings → Dashboards → Resources**, change `/local/screensave
 
 ---
 
-## 2. Login on every reboot — should NOT be happening
+## 2. The reboot prompt is the GNOME KEYRING, not Home Assistant
 
-**Reported:** the kiosk asks for an HA login after every reboot / power outage.
+**Identified from a photo, 2026-08-11.** The dialog is **"Unlock Keyring — An application wants access to the keyring 'Default Keyring', but it is locked"**. That is a **Linux desktop dialog, not HA.**
 
-**Expected behaviour:** log in **once** with **"Keep me logged in"** checked. That stores a `normal` refresh token in the chromium profile for `http://localhost:8123/`, and it survives reboots. See the memory note `pi-power-and-kiosk-login.md`.
+**HA auth is fine.** Behind the dialog the HA frontend shows **"Loading data"** — not a login screen. The "Keep me logged in" refresh token persisted exactly as designed, and `pi-power-and-kiosk-login.md` remains correct. **Do not go re-checking `.storage/auth` for this symptom** — it is a different subsystem.
 
-**The kiosk script is NOT the cause.** `deploy/kiosk/start-kiosk-wayland.sh` (the Wayland variant that is actually deployed — the X11 `start-kiosk.sh` in the repo does not apply, see `pi-kiosk-wayland-labwc.md`) uses chromium's **default profile** at `~/.config/chromium/Default`. There is no `--incognito`, no `--guest`, no `--user-data-dir` override, and nothing that wipes the profile. The reboot-proofing (wait-for-HA + respawn) is present and working as designed.
+**Cause: autologin + keyring collision.** Chromium encrypts stored secrets with the login keyring. The keyring is normally unlocked *by the password you type at login* — but the Pi uses **autologin** (`autologin-user=garrettdehart`, per `pi-kiosk-wayland-labwc.md`), so no password is ever entered, the keyring stays locked, and Chromium's first request for it raises this modal over the kiosk.
 
-**So the token is either never stored or being invalidated.** Diagnose in this order:
+Both features are individually correct; they interact badly. Nothing is misconfigured in HA or in the kiosk's reboot-proofing.
 
-```bash
-# (a) Is a persistent refresh token actually stored?
-#     Expect token_type "normal" and client_id http://localhost:8123/
-ssh kitchencom
-sudo grep -o '"token_type": *"[a-z]*"' <ha-config>/.storage/auth | sort | uniq -c
+**Confirmed gap:** `deploy/kiosk/start-kiosk-wayland.sh` passes **no `--password-store` flag**, so Chromium defaults to detecting and using the GNOME keyring.
 
-# (b) Does the chromium profile survive a reboot? Compare before/after:
-ls -la ~/.config/chromium/Default/ | head
-stat -c '%y %n' ~/.config/chromium/Default/Preferences
+### Fix (preferred) — tell Chromium not to use the keyring
 
-# (c) Is anything clearing it at boot? (a cleanup unit, tmpfs mount, etc.)
-mount | grep -E 'chromium|home'
+Add to the chromium invocation in `deploy/kiosk/start-kiosk-wayland.sh`:
+
+```
+    --password-store=basic \
 ```
 
-**Most likely cause:** the login that stuck was done **without** the "Keep me logged in" box checked — that yields a short-lived session token rather than a persistent refresh token. `preselect_remember_me` is true by default, but the box can be unchecked, and any login done through a *different* browser/profile (e.g. a phone) does not help the kiosk.
+Chromium then uses its own file-based store and never touches the keyring, so the dialog cannot appear. Appropriate here: the kiosk stores no passwords worth protecting (the HA refresh token is in the profile's localStorage, not the keyring), and the panel is a fixed-function appliance.
 
-**Fix, if (a) shows no `normal` token:** log in on the **kiosk itself**, with **"Keep me logged in" checked**, then reboot and confirm the token is still in `.storage/auth`.
+⚠️ **The file lives on branch `feat/hardware-deploy`, NOT on `feat/grocy-chores`.** It must be changed there, or on main after merge — do not cross the branches. On the Pi the deployed copy is `/home/garrettdehart/kitchencom/deploy/kiosk/start-kiosk-wayland.sh`; editing the repo alone does not fix the running kiosk.
 
-**Known gotcha from a previous session:** if the login fields appear not to accept input, that was the USB keyboard (G.SKILL KM250) dropping off the input device list — check `/proc/bus/input/devices` and reboot to re-enumerate. It is not an HA problem.
+### Alternative — unlock the keyring at login instead
 
-**Do NOT try `auth_providers: trusted_networks`.** Already attempted and reverted: HA's trusted_networks flow always returns a user-picker form step even with a single user, and a kiosk browser cannot auto-submit it — it sits on the login page and never authenticates. Detail in `pi-power-and-kiosk-login.md`.
+Set the keyring's password to **empty** (`seahorse` → Default Keyring → Change Password → leave blank), which makes it auto-unlock without a prompt. Equivalent security outcome to `--password-store=basic`, more clicks, and it can be undone by a future keyring re-creation. Prefer the flag.
 
-**If truly zero-touch is ever required,** the remaining option is injecting a long-lived token into how the kiosk loads HA (never implemented; would mean a wrapper page or a seeded `hassTokens` localStorage entry — the same mechanism this session used to drive the dev-HA in a headless browser).
+### Do NOT
+- **Delete `~/.local/share/keyrings/`** to make it go away — it is re-created and can take other stored credentials with it.
+- **Disable autologin** — that trades one prompt for another and breaks unattended boot, which is the whole point of the kiosk.
+
+### Verify after fixing
+Reboot with no keyboard input at all and confirm the kiosk lands on the dashboard with no dialog. That is the actual success criterion for "survives a power outage unattended".
