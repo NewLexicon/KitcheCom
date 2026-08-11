@@ -129,9 +129,15 @@ export class GrocyRecipeCard extends LitElement {
           : scaled.length === 0
             ? html`<div class="empty">No ingredients</div>`
             : html`<ul class="ingredients">
+                <!-- A string amount is Grocy's free-text variable_amount ("a
+                     pinch"): render it verbatim, since formatAmount blanks any
+                     non-number, and suppress the unit because the prose already
+                     carries the whole quantity — "a pinch Pound Salt" is nonsense. -->
                 ${scaled.map((i: IngredientRow) => html`
-                  <li><span class="amt">${formatAmount(i.amount as number)}</span>
-                      <span class="unit">${i.unit}</span>
+                  <li><span class="amt">${typeof i.amount === "string"
+                        ? i.amount
+                        : formatAmount(i.amount)}</span>
+                      <span class="unit">${typeof i.amount === "string" ? "" : i.unit}</span>
                       <span class="iname">${i.name}</span></li>`)}
               </ul>`}
         <div class="instructions">${r.instructions}</div>

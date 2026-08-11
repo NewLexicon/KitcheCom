@@ -50,7 +50,9 @@
   const RESOLVED = [
     { id: 10, recipe_id: 1, product_name: "Ground beef", recipe_amount: 2.25, qu_id: 4 },
     { id: 11, recipe_id: 1, product_name: "Tortillas",   recipe_amount: 18,   qu_id: 2 },
-    { id: 12, recipe_id: 1, product_name: "Salt",        recipe_amount: "a pinch", qu_id: 5 },
+    // Grocy coerces a text amount posted to recipe_amount into 0; the text lives
+    // in variable_amount (verified live 2026-08-11). This is the real shape.
+    { id: 12, recipe_id: 1, product_name: "Salt", recipe_amount: 0, recipe_variable_amount: "a pinch", qu_id: 5 },
     { id: 13, recipe_id: 2, product_name: "Flour",       recipe_amount: 2,    qu_id: 6 },
     { id: 14, recipe_id: 2, product_name: "Butter",      recipe_amount: 0.49950000000000006, qu_id: 4 }
   ];
