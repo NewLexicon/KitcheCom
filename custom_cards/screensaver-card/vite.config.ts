@@ -28,7 +28,9 @@ export default defineConfig({
       external: [],
     },
     lib: {
-      entry: resolve(__dirname, "src/screensaver-card.ts"),
+      // import.meta.dirname, not __dirname: vite warns that its future default
+      // config loader cannot supply the CJS global.
+      entry: resolve(import.meta.dirname, "src/screensaver-card.ts"),
       formats: ["es"],
       fileName: () => "screensaver-card.js",
     },

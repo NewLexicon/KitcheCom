@@ -53,7 +53,9 @@ export default defineConfig({
     // One card per invocation (see CARD below) so rollup never has two entries
     // to hoist a shared chunk out of. `npm run build` runs all three.
     lib: {
-      entry: resolve(__dirname, `src/${CARD}.ts`),
+      // import.meta.dirname, not __dirname: vite warns that its future default
+      // config loader cannot supply the CJS global.
+      entry: resolve(import.meta.dirname, `src/${CARD}.ts`),
       formats: ["es"],
       fileName: () => `${CARD}.js`,
     },
