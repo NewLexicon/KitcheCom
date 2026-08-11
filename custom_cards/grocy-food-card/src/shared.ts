@@ -209,6 +209,23 @@ function roundAmount(amount: unknown): number | string {
   return Math.round(amount * 100) / 100;
 }
 
+/** The amount to display: Grocy's free-text `variable_amount` when the recipe
+ *  author set one, otherwise the numeric (pre-scaled) `recipe_amount`.
+ *
+ * WHY (verified against live Grocy 4.6.0, 2026-08-11): posting a text amount to
+ * `amount` COERCES it to 0 — the text is lost. Text amounts live in Grocy's
+ * separate `variable_amount` column, surfaced here as `recipe_variable_amount`.
+ * Without this branch such a row renders "0 Pound Salt" — a wrong quantity on a
+ * cooking screen, which is worse than the blank the spec originally documented.
+ *
+ * A variable amount is NOT scaled: it is prose ("a pinch"), so there is nothing
+ * to multiply, and Grocy does not scale it either. */
+function pickAmount(r: any): number | string {
+  const variable = r?.recipe_variable_amount;
+  if (typeof variable === "string" && variable.trim() !== "") return variable.trim();
+  return roundAmount(r?.recipe_amount);
+}
+
 /** Rows from /objects/recipes_pos_resolved -> IngredientRow[] for one recipe.
  *
  * AMENDED 2026-08-10 (spec §4.2). Previously read `r.name` / `r.unit`, which
@@ -218,6 +235,9 @@ function roundAmount(amount: unknown): number | string {
  *
  * The IngredientRow contract is deliberately unchanged so downstream consumers
  * — scaleIngredients and the DETAIL render — need no edit.
+ *
+ * `amount` prefers Grocy's free-text `recipe_variable_amount` over the numeric
+ * `recipe_amount` — see pickAmount. A text amount is prose and is never scaled.
  *
  * `??` (not `||`) on product_name: an empty-string name passes through as empty,
  * matching parseShoppingItems' posture. Only null/undefined become "(unknown)".
@@ -240,7 +260,7 @@ export function parseIngredients(
       // Grocy pre-scales, but it also emits float noise doing so
       // (0.333 lb x 1.5 came back as 0.49950000000000006). Round here for the
       // same reason scaleIngredients does — formatAmount would print every digit.
-      amount: roundAmount(r?.recipe_amount),
+      amount: pickAmount(r),
       // Own-property + string check, NOT just `?? ""`: a qu_id of "constructor"
       // or "toString" would otherwise resolve to an inherited Object.prototype
       // FUNCTION, which Lit renders as "[native code]" on the kitchen screen.

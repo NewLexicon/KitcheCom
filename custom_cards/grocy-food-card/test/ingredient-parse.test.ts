@@ -50,7 +50,9 @@ describe("parseIngredients (recipes_pos_resolved)", () => {
     expect(rows[0].name).toBe("Ground beef");
   });
 
-  it("preserves a non-numeric amount for formatAmount to blank (spec §4.3)", () => {
+  it("renders a text amount from variable_amount rather than a bogus 0", () => {
+    // Grocy coerces a text amount posted to recipe_amount into 0; the string
+    // here comes from recipe_variable_amount, not from a non-numeric recipe_amount.
     const rows = parseIngredients(ROWS, 1, UNITS);
     expect(rows[2].amount).toBe("a pinch");
   });
@@ -101,5 +103,53 @@ describe("parseIngredients (recipes_pos_resolved)", () => {
       [{ id: 1, recipe_id: 1, product_name: "", recipe_amount: 1, qu_id: 4 }] as any,
       1, UNITS);
     expect(out[0].name).toBe("");
+  });
+
+  it("prefers recipe_variable_amount when Grocy stored a text amount", () => {
+    // Live Grocy 4.6.0: posting amount:"a pinch" COERCES it to 0 and the text is
+    // lost; text amounts live in variable_amount instead. Without this branch the
+    // row renders "0 Pound Salt" — a wrong quantity on a cooking screen.
+    const out = parseIngredients(
+      [{ id: 1, recipe_id: 1, product_name: "Salt", recipe_amount: 0,
+         recipe_variable_amount: "a pinch", qu_id: 5 }] as any,
+      1, UNITS);
+    expect(out[0].amount).toBe("a pinch");
+    expect(out[0].name).toBe("Salt");
+  });
+
+  it("ignores an empty or whitespace-only variable amount", () => {
+    for (const v of ["", "   ", null, undefined]) {
+      const out = parseIngredients(
+        [{ id: 1, recipe_id: 1, product_name: "Flour", recipe_amount: 2,
+           recipe_variable_amount: v, qu_id: 6 }] as any,
+        1, UNITS);
+      expect(out[0].amount).toBe(2);
+    }
+  });
+
+  it("uses the variable amount even when recipe_amount is a real number", () => {
+    // Grocy keeps both fields; when a variable amount is set it is what the
+    // recipe author actually wrote, so it wins.
+    const out = parseIngredients(
+      [{ id: 1, recipe_id: 1, product_name: "Pepper", recipe_amount: 3,
+         recipe_variable_amount: "to taste", qu_id: 5 }] as any,
+      1, UNITS);
+    expect(out[0].amount).toBe("to taste");
+  });
+
+  it("trims a variable amount rather than rendering stray whitespace", () => {
+    const out = parseIngredients(
+      [{ id: 1, recipe_id: 1, product_name: "Salt", recipe_amount: 0,
+         recipe_variable_amount: "  a pinch  ", qu_id: 5 }] as any,
+      1, UNITS);
+    expect(out[0].amount).toBe("a pinch");
+  });
+
+  it("ignores a non-string variable amount", () => {
+    const out = parseIngredients(
+      [{ id: 1, recipe_id: 1, product_name: "Flour", recipe_amount: 2,
+         recipe_variable_amount: 42, qu_id: 6 }] as any,
+      1, UNITS);
+    expect(out[0].amount).toBe(2);
   });
 });
