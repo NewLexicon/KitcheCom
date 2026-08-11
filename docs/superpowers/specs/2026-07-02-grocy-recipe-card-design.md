@@ -1,14 +1,15 @@
 # KitchenCOM × Grocy — Slice 2: Recipe Repository Card
 
-**Date:** 2026-07-02 (design presented) · **approved 2026-08-05** · spec written 2026-08-05 · **AMENDED 2026-08-10**
-**Status:** Tasks 1–8 shipped 2026-08-06. **Tier-2 probing 2026-08-07 resolved all four OQs and overturned two locked decisions — §2.1 (transport) and §4.2 (ingredient source) are AMENDED.** Follow-on plan: `docs/superpowers/plans/2026-08-10-grocy-s2-resolved-switch.md`.
+**Date:** 2026-07-02 (design presented) · **approved 2026-08-05** · spec written 2026-08-05 · **AMENDED 2026-08-10 and again 2026-08-11**
+**Status:** Implementation shipped 2026-08-10; **Tier-2-verified against live Grocy 4.6.0 on 2026-08-11.** Plan: `docs/superpowers/plans/2026-08-10-grocy-s2-resolved-switch.md`.
 
-> **⚠️ READ THIS BEFORE THE BODY.** Two sections carry 2026-08-10 amendment blocks that **supersede the original text beneath them**. The originals are retained for provenance, struck or marked where superseded — do not implement from them.
-> - **§2.1 — transport.** Whole-library Option A measured ~5× over the HA attribute ceiling. **Now a hybrid:** thin list sensor for LIST + per-recipe `rest_command` for DETAIL.
-> - **§4.2 — ingredient source.** `recipes_pos_resolved` (an endpoint this spec never found) joins server-side and pre-scales. **Fixes a confirmed live defect** where every ingredient rendered `"(unknown)"`.
-> - **§4.3, §6, §8** carry smaller amendment notes flowing from those two.
+> **⚠️ READ THIS BEFORE THE BODY.** Several sections carry amendment blocks that **supersede the text beneath them**. Originals are retained for provenance, struck or marked where superseded — **do not implement from them.**
+> - **§2.1 — transport. AMENDED TWICE; read the 2026-08-11 block, not the 2026-08-10 one.** The 2026-08-10 hybrid's list-sensor half turned out to be **impossible** — HA cannot extract a bare JSON array into attributes. **Both views now fetch on demand** via `rest_command`.
+> - **§4.2 — ingredient source.** `recipes_pos_resolved` joins server-side and pre-scales. **Fixed a confirmed live defect** where every ingredient rendered `"(unknown)"` — now verified fixed against live data.
+> - **§4.3 — text amounts. AMENDED 2026-08-11:** `recipe_amount` is **never** non-numeric; Grocy stores free text in a separate `variable_amount` field.
+> - **§6, §8** carry smaller notes flowing from those.
 >
-> Empirical basis for every amendment: `docs/session-state/2026-08-07-grocy-tier2-s2-findings.md` (live Grocy 4.6.0).
+> **Empirical basis:** `docs/session-state/2026-08-07-grocy-tier2-s2-findings.md` (first probe) and **`docs/session-state/2026-08-11-grocy-tier2-verification.md` (verification + the two 2026-08-11 findings — newer, read this one where they differ).**
 **Parent roadmap:** `2026-07-02-grocy-food-ops-roadmap.md` — **read §8 first** (the architecture constraint is settled there and is load-bearing for this spec).
 **Sibling slice:** `2026-07-02-grocy-food-slice1-design.md` — S2 mirrors S1's card shape, testing posture, and fail-safe discipline. Where this spec says "as S1," that is a deliberate reuse, not an omission.
 
@@ -32,7 +33,29 @@ Slice 2 puts the household's Grocy recipes on the kitchen screen as a **browse-a
 
 This was decided against the alternative of a direct browser fetch. Grocy does ship permissive CORS (`Access-Control-Allow-Origin: *`, verified in source and a packet capture), so a browser fetch is not blocked *by Grocy*. It was rejected anyway because: the `GROCY-API-KEY` header triggers a preflight whose success through the linuxserver image's nginx is unverified; it would expose a **full-scope read+write API key** in the browser; and wildcard-header behavior varies by browser version. None of those risks buy anything the proxy doesn't already give.
 
-### 2.1 Transport — AMENDED 2026-08-10: hybrid (thin list sensor + per-recipe fetch)
+### 2.1 Transport — AMENDED AGAIN 2026-08-11: fully on-demand (the list sensor is impossible)
+
+> **⚠️ SECOND AMENDMENT (2026-08-11) — supersedes the 2026-08-10 hybrid below.** The hybrid's LIST half **cannot be built.** `sensor.grocy_recipes` can never populate, so LIST rendered "No recipes" forever and DETAIL was unreachable.
+>
+> **Why, verified two ways:**
+> 1. **Live Grocy 4.6.0 (2026-08-11):** `GET /api/objects/recipes` returns a **bare JSON array**, not an object.
+> 2. **HA source (`reference/core-dev/homeassistant/components/rest/`):** `json_attributes` are parsed from the **raw body before `value_template` runs** (`sensor.py:170-175`), so no template can reshape the payload. Then `parse_json_attributes` (`util.py:28-31`) takes `json_dict[0]` of a list and extracts named keys only if that is a dict — so a bare array yields the *first recipe*, which has no `recipes` key → `{}`. Tested against HA's pinned `jsonpath==0.82.2`: `$` returns `False` on an array, and `$[*]` / `$..*` / `$.*` all collapse back to `[0]`. **No `rest`-platform configuration works.**
+>
+> **DECISION — both views fetch on demand.** LIST uses the same `rest_command` + `returnResponse` transport DETAIL already uses and that is proven against live Grocy:
+>
+> - **LIST** → `rest_command.grocy_recipe_list` against `/objects/recipes`. **Measured 1,334 B for 4 recipes**; ~8 KB at 25. No attribute ceiling applies, because nothing goes into HA state.
+> - **DETAIL** → `rest_command.grocy_recipe_ingredients` with `query[]=recipe_id=N` (**5,084 B → 1,526 B**, verified).
+> - **Units** → `rest_command.grocy_quantity_units`, **861 B**, fetched once and cached.
+>
+> **What this costs, stated plainly:** LIST no longer renders instantly from cached HA state, so it shows a brief loading state on open, and it does **not** survive a Grocy outage the way a polled sensor would — an outage now yields "No recipes" rather than stale-but-present tiles. That is the price of the only configuration that works at all. The **~50-recipe ceiling tripwire** from the 2026-08-10 amendment is now **moot** — nothing enters HA attributes.
+>
+> **The `recorder:` exclude is also moot** and removed with the sensor.
+>
+> **Consequence for the card:** `grocy-recipe-card` no longer reads `hass.states` at all. It diverges from S1's two cards, which remain sensor-backed — that divergence is forced, not chosen.
+
+---
+
+### ~~2.1 Transport — AMENDED 2026-08-10: hybrid (thin list sensor + per-recipe fetch)~~ (SUPERSEDED)
 
 > **⚠️ AMENDMENT (2026-08-10).** OQ-S2-1 was resolved by measurement on 2026-08-07 and **the answer overturned this section's recommendation.** Option A as originally scoped — *all* recipes AND *all* ingredients in one sensor's attributes — **does not scale**, so the decision below supersedes the "Recommendation: Option A" that follows. The original A-vs-B reasoning is retained beneath it because the hybrid is built from both halves.
 >
@@ -144,6 +167,14 @@ Expected per recipe: `id`, `name`, `description` (the instructions — **HTML**,
 Expected per row: `id`, `recipe_id`, `product_id`, `amount`, `qu_id`, optional `note`. **Confirmed exactly right at Tier-2** — but these are IDs, not names, and raw `recipes_pos` carries no `product_name`. Rendering "2 cups Flour" from *this* endpoint would require joining → `products` → `quantity_units` card-side. The resolved endpoint above removes that need.
 
 ### 4.3 `scaleIngredients` — the one real pure function
+
+> **⚠️ AMENDED 2026-08-11 — the "non-numeric `amount`" analysis below is EMPIRICALLY WRONG.** This section's pass-through/blank collision (and its "a pinch renders as a blank quantity" conclusion) assumed a text amount arrives as a **string in `recipe_amount`**. **It cannot.** Verified against live Grocy 4.6.0: posting `amount: "a pinch"` **coerces it to `0`** and the text is lost. Grocy stores free-text amounts in a separate **`variable_amount`** column, surfaced on the resolved endpoint as **`recipe_variable_amount`**.
+>
+> **So the documented "blank quantity" behavior never occurs.** Left unhandled, such a row would render **`0 Pound Salt`** — a *wrong quantity* on a cooking screen, strictly worse than a blank.
+>
+> **Implemented 2026-08-11:** `parseIngredients` prefers a non-empty, trimmed `recipe_variable_amount` over the numeric `recipe_amount` (`pickAmount` in `shared.ts`), and the DETAIL render shows a string amount **verbatim** while **suppressing the unit** — `"a pinch Pound Salt"` reads as nonsense, so a prose amount carries the whole quantity by itself. A variable amount is **never scaled**: it is prose, and Grocy does not scale it either.
+>
+> **`formatAmount` is still NOT modified** — it is shared with S1's shopping card. The render layer branches on `typeof amount === "string"` before calling it.
 
 > **⚠️ AMENDED 2026-08-10 — display-redundant, but DO NOT DELETE IT.** `recipes_pos_resolved` pre-scales `recipe_amount` server-side (§4.2), so this function no longer runs on the DETAIL render path. It is **retained deliberately**, for three reasons:
 > 1. **It is the hook for adjustable servings** (§5.3, §8). The moment a +/− control lands, Grocy's own `desired_servings` is the wrong factor and the client must scale — this function already takes `desiredServings` as a parameter precisely for that.
