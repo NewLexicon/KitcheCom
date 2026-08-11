@@ -1,30 +1,41 @@
-# Cold-open handoff — Grocy Food-Ops (S2 COMPLETE: plan + Tier-2 + the HA gate)
+# Cold-open handoff — Grocy Food-Ops (S2 COMPLETE and RENDERING in a real HA)
 
-**Date:** 2026-07-02 (last refreshed **2026-08-11**, after the HA gate closed)
+**Date:** 2026-07-02 (last refreshed **2026-08-11**, after the card rendered in HA)
 **Branch:** `feat/grocy-chores` (in the worktree `.worktrees/grocy-chores`)
 **Status (two threads, at DIFFERENT gates):**
-1. **S1 (meal-plan + shopping cards): Tasks 1–9 shipped 2026-08-05. Task 10 (Tier-2) STILL NOT RUN.** It needed a dev-HA container — **one now exists** (`deploy/homeassistant/`), so this is newly unblocked. **S1's OQ-1/2/3 remain open** (they additionally need HACS + the grocy integration). **Task 11 deliberately DEFERRED** (§5).
-2. **S2 (recipe card): COMPLETE.** All 9 plan tasks done, Tier-2-verified against live Grocy 4.6.0, **and the transport verified inside a real HA 2025.7 on 2026-08-11.** The `"(unknown)"` defect is fixed; the CRITICAL LIST-sensor defect is **resolved** (§4.0); text amounts fixed, pictures scoped out. 92 tests green, typecheck clean.
+1. **S1 (meal-plan + shopping cards): Tasks 1–9 shipped 2026-08-05. Task 10 (Tier-2) STILL NOT RUN.** It needed a dev-HA container — **one now exists** (`deploy/homeassistant/`), so this is newly unblocked. **S1's two cards also carried the bare-specifier defect fixed on 2026-08-11** — they have never loaded in a real HA either. **S1's OQ-1/2/3 remain open** (they additionally need HACS + the grocy integration). **Task 11 deliberately DEFERRED** (§5).
+2. **S2 (recipe card): COMPLETE and CONFIRMED RENDERING.** All 9 plan tasks done, Tier-2-verified against live Grocy 4.6.0, transport verified inside HA 2025.7, **and the card seen rendering in an HA dashboard on 2026-08-11.** The `"(unknown)"` defect is fixed; the CRITICAL LIST-sensor defect is **resolved** (§4.0); text amounts fixed, pictures scoped out; the packaging defect that made every card unloadable is fixed.
 
-## ▶ START HERE (2026-08-11 — S2's last gate is CLOSED)
+## ▶ START HERE (2026-08-11 — S2 is functionally done)
 
-**All 9 plan tasks are DONE and the HA gate is CLOSED. No known blocker remains on S2.**
+**All 9 plan tasks are DONE, the HA gate is CLOSED, and the card renders. No known blocker remains on S2.**
 
-**Empirical state:** 92 tests / 13 files passing, typecheck 0 errors, build clean, all local imports carry `.js`.
+**Empirical state:** **100 tests / 14 files** passing in `grocy-food-card`, typecheck 0 errors, build clean (**vite, not tsc** — see below). `screensaver-card` also green on all three gates.
 
 **The HA gate that was owed is now closed.** Both source-read assumptions are confirmed against a running HA:
 - **`{{ recipe_id }}` templating WORKS** — `recipe_id` 1 vs 2 returned 3 rows each with distinct ids `[1]` / `[2]`. Had templating failed, both would have returned all 10 rows.
 - **`returnResponse` shape is as coded** — `service_response` = `{content, status}`; `content` is the array the card reads.
 - Recipe 1 renders end-to-end through HA as `2.25 Pound Ground beef` / `18 Piece Tortillas`.
 
-**What is still NOT covered** (be precise about this — do not overclaim S2 as shipped):
-- **The card has never been SEEN rendering in an HA dashboard.** The dashboard is **already built and waiting** (see next move); the render could not be confirmed because the automation browser nulls `customElements`, so no HA dashboard renders in it. Zero console errors, and `/local/recipe-card.js` served 200 — nothing points at a card defect, but nobody has looked at it. Rendering is separately covered by the demo harness (0 console errors, 2026-08-10).
+**✅ THE CARD RENDERS IN A REAL HA DASHBOARD — confirmed visually by Garrett, 2026-08-11.** Corroborated server-side: the newest `frontend.js.modern` error in the HA log is from *before* the fix; the successful render logged nothing.
+
+**Getting there surfaced a defect that would have shipped broken to the Pi:**
+- **Every card was unloadable in any browser.** `tsc` emitted bare `import ... from "lit"`, which no browser can resolve — HA showed only "Configuration error". **All four cards** (recipe, mealplan, shopping, screensaver) were affected. Fixed by bundling with vite (`b008280`); guarded by `test/dist-browser-loadable.test.ts` in both packages.
+- **Both prior checks masked it** — Vitest resolves through `node_modules`, and the demo declared an importmap pointing `"lit"` at a CDN. The card was "browser-verified" on 2026-08-10 and still could not load in HA. The demo's importmap is now removed.
+- **⚠️ The screensaver card may be broken on the Pi right now** if it was deployed from a `tsc` build. INSTALL Phase C carries the rebuild warning. **Verify this next time you touch the Pi.**
+
+**What is still NOT covered:**
 - The card's **WebSocket** `callService` path specifically — verified over REST; both share the same service layer and envelope.
+- **DETAIL was rendered but not separately instrumented** — the LIST view and the overall render are confirmed.
 
 **Next move — pick one:**
-- **⭐ Look at the dashboard in a NORMAL browser — ~2 minutes.** Open `http://localhost:8124/lovelace/recipes`, login `dev` / `devdevdev`. **The resource is registered and the dashboard is built** — nothing to configure. Expect 4 tiles; click one for pre-scaled ingredients. **Do not retry this with the `browser-automation` skill** — it uses patchright, which nulls `customElements` and cannot render any HA frontend (details in the HA-gate doc §6a).
-- **S1 Task 10 (Tier-2)** — newly unblocked by the same dev-HA.
-- **Merge** — see §5 / `superpowers:finishing-a-development-branch`.
+- **S1 Task 10 (Tier-2)** — unblocked by the dev-HA, and now *more* valuable: S1's two cards had the same bare-specifier defect, so they have never actually loaded in HA either.
+- **Merge** — see §5 / `superpowers:finishing-a-development-branch`. 82 commits is a lot of unmerged work.
+- **Rebuild + redeploy the screensaver card to the Pi** — it is the one piece of this that may be broken in production.
+
+> **⚠️ Do not verify an HA render with the `browser-automation` skill.** It resolves patchright, which nulls `customElements`; no HA dashboard renders in it, and it reports 0 errors while verifying nothing. Only a human with a normal browser can confirm a render. Details: HA-gate doc §6a.
+>
+> **⚠️ Bump the resource version on every redeploy** (`/local/recipe-card.js?v=N`). Browsers cache Lovelace modules through a hard refresh; a stale module looks exactly like "Configuration error". HA logs the browser's real error under `frontend.js.modern` in `/config/home-assistant.log` — that is the fastest way to tell cache from code.
 
 **Read, in order:**
 1. **The HA gate result (newest):** `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores/docs/session-state/2026-08-11-ha-gate-verification.md`
@@ -60,9 +71,13 @@ Both persist data in gitignored dirs, so teardown is safe. To rebuild the dev-HA
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `b6a4abe` — `docs: record the in-HA render attempt — server side done, browser side blocked`, **plus the fix-up commit that set this line.** Last **card-code** commit is still `759b905` (pictures disabled); the HA gate needed no code change.
+- **HEAD:** `9c26485` — `docs: the browser cache masks a fixed card as 'Configuration error'`, **plus the docs + fix-up commits that set this line.** Last **card-code** commit is `b008280` (the bundling fix — the first card-code change since `759b905`).
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** **80** commits (79 at `b6a4abe`, +1 for the fix-up). Worktree clean.
+- **Ahead of main:** **82** commits (82 at `9c26485`, +1 for the close-out, +1 for the fix-up). Worktree clean.
+
+### 2026-08-11 (latest) — the render, and the defect it caught
+- `9c26485` — the browser cache masks a fixed card as "Configuration error"; `frontend.js.modern` in the HA log is how to tell cache from code
+- `b008280` — **FIX: bundle the cards.** Bare `"lit"` imports made **all four** cards unloadable in any browser. vite lib build per card; `dist-browser-loadable` guard tests in both packages; demo importmap removed; INSTALL updated.
 
 ### 2026-08-11 (later) — the HA gate
 - `6962635` — **dev-HA harness + the gate result.** `{{ recipe_id }}` templating and the `returnResponse` shape both CONFIRMED inside HA 2025.7. Adds `deploy/homeassistant/` (compose + `dev-configuration.yaml` + `dev-setup.sh`); no card code changed. Found that the repo's `configuration.yaml` is a merge fragment with no `default_config:`.

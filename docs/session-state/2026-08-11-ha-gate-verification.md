@@ -68,22 +68,70 @@ Worth keeping in mind: `status` (200 here) rides alongside `content`. Per Tier-2
 
 **Identical to the Tier-2 curl output, now via HA's service layer.** The `"(unknown)"` defect stays fixed across the real transport.
 
-## 6. What this does NOT cover
+## 6. ✅ The card renders in a real HA dashboard — CONFIRMED
 
-- **The card rendering inside an HA dashboard — ATTEMPTED, BLOCKED BY TOOLING.** See §6a. The transport is verified; the in-HA *render* is not. Rendering is separately covered by the demo harness (2026-08-10, 0 console errors).
+**Confirmed visually by Garrett on 2026-08-11**, at `http://localhost:8124/lovelace/recipes` in a normal browser. Corroborated server-side: the newest `frontend.js.modern` error in `home-assistant.log` is **11:24:37**, from *before* the cache-bust — the successful render logged nothing.
+
+Getting there took two real fixes, both now in the repo:
+
+1. **Every card was unloadable in any browser** (§6b). `tsc` emitted bare `import ... from "lit"`; HA showed only "Configuration error". Fixed by bundling — commit `b008280`.
+2. **The browser cached the broken module** (§6c) and kept throwing the old error six minutes after the fixed file was deployed. Fixed by versioning the resource URL.
+
+**What is still not covered:** the card's WebSocket `callService` path was verified over the REST API rather than driven from a browser — both share the same service layer and envelope. The DETAIL view (clicking a recipe) was rendered but not separately instrumented.
 - **The WebSocket `callService` path specifically.** Verified over the REST API. Both funnel into the same service layer and the same `service_response`, but the card's exact `hass.callService(..., returnResponse=true)` call was not driven from a browser.
 - **S1's OQ-1/2/3** — untouched; they need HACS + the grocy integration, neither installed here.
 
-## 6a. The in-HA render attempt — server side DONE, browser side blocked
+## 6b. ⚠️ THE BIG ONE — every card was unloadable in any browser
+
+**The in-HA render is what caught this. Nothing else could have.**
+
+`tsc` emits import specifiers verbatim, so `import { LitElement } from "lit"` survived into `dist/`. A browser cannot resolve a **bare specifier**:
+
+```
+TypeError: Failed to resolve module specifier "lit".
+Relative references must start with either "/", "./", or "../".
+```
+
+The module never evaluates → the custom element never registers → HA renders a bare **"Configuration error"** with no hint at the cause.
+
+**Scope: all four cards** — recipe, mealplan, shopping, and the screensaver (which had two bad specifiers). S1's cards had it, and the screensaver **may be broken on the Pi right now** if it was deployed from a `tsc` build. INSTALL Phase C carries the rebuild warning.
+
+**Why every prior check passed.** Both supplied a resolution HA does not:
+- **Vitest** resolves through `node_modules`.
+- **`demo/index.html`** declared an `importmap` pointing `"lit"` at a CDN.
+
+The card was "browser-verified" on 2026-08-10 in that demo and still could not load in HA. **Same class of error as the fixture bug: passing against conditions the real environment cannot produce.**
+
+**Fix (`b008280`):** a vite lib build per card, inlining lit + `shared.ts`. Each `dist/*.js` is self-contained — **there is no `shared.js` any more.** The Grocy package builds *one card per vite invocation* deliberately: with three entries, rollup hoisted shared code into a hashed sibling chunk (`shared-DNWEGC0a.js`), which would mean a second file to deploy under a name that changes every build.
+
+**Guard:** `test/dist-browser-loadable.test.ts` in both packages asserts `dist/` contains **no imports at all** — bare *or* relative. Both were confirmed RED against the old output first. The demo's importmap is removed, so the harness now represents HA instead of masking it.
+
+## 6c. The browser cache masks a fixed card as broken
+
+After the fix was deployed, the dashboard still showed "Configuration error" — the served file had zero imports, but the browser was running a cached copy and threw the *old* error six minutes later. A hard refresh (Cmd+Shift+R) does **not** reliably re-fetch a Lovelace module.
+
+**Fix:** version the resource URL (`/local/recipe-card.js?v=2`) and bump on every redeploy.
+
+**The debugging lever that resolved it:** HA logs the browser's real error under `frontend.js.modern` in `/config/home-assistant.log`. That converts a useless "Configuration error" into an actual stack trace:
+
+```bash
+docker exec kitchencom-ha-dev grep frontend.js /config/home-assistant.log | tail
+```
+
+**When a card misbehaves right after a redeploy, suspect the cache before the code.**
+
+## 6a. Server-side setup (all persisted — no need to redo)
 
 **Everything server-side is in place and persisted.** A future session does not need to redo any of it:
 
-- **Resource registered:** `/local/recipe-card.js`, type `module`, id `fe537002b11e4a178671914b898cca10` (in `.storage/lovelace_resources`).
+- **Resource registered:** `/local/recipe-card.js?v=2`, type `module`, id `fe537002b11e4a178671914b898cca10` (in `.storage/lovelace_resources`). **Bump `?v=` on every redeploy** — see §6c.
 - **Dashboard written:** the default storage-mode dashboard holds one view `Recipes` with a single `custom:grocy-recipe-card` (in `.storage/lovelace`). The card takes **no `entity`**.
 - **Onboarding fully complete** — all four steps (`user`, `core_config`, `analytics`, `integration`). *Creating the user alone is not enough*: HA redirects to `onboarding.html` until all four are done, which looks exactly like a broken dashboard.
-- **The module is served and fetched:** `/local/recipe-card.js` returns **200**, and the browser was observed requesting it twice while loading the dashboard.
+- **Dev login:** `dev` / `devdevdev`. A long-lived token was minted for API work.
 
-**Why the render could not be confirmed:** the automation browser (patchright, a stealth Playwright fork) **nulls `customElements`** as an anti-detection measure. Probed directly:
+### ⚠️ Do not try to verify a render with the `browser-automation` skill
+
+It resolves **patchright**, a stealth Playwright fork that **nulls `customElements`**. HA's frontend is entirely custom elements, so no HA dashboard renders in it — ours or anyone's:
 
 ```
 customElements:        "NULLED"
@@ -92,11 +140,9 @@ homeAssistantHasShadow: true     with a shadow root
 bodyLen:               0         ...rendering nothing
 ```
 
-HA's entire frontend is custom elements, so with the registry nulled **no HA dashboard can render in this browser** — ours or anyone's. Zero console errors and zero failed requests throughout: nothing suggests a card defect. Two red herrings on the way, both harness-side, both fixed: Chrome's Local Network Access policy blocking `ws://localhost` (`ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS` — needs `--disable-features=LocalNetworkAccessChecks`), and evaluates throwing `Cannot read properties of null (reading 'get')` whenever they touched `customElements`.
+It reports **zero console errors and zero failed requests** while showing nothing, so it reads as "clean" when it has actually verified nothing. **A human with a normal browser is the only way to confirm an HA render** — and it was a human doing exactly that which caught the bare-specifier defect in §6b after the automated pass called it clean.
 
-**To finish this in ~2 minutes: open `http://localhost:8124/lovelace/recipes` in a normal browser** (login `dev` / `devdevdev`). The dashboard is already built. Expect 4 recipe tiles; click one for pre-scaled ingredients. A real browser has no stealth patching, so this is purely a "look at it" step.
-
-Do not re-attempt with the `browser-automation` skill — it resolves the same patchright driver and will fail identically.
+One further harness gotcha if driving HA's *API* (not rendering): Chrome's Local Network Access policy blocks `ws://localhost`, needing `--disable-features=LocalNetworkAccessChecks`.
 
 ## 7. Reproducing
 
