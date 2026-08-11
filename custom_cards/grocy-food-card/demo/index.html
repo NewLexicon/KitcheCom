@@ -66,7 +66,8 @@
   const fakeCallService = (domain, service, data, target, notify, returnResponse) => {
     console.log("callService", domain, service, data);
     const content =
-      service === "grocy_recipe_ingredients"
+      service === "grocy_recipe_list" ? RECIPES
+      : service === "grocy_recipe_ingredients"
         ? RESOLVED.filter((r) => r.recipe_id === data.recipe_id)
         : service === "grocy_quantity_units" ? UNITS : [];
     return new Promise((resolve) =>

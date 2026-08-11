@@ -3,7 +3,7 @@ import { LitElement, html, css, nothing } from "lit";
 // and browsers cannot resolve extensionless module paths (spec §3).
 import {
   parseRecipes, parseIngredients, formatAmount,
-  fetchIngredients, fetchUnitMap,
+  fetchIngredients, fetchUnitMap, fetchRecipes,
   type RecipeRow, type IngredientRow,
 } from "./shared.js";
 
@@ -21,28 +21,53 @@ export class GrocyRecipeCard extends LitElement {
     _selectedId: { state: true },
     _ingredients: { state: true },
     _loading: { state: true },
+    _recipeRows: { state: true },
+    _listLoading: { state: true },
   };
   hass?: HassLike;
-  private _entity = "sensor.grocy_recipes";
   private _selectedId: number | null = null;   // null = LIST view, else DETAIL
   private _ingredients: IngredientRow[] = [];
   private _loading = false;
   private _unitMap: Record<number, string> = {};
   private _unitMapLoaded = false;
   private _fetchSeq = 0;
+  private _recipeRows: RecipeRow[] = [];
+  private _listLoading = false;
+  private _listLoaded = false;
 
-  setConfig(config: Record<string, unknown>): void {
-    if (typeof config?.entity === "string" && config.entity) this._entity = config.entity;
+  setConfig(_config: Record<string, unknown>): void {
+    // No entity to configure: the recipe list is fetched on demand, not read
+    // from hass.states (spec §2.1, amended 2026-08-11 — the sensor cannot work).
   }
 
-  private get _attrs(): any {
-    return this.hass?.states?.[this._entity]?.attributes ?? {};
-  }
-  private get _recipes(): RecipeRow[] {
-    return parseRecipes(this._attrs.recipes);
-  }
   private get _selected(): RecipeRow | undefined {
-    return this._recipes.find((r) => r.id === this._selectedId);
+    return this._recipeRows.find((r) => r.id === this._selectedId);
+  }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    void this._loadList();
+  }
+
+  updated(changed: Map<string, unknown>): void {
+    // `hass` is assigned after the element is created, so connectedCallback may
+    // have run before callService existed. Retry when hass first lands.
+    if (changed.has("hass")) void this._loadList();
+  }
+
+  private async _loadList(): Promise<void> {
+    if (this._listLoaded || this._listLoading) return;
+    if (typeof this.hass?.callService !== "function") return;
+    this._listLoading = true;
+    try {
+      const raw = await fetchRecipes(this.hass);
+      this._recipeRows = parseRecipes(raw);
+      // Only latch on a non-empty result so a Grocy blip at startup retries on
+      // the next hass update instead of leaving the screen empty until reboot.
+      if (this._recipeRows.length > 0) this._listLoaded = true;
+    } finally {
+      this._listLoading = false;
+    }
   }
 
   private async _open(id: number): Promise<void> {
@@ -87,8 +112,9 @@ export class GrocyRecipeCard extends LitElement {
   }
 
   private _renderList() {
-    const recipes = this._recipes;
-    if (recipes.length === 0) return html`<div class="empty">No recipes</div>`;
+    const recipes = this._recipeRows;
+    if (recipes.length === 0)
+      return html`<div class="empty">${this._listLoading ? "Loading recipes…" : "No recipes"}</div>`;
     return html`
       <div class="grid">
         ${recipes.map((r) => html`

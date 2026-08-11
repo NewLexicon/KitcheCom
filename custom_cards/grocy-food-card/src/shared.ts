@@ -320,6 +320,27 @@ export async function fetchIngredients(hass: CallServiceHass | undefined, recipe
   }
 }
 
+/** The recipe list, fetched on demand.
+ *
+ * WHY NOT A SENSOR (spec §2.1, amended 2026-08-11): Grocy's /objects/recipes
+ * returns a BARE ARRAY, and HA's rest sensor extracts json_attributes by taking
+ * [0] of a list and pulling named keys off it — so a bare array yields the first
+ * recipe, which has no `recipes` key, and the sensor is permanently empty. No
+ * jsonpath expression works. On-demand fetch is the only transport available.
+ *
+ * Failures resolve to [] rather than rejecting, matching fetchIngredients. */
+export async function fetchRecipes(hass: CallServiceHass | undefined): Promise<any[]> {
+  if (typeof hass?.callService !== "function") return [];
+  try {
+    const res = await hass.callService(
+      "rest_command", "grocy_recipe_list", {}, undefined, false, true);
+    const content = res?.response?.content;
+    return Array.isArray(content) ? content : [];
+  } catch {
+    return [];
+  }
+}
+
 /** The qu_id -> name map, fetched once and cached by the caller.
  *  ~900 B and static, so a failure degrades to blank units, not a broken view. */
 export async function fetchUnitMap(hass: CallServiceHass | undefined): Promise<Record<number, string>> {
