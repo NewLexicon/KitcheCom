@@ -73,7 +73,7 @@ native Grocy UI is never shown on the kitchen screen.
    with the Phase C copy of `homeassistant/*`), then add three entries to
    `/config/secrets.yaml`:
    ```yaml
-   # Recipe list — LIST view (polled every 600s into sensor.grocy_recipes)
+   # Recipe list — LIST view, fetched when the card mounts (1,334 B for 4 recipes)
    grocy_recipes_url: "http://<pi-host>:9283/api/objects/recipes"
 
    # One recipe's resolved ingredients — DETAIL view, fetched on open.
@@ -82,7 +82,7 @@ native Grocy UI is never shown on the kitchen screen.
    grocy_recipe_ingredients_url: >-
      http://<pi-host>:9283/api/objects/recipes_pos_resolved?query%5B%5D=recipe_id%3D{{ recipe_id }}
 
-   # Unit names for qu_id — fetched once per card load, ~900 B, static.
+   # Unit names for qu_id — fetched once per card load, 861 B, static.
    grocy_quantity_units_url: "http://<pi-host>:9283/api/objects/quantity_units"
 
    # API key (shared by all three)
@@ -90,23 +90,31 @@ native Grocy UI is never shown on the kitchen screen.
    ```
    > `secrets.yaml` is gitignored — enter these on the target machine, never commit them.
    >
-   > **Why three URLs and not one sensor:** the whole recipe library in a single sensor's
-   > attributes measures ~85 KB at 25 recipes against HA's ~16 KB attribute ceiling, and
-   > it **truncates silently** rather than erroring. The list is small (~8 KB) and stays in
-   > the sensor; ingredients are fetched one recipe at a time. See spec §2.1.
+   > **Why three `rest_command`s and NO sensor** (verified twice, 2026-08-11): a `rest`
+   > sensor **cannot** carry this data. Grocy's `/objects/recipes` returns a **bare JSON
+   > array**, and HA parses `json_attributes` from the raw body *before* `value_template`
+   > runs, then takes `[0]` of a list and pulls named keys off it — so a bare array yields
+   > the first recipe, which has no `recipes` key, and the sensor stays permanently empty.
+   > No jsonpath expression fixes it. All three views therefore fetch on demand. See spec §2.1.
    >
    > **The `%5B%5D` and `%3D` are required** — they are URL-encoded `[]` and `=`. Grocy's
    > filter syntax is `query[]=recipe_id=N`, and an unencoded `[` will not survive the
-   > request.
+   > request. (Verified that HA/yarl does **not** double-encode these under the default
+   > `skip_url_encoding: false`.)
 
-   Restart HA, then confirm in Developer Tools → States that `sensor.grocy_recipes` exists
-   and carries a `recipes` attribute. Register `/local/recipe-card.js` (module) alongside
-   the step-5 resources, and add the card:
+   Restart HA, then confirm in Developer Tools → Actions that the three
+   `rest_command.grocy_*` actions exist. **There is no `sensor.grocy_recipes` to look for —
+   it was removed deliberately.** Register `/local/recipe-card.js` (module) alongside the
+   step-5 resources, and add the card:
    ```yaml
    - type: custom:grocy-recipe-card
-     entity: sensor.grocy_recipes
    ```
-   > The card will now fetch ingredients and units on demand when a recipe opens.
+   > **No `entity:` option** — the card takes no configuration. It fetches the recipe list
+   > when it mounts, then ingredients and units on demand when a recipe opens.
+   >
+   > **Trade-off to expect:** LIST shows a brief "Loading recipes…" on first paint, and if
+   > Grocy is unreachable it shows "No recipes" rather than stale tiles — nothing is cached
+   > in HA state any more.
 
 ## Phase C — Deploy these files
 1. Copy `homeassistant/*` into HA's `/config`.
