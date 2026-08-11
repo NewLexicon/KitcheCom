@@ -60,9 +60,9 @@ Both persist data in gitignored dirs, so teardown is safe. To rebuild the dev-HA
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `ef4d0a9` — `docs: refresh cold-open — HA gate closed, S2 has no known blocker`, **plus the fix-up commit that set this line.** Last **card-code** commit is still `759b905` (pictures disabled); the HA gate needed no code change.
+- **HEAD:** `b6a4abe` — `docs: record the in-HA render attempt — server side done, browser side blocked`, **plus the fix-up commit that set this line.** Last **card-code** commit is still `759b905` (pictures disabled); the HA gate needed no code change.
 - **Branch:** `feat/grocy-chores`, in worktree `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/grocy-chores`
-- **Ahead of main:** **78** commits (77 at `ef4d0a9`, +1 for the fix-up). Worktree clean.
+- **Ahead of main:** **80** commits (79 at `b6a4abe`, +1 for the fix-up). Worktree clean.
 
 ### 2026-08-11 (later) — the HA gate
 - `6962635` — **dev-HA harness + the gate result.** `{{ recipe_id }}` templating and the `returnResponse` shape both CONFIRMED inside HA 2025.7. Adds `deploy/homeassistant/` (compose + `dev-configuration.yaml` + `dev-setup.sh`); no card code changed. Found that the repo's `configuration.yaml` is a merge fragment with no `default_config:`.
