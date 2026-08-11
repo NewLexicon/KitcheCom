@@ -53,11 +53,13 @@ find "$DEV_CONFIG/packages" -type f ! -name 'grocy_recipes.yaml' -delete
 find "$DEV_CONFIG/packages" -type f -name '.calendar-verify.py' -delete 2>/dev/null || true
 
 echo "==> Copying card modules into www/"
-# shared.js is required: the card modules import it at runtime (INSTALL.md:49).
+# Each card is a SELF-CONTAINED bundle (vite inlines lit + shared.ts), so there
+# is no shared.js to copy — see vite.config.ts. A bare `tsc` build emitted
+# `import ... from "lit"`, which no browser can resolve; HA reported only
+# "Configuration error" and the card never loaded.
 cp "$CARD_DIR/dist/recipe-card.js" \
    "$CARD_DIR/dist/mealplan-card.js" \
    "$CARD_DIR/dist/shopping-card.js" \
-   "$CARD_DIR/dist/shared.js" \
    "$DEV_CONFIG/www/"
 
 echo "==> Writing secrets.yaml"

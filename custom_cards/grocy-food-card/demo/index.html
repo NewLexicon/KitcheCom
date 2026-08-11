@@ -3,11 +3,13 @@
 <title>grocy-food-card demo</title>
 <style>body{margin:0;background:#141821;padding:24px;display:flex;gap:24px;flex-wrap:wrap}
   .pane{background:#1b2130;border-radius:12px;min-width:320px}</style>
-<script type="importmap">
-{ "imports": {
-  "lit": "https://cdn.jsdelivr.net/npm/lit@3.3.3/+esm"
-} }
-</script>
+<!-- NO IMPORTMAP, DELIBERATELY (2026-08-11).
+     This page used to map "lit" to a CDN, which let the demo load dist/ files
+     that still contained bare `import ... from "lit"` specifiers. Home Assistant
+     supplies no such map, so the cards rendered here and failed in HA with a
+     bare "Configuration error". Loading dist/ with NO map is what makes this
+     harness represent HA: if a build regression reintroduces a bare specifier,
+     this page breaks too, instead of hiding it. -->
 <script type="module">
   import "../dist/mealplan-card.js";
   import "../dist/shopping-card.js";

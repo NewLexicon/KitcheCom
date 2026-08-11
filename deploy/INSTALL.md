@@ -45,14 +45,20 @@ native Grocy UI is never shown on the kitchen screen.
    ```bash
    cd custom_cards/grocy-food-card && npm install && npm run build
    ```
-   Copy `dist/*.js` (`shared.js`, `mealplan-card.js`, `shopping-card.js` — **all three**;
-   the card modules import `shared.js` at runtime) into `/config/www/`. Register the two
-   card modules as resources (Settings → Dashboards → Resources), type **module**:
+   Copy `dist/*.js` into `/config/www/`. Register the card modules as resources
+   (Settings → Dashboards → Resources), type **module**:
    - `/local/mealplan-card.js`
    - `/local/shopping-card.js`
 
-   `shared.js` is imported by those two and must be present, but is **not** registered as a
-   resource itself.
+   > **Each card is a self-contained bundle** — `lit` and the shared helpers are inlined,
+   > so there is **no `shared.js`** to copy (there was, before 2026-08-11). Every `dist/*.js`
+   > file is a resource in its own right.
+   >
+   > ⚠️ **Build with `npm run build` (vite), never plain `tsc`.** `tsc` emits
+   > `import ... from "lit"` verbatim; browsers cannot resolve a bare specifier, so the
+   > module never evaluates and the card never registers. HA reports only a generic
+   > **"Configuration error"** on the card with no hint at the cause. `npm test` guards
+   > this (`test/dist-browser-loadable.test.ts`).
 
 6. **Add the cards** to a dashboard:
    ```yaml
@@ -118,8 +124,13 @@ native Grocy UI is never shown on the kitchen screen.
 
 ## Phase C — Deploy these files
 1. Copy `homeassistant/*` into HA's `/config`.
-2. Copy `custom_cards/screensaver-card` build output into `/config/www/`; **register the
-   resource** (Settings → Dashboards → Resources → `/local/screensaver-card.js`, module).
+2. Build with `cd custom_cards/screensaver-card && npm install && npm run build`, then copy
+   the output into `/config/www/`; **register the resource** (Settings → Dashboards →
+   Resources → `/local/screensaver-card.js`, module).
+   > ⚠️ **Rebuild required if this card was deployed before 2026-08-11.** It was previously
+   > built with plain `tsc`, which left unresolvable bare `lit` imports in the output — the
+   > card cannot load in a browser and HA shows "Configuration error". The build now uses
+   > vite and inlines its dependencies.
 3. Restart HA; check Config validity.
 
 ## Phase D — Kiosk
