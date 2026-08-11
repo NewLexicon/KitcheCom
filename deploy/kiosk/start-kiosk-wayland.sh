@@ -14,9 +14,11 @@
 # and exec chromium exactly once. If HA wasn't serving yet (the container takes
 # ~30-60s to come up), or chromium later crashed / was navigated away and closed,
 # nothing brought the dashboard back — the panel sat on an error page until a human
-# intervened. Two guards below fix that: (1) wait until HA answers 200 before the
-# first launch; (2) respawn chromium if it ever exits. Note: no `set -e` — a transient
-# curl/chromium failure must NOT kill the supervisor loop.
+# intervened. Three guards below fix that: (1) wait until HA answers 200 before the
+# first launch; (2) respawn chromium if it ever exits; (3) --password-store=basic, so the
+# locked GNOME keyring cannot raise a modal over the kiosk on every reboot (added
+# 2026-08-11). Note: no `set -e` — a transient curl/chromium failure must NOT kill the
+# supervisor loop.
 set -uo pipefail
 
 # kitchen-snapshot = the committed YAML dashboard deployed to /config (see deploy/INSTALL.md Phase C).
@@ -46,6 +48,22 @@ clear_crash_flag() {
   [ -f "$prefs" ] && sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/;s/"exited_cleanly":false/"exited_cleanly":true/' "$prefs" 2>/dev/null || true
 }
 
+# (3) --password-store=basic (added 2026-08-11): without it chromium detects the GNOME
+# keyring and, on the first launch after every reboot, raises a modal "Unlock Keyring —
+# An application wants access to the keyring 'Default Keyring', but it is locked" over
+# the kiosk. The keyring is normally unlocked by the password you type at login, but this
+# Pi uses AUTOLOGIN (autologin-user=garrettdehart), so no password is ever entered and the
+# keyring stays locked forever. Autologin and the keyring are each correct on their own;
+# together they defeat unattended boot, which is the entire point of the kiosk.
+#
+# `basic` makes chromium use its own file-based store and never touch the keyring, so the
+# dialog cannot appear. Safe here: the kiosk stores no passwords worth protecting — the HA
+# refresh token lives in the profile's localStorage, NOT the keyring, which is why HA stayed
+# logged in while this dialog blocked the screen.
+#
+# Do NOT "fix" this by deleting ~/.local/share/keyrings (it is re-created, and takes other
+# stored credentials with it) or by disabling autologin (that trades one prompt for another).
+
 # (2) Supervisor loop: relaunch chromium if it exits (crash, or a stray window close).
 # chromium is run in the foreground (no exec) so control returns here on exit.
 while true; do
@@ -58,6 +76,7 @@ while true; do
     --disable-session-crashed-bubble \
     --disable-features=Translate \
     --check-for-update-interval=31536000 \
+    --password-store=basic \
     "$HA_URL" || true
   echo "kiosk: chromium exited (code $?); respawning in 3s"
   sleep 3
