@@ -1,6 +1,6 @@
 # KitchenCOM — cold-open (main)
 
-**Last refreshed:** 2026-08-13, after `feat/grocy-chores` + `feat/hardware-deploy` merged to main and the kitchen panel came fully to life.
+**Last refreshed:** 2026-08-13 (evening), after the 108-commit push landed. Prior refresh: earlier the same day, when `feat/grocy-chores` + `feat/hardware-deploy` merged and the kitchen panel came fully to life.
 
 Read this first. Everything below is verified, with the command that verifies it.
 
@@ -8,14 +8,16 @@ Read this first. Everything below is verified, with the command that verifies it
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `5bd6cd4` — `docs: project cold-open for main after the merge`, **plus the fix-up commit that set this line.** Last **code** commit is `1ff0b98` (timer restart fix).
-- **Branch:** `main`. A scratch worktree for the merge lives at `.worktrees/main-merge`.
-- **Ahead of origin/main:** **107** commits (106 at `5bd6cd4`, +1 for the fix-up). **NOT PUSHED** — pushing is outward-facing and was deliberately left to Garrett.
-- Recent arc: `2979235` (activity bridge) → `ac16298` (merge grocy) → `3f0c153` (merge hardware) → `1ff0b98` (timer restart fix).
+- **HEAD:** `91252c9` — `docs: touch works — a USB hub between Pi and monitor is the requirement`. Last **code** commit is `1ff0b98` (timer restart fix).
+- **Branch:** `main`. A scratch worktree for the merge lives at `.worktrees/main-merge` — **`main` is checked out there, not in the primary checkout.**
+- **Ahead of origin/main:** **0.** All 108 commits are **PUSHED**; `origin/main` is at `91252c9`.
+- Recent arc: `ac16298` (merge grocy) → `3f0c153` (merge hardware) → `1ff0b98` (timer restart fix) → `5bd6cd4` (cold-open) → `91252c9` (touch resolution).
 
 ```bash
-git log --oneline -4 && git rev-list --count origin/main..HEAD
+git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 0
 ```
+
+⚠️ **The primary checkout `/Users/jdehart1/___Code_DEV/KitchenCOM` is usually on a *different* branch** (a concurrent session parks `feat/choreops-chores` there — see §4). Work on `main` from `.worktrees/main-merge`. Verify `git branch --show-current` before every commit.
 
 ## 2. Empirical state
 
@@ -42,8 +44,8 @@ cd custom_cards/<pkg> && npm install && npm run build && npm test && npm run typ
 
 ## 4. Next moves
 
-- **Push main to origin** — 105 commits unpushed. `git push origin main` from `.worktrees/main-merge`.
-- **S1 Task 10 (Tier-2)** for the meal-plan/shopping cards — unblocked by the dev-HA, and newly relevant since those two cards also carried the bare-`lit` defect and have never loaded in HA.
+- **S1 Task 10 (Tier-2)** for the meal-plan/shopping cards — **the next move, and NOT Pi-blocked** (runs on the Mac via Docker; `deploy/grocy/` + `deploy/homeassistant/` both present). Plan: `docs/superpowers/plans/2026-07-02-grocy-food-slice1.md` → Task 10. Resolves OQ-1 (live sensor field names — the fixtures are **source-derived guesses**, never confirmed), OQ-2/OQ-3 (the check-off id + list-id contract). Newly relevant since those two cards also carried the bare-`lit` defect and have **never loaded in HA**.
+  - ⚠️ Step 4's round-trip needs **a human with a real browser** — see trap §6.4. Claude can stand up the stack, seed data, and correct fixtures/tests, but cannot confirm an HA render.
 - **Confirm touch survives a reboot.** Touch works now (§5), but the hub was added while the Pi was running; nobody has yet verified the panel comes up touch-enabled from cold.
 - `feat/choreops-chores` (16 commits) is unmerged and belongs to a **concurrent session**. Leave it alone.
 
