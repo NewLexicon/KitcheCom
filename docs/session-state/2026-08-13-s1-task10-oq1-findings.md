@@ -137,6 +137,63 @@ settled offline**. Do not change parse code until Step 2 answers it.
 
 ---
 
+## 4b. Recipe test data seeded (2026-08-13 evening)
+
+Grocy now holds **4 real recipes / 21 ingredients**, seeded via API for Tier-2 exercise:
+
+| id | Recipe | Servings | Ingredients |
+|---|---|---|---|
+| 1 | Tacos | 4 | 5 (incl. Salt `"a pinch"`) |
+| 2 | Chicken Fried Rice | 4 | 6 (incl. Black Pepper `"to taste"`) |
+| 3 | Pasta Pomodoro | 2 | 5 (incl. Parmesan `0.333` — float-noise case) |
+| 4 | Cheesy Beef Skillet | 6 | 5 |
+
+Plus 18 products and 11 quantity units. Edge cases deliberately covered: **text amounts**
+(`recipe_variable_amount`), **fractional amounts** (0.333, 0.5, 0.25), varied units, and
+differing `base_servings` for the scaling path.
+
+### ⚠️ NEW DEFECT — negative-id rows render as recipes
+
+`GET /objects/recipes` returns Grocy's **internal meal-plan scaffolding** alongside real
+recipes — rows with **negative ids** whose names are dates:
+
+```
+id=-16  "2026-32"        <- ISO week row
+id=-15  "2026-08-15"     <- per-day rows
+id=-8   "2026-08-14#1"
+id=-6   "2026-08-14"
+id=1    "Tacos"          <- the only real recipe before tonight
+```
+
+These appear **because meal-plan entries exist** (seeded earlier this session), so this is
+reproducible, not a stale-data artifact.
+
+`recipe-card.ts:_loadList()` renders whatever `/objects/recipes` returns — **grep confirms no
+`id > 0` filter anywhere in `recipe-card.ts` or `shared.ts`.** So the kitchen screen would
+list "2026-08-14" as a recipe. Fix is a one-line filter, but it is **not applied yet**:
+whether the *sensor* path (S2's `rest` sensor / the HACS integration) also carries these
+rows is unverified, and the fix belongs wherever the boundary actually is. Same reasoning as
+OQ-1 — do not patch on inference.
+
+**This is a third instance of the §6.6 pattern:** the fixtures only ever contained
+hand-written positive-id recipes, so 100 green tests never saw a negative id.
+
+### ✅ Confirmed working: text amounts
+
+`pickAmount` (`shared.ts`) prefers `recipe_variable_amount` over the numeric `recipe_amount`,
+so `"a pinch"` renders as text rather than the `0` Grocy coerces it to. The earlier
+text-amount fix holds against live 4.6.0 data.
+
+### Gotcha for future seeding: unit conversions
+
+`POST /objects/recipes_pos` **fails** with
+`"Provided qu_id doesn't have a related conversion for that product"` when the recipe's
+`qu_id` differs from the product's `qu_id_stock` and no conversion row exists. Three
+ingredients vanished silently this way (the bulk insert discarded the error). Either use the
+product's stock unit or create `quantity_unit_conversions` rows first.
+
+---
+
 ## 5. Carry-forwards
 
 - **dev-HA is mounted from the `grocy-chores` worktree.** Either leave it (harmless — the
