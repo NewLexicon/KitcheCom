@@ -1,0 +1,27 @@
+# STANDALONE configuration for the dev-HA verification container ONLY.
+#
+# WHY THIS IS A SEPARATE FILE: the repo's homeassistant/configuration.yaml is a
+# MERGE FRAGMENT (see homeassistant/README.md:24-26) — it is meant to be merged
+# into an existing HA OS config that already provides `default_config:`. Mounted
+# alone it would produce an HA with no `rest_command` service and no HTTP API,
+# and the verification would fail for a reason that has nothing to do with the card.
+#
+# This file = that fragment's contents + `default_config:`. Keep the two in sync
+# if the fragment changes; the packages/themes/lovelace wiring below is copied
+# from it verbatim.
+
+# Provides rest_command, the HTTP API, the frontend, and the rest of the core
+# integration set that HA OS supplies on the Pi.
+default_config:
+
+homeassistant:
+  packages: !include_dir_named packages
+
+frontend:
+  themes: !include_dir_merge_named themes
+
+# Dev container runs storage-mode Lovelace, same as live. The kitchen snapshot
+# dashboard is intentionally NOT registered here: its entity ids are placeholders
+# (README.md:17-19) and it would only add noise to the verification.
+lovelace:
+  mode: storage

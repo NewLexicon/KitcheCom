@@ -1,0 +1,22 @@
+{
+  "name": "grocy-food-card",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "build": "rm -rf dist && npm run build:recipe && npm run build:mealplan && npm run build:shopping",
+    "build:recipe": "CARD=recipe-card vite build",
+    "build:mealplan": "CARD=mealplan-card vite build",
+    "build:shopping": "CARD=shopping-card vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "lit": "3.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^5.6.0",
+    "vite": "^7.0.0",
+    "vitest": "^4.1.8"
+  }
+}

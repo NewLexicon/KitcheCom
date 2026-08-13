@@ -1,0 +1,53 @@
+# Slice 2 recipe proxy — FULLY ON-DEMAND (spec §2.1, amended 2026-08-11).
+#
+# WHY THIS FILE EXISTS: the custom-components/grocy HACS integration exposes NO
+# recipe sensor — recipes and recipes_pos are absent from its entity definitions
+# (verified against its const.py). Recipe content lives only in Grocy's own REST
+# API, so HA proxies it here. The API key stays in HA secrets; the browser never
+# talks to Grocy directly and never sees the key.
+#
+# ⚠️ WHY THERE IS NO `rest:` SENSOR ANY MORE (verified twice, 2026-08-11):
+#   1. Live Grocy 4.6.0: GET /api/objects/recipes returns a BARE JSON ARRAY.
+#   2. HA source: `json_attributes` are parsed from the RAW body BEFORE
+#      value_template runs (components/rest/sensor.py:170-175), so no template
+#      can reshape the payload. parse_json_attributes (util.py:28-31) then takes
+#      json_dict[0] of a list and extracts named keys only if that is a dict —
+#      so a bare array yields the FIRST RECIPE, which has no `recipes` key, and
+#      the sensor is permanently {}. Tested against HA's pinned jsonpath==0.82.2:
+#      "$" returns False on an array; "$[*]", "$..*", "$.*" all collapse to [0].
+#   A `rest` sensor CANNOT carry this payload. The card fetches on demand instead.
+#
+# Trade-off, accepted deliberately: LIST no longer renders instantly from cached
+# HA state and does NOT survive a Grocy outage (an outage shows "No recipes"
+# rather than stale tiles). That is the cost of the only transport that works.
+#
+# Because nothing enters HA state, the ~16 KB attribute ceiling and the recorder
+# exclude are both moot and have been removed with the sensor.
+
+rest_command:
+  # LIST calls this on mount. Measured 1,334 B for 4 recipes; ~8 KB at 25.
+  grocy_recipe_list:
+    url: !secret grocy_recipes_url
+    method: GET
+    headers:
+      GROCY-API-KEY: !secret grocy_api_key
+    content_type: "application/json"
+
+  # DETAIL calls this when a recipe opens. query[]=recipe_id=N is Grocy's own
+  # server-side filter — VERIFIED: 5,084 B unfiltered vs 1,526 B for one recipe.
+  # The card sends recipe_id; never interpolate anything else into this URL.
+  grocy_recipe_ingredients:
+    url: !secret grocy_recipe_ingredients_url
+    method: GET
+    headers:
+      GROCY-API-KEY: !secret grocy_api_key
+    content_type: "application/json"
+
+  # Unit names for qu_id. recipes_pos_resolved joins product_name but NOT the
+  # unit (spec §4.2). 6 rows / 861 B / static — the card fetches this once.
+  grocy_quantity_units:
+    url: !secret grocy_quantity_units_url
+    method: GET
+    headers:
+      GROCY-API-KEY: !secret grocy_api_key
+    content_type: "application/json"

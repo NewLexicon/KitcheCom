@@ -1,0 +1,37 @@
+# Dev-only Home Assistant, for verifying the Grocy cards against a real HA.
+#
+# WHY THIS EXISTS: the recipe card's transport is `rest_command` + returnResponse.
+# Two links in that chain cannot be tested outside HA:
+#   1. HA templating `{{ recipe_id }}` from the card's service-call data into the
+#      !secret URL (secrets are rendered as Jinja templates by rest_command).
+#   2. The `response.content` delivery shape that shared.ts reads back.
+# Everything else (Grocy's payloads, the card's parsing/rendering) is already
+# verified by curl and the demo harness.
+#
+# This is NOT the Pi deployment. The Pi runs HA OS; this container exists only to
+# close that verification gap on a laptop. Do not add it to the kiosk stack.
+#
+# The config dir is ./dev-config/, ASSEMBLED by dev-setup.sh — not the repo's
+# homeassistant/ tree. That tree's configuration.yaml is a merge fragment with no
+# `default_config:` (homeassistant/README.md:24-26); mounted alone it yields an HA
+# with no rest_command service at all. dev-setup.sh copies packages/ and themes/
+# in beside dev-configuration.yaml, so the packages under test are byte-identical
+# to the committed ones while the keystone config is dev-appropriate.
+# ./dev-config/ is gitignored — it holds generated files and the HA database.
+
+services:
+  homeassistant-dev:
+    image: ghcr.io/home-assistant/home-assistant:2025.7
+    container_name: kitchencom-ha-dev
+    volumes:
+      - ./dev-config:/config
+    environment:
+      - TZ=America/New_York
+    ports:
+      - "8124:8123"   # 8124 on the host so this never collides with the Pi's 8123
+    # host.docker.internal lets this container reach Grocy's published port 9283
+    # on the host. Works on Docker Desktop (macOS/Windows) without a shared
+    # network; the extra_hosts line makes it resolve on Linux engines too.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: "no"   # dev container: never resurrect itself after a teardown

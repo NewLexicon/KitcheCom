@@ -1,0 +1,8 @@
+{
+  "_note": "PROVISIONAL — field names from Grocy's published API object shapes, NOT source-verified (pygrocy has no recipe model; Grocy source not vendored). Confirm at Tier-2 (OQ-S2-2).",
+  "recipes": [
+    { "id": 1, "name": "Tacos", "description": "<ol><li>Brown the beef</li><li>Warm tortillas</li></ol>", "picture_file_name": "tacos.jpg", "base_servings": 4, "desired_servings": 6 },
+    { "id": 2, "name": "Pancakes", "description": "<p>Mix.</p><p>Fry.</p>", "picture_file_name": null, "base_servings": 2, "desired_servings": 2 },
+    { "id": 3, "description": "Plain text, no markup.", "picture_file_name": null, "base_servings": 0, "desired_servings": 3 }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "_note": "PROVISIONAL — source-derived from pygrocy MealPlanItem; confirm against live sensor at Tier-2 (OQ-1). 'day' serialized form unconfirmed — treated as opaque.",
+  "attributes": {
+    "meals": [
+      { "id": 1, "day": "2026-07-02", "type": "recipe", "recipe_id": 5, "recipe_servings": 4, "recipe": { "id": 5, "name": "Tacos" } },
+      { "id": 2, "day": "2026-07-03", "type": "note", "note": "Leftovers night" },
+      { "id": 3, "day": "2026-07-03", "type": "section", "section_id": 2, "section": { "id": 2, "name": "Dinner", "sort_number": 2 } }
+    ]
+  }
+}
