@@ -8,7 +8,7 @@ Read this first. Everything below is verified, with the command that verifies it
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `3dd1585` — `docs: seed 4 recipes for Tier-2; log negative-id recipe defect`, **plus the fix-up commit that set this line.** Last **code** commit is still `1ff0b98` (timer restart fix) — the 2026-08-13 evening session was **docs-only by design** (see §4).
+- **HEAD:** `1e29942` — `docs: cold-open close-out — Task 10 in progress, dev rig documented`, **plus the fix-up commit that set this line.** Last **code** commit is still `1ff0b98` (timer restart fix) — the 2026-08-13 evening session was **docs-only by design** (see §4).
 - **Branch:** `main`. A scratch worktree for the merge lives at `.worktrees/main-merge` — **`main` is checked out there, not in the primary checkout.**
 - **Ahead of origin/main:** **0** (4 evening commits pushed; `origin/main` at the fix-up commit).
 - Recent arc: `91252c9` (touch resolution) → `ed6e481` (cold-open refresh) → `f601e1f` (Task 10 OQ-1 findings) → `3dd1585` (recipe seed + negative-id defect).
