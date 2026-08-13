@@ -22,15 +22,16 @@ export class GrocyShoppingCard extends LitElement {
     return parseShoppingItems(this.hass?.states?.[this._entity]?.attributes?.products);
   }
 
-  private _checkOff(productId: number): void {
-    if (!canCheckOff(this._listId)) return;
+  // Takes the ROW, not an id: the service needs the product id AND the amount
+  // (full amount => the row zeroes out and Grocy deletes it).
+  private _checkOff(row: ShoppingRow): void {
+    if (!canCheckOff(this._listId, row.productId)) return;
     this.hass?.callService?.("grocy", "remove_product_in_shopping_list",
-      buildRemovePayload(this._listId as string, productId));
+      buildRemovePayload(this._listId as string, row.productId as number, row.amount));
   }
 
   render() {
     const rows = this._rows;
-    const canCheck = canCheckOff(this._listId);
     if (rows.length === 0) return html`<div class="empty">Shopping list empty</div>`;
     return html`
       <div class="list">
@@ -38,8 +39,10 @@ export class GrocyShoppingCard extends LitElement {
           <div class="row">
             <span class="amt">${r.amountLabel}</span>
             <span class="name">${r.name}</span>
-            ${canCheck
-              ? html`<button class="check" @click=${() => this._checkOff(r.id)}>✓</button>`
+            ${/* per-ROW, not per-card: a free-text row has no product id and the
+                  remove service cannot touch it, so its ✓ is hidden. */
+              canCheckOff(this._listId, r.productId)
+              ? html`<button class="check" @click=${() => this._checkOff(r)}>✓</button>`
               : nothing}
           </div>`)}
       </div>`;

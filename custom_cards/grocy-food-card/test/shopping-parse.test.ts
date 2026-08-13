@@ -20,8 +20,16 @@ describe("parseShoppingItems", () => {
     const rows = parseShoppingItems(fixture.attributes.products as any);
     expect(rows.length).toBe(3);
     // ids are the LIVE shopping_list entry ids (Tier-2-captured), not the
-    // invented 11/12/13 of the provisional fixture.
-    expect(rows[0]).toEqual({ id: 1, name: "Eggs", amountLabel: "2", note: "" });
+    // invented 11/12/13 of the provisional fixture. productId/amount were added
+    // for the check-off payload (the service keys on product id, not entry id).
+    expect(rows[0]).toEqual({
+      id: 1,
+      productId: 1,
+      name: "Eggs",
+      amountLabel: "2",
+      amount: 2,
+      note: "",
+    });
   });
   it("names from nested product; falls back to (unnamed) when product absent", () => {
     const rows = parseShoppingItems(fixture.attributes.products as any);

@@ -2,7 +2,14 @@
 // missing/malformed data => safe empty, never throw (screensaver-card discipline).
 // Field names are PROVISIONAL (spec §5 OQ-1) — confirm at Tier-2.
 
-export type ShoppingRow = { id: number; name: string; amountLabel: string; note: string };
+export type ShoppingRow = {
+  id: number;            // shopping-list ENTRY id
+  productId: number | null; // PRODUCT id — what the remove service keys on
+  name: string;
+  amountLabel: string;   // display string ("1.5")
+  amount: number;        // numeric, for the remove payload
+  note: string;
+};
 
 // Grocy amount is a float (ShoppingListProduct.amount). "2.0 eggs" reads wrong on a
 // kitchen screen: integer-valued floats drop the decimal; non-integers render as-is.
@@ -18,8 +25,14 @@ export function parseShoppingItems(products?: any[] | null): ShoppingRow[] {
   if (!Array.isArray(products)) return [];
   return products.map((p) => ({
     id: p?.id,
+    // The remove service keys on PRODUCT id, but rows are keyed by ENTRY id, and
+    // the two differ in live data (Eggs was entry 5 / product 1). Carry both.
+    // null when Grocy's row has no product (free-text row) — canCheckOff hides ✓.
+    productId: typeof p?.product_id === "number" ? p.product_id : null,
     name: p?.product?.name ?? "(unnamed)",   // name is nested; fail-safe if unhydrated
     amountLabel: formatAmount(p?.amount),
+    // Numeric amount for the remove payload; the label above is display-only.
+    amount: typeof p?.amount === "number" && Number.isFinite(p.amount) ? p.amount : 0,
     note: p?.note ?? "",
   }));
 }
@@ -50,16 +63,31 @@ export function parseMeals(meals?: any[] | null): MealRow[] {
 // canCheckOff gates whether the ✓ button renders. If the shopping-list id (OQ-3)
 // isn't resolvable, we render rows read-only rather than firing a call that 500s
 // (chores done_by precedent — spec §4.2).
-export function canCheckOff(shoppingListId?: string): boolean {
-  return typeof shoppingListId === "string" && shoppingListId.length > 0;
+export function canCheckOff(shoppingListId?: string, productId?: number | null): boolean {
+  if (typeof shoppingListId !== "string" || shoppingListId.length === 0) return false;
+  // Tier-2: the service keys on PRODUCT id, so a free-text row (no product) can
+  // never be removed through it. Hide ✓ rather than render a button that returns
+  // 200 and changes nothing.
+  return typeof productId === "number";
 }
 
-// buildRemovePayload — INPUT→OUTPUT MAPPING ONLY (spec §3.3 boundary). The field
-// names/shape here are the provisional best-guess for grocy.remove_product_in_shopping_list;
-// Tier-2 confirms them (OQ-2 product_id-vs-entry-id; OQ-3 list-id key). NOT proof
-// the service accepts this shape.
-export function buildRemovePayload(shoppingListId: string, productId: number) {
-  return { shopping_list_id: shoppingListId, product_id: productId };
+// buildRemovePayload — Tier-2-CONFIRMED against the live service on 2026-08-13
+// (grocy integration v1.3.0, Grocy 4.6.0). OQ-2 and OQ-3 are RESOLVED:
+//
+//   registered signature: remove_product_in_shopping_list(list_id, product_id, amount)
+//
+//   {shopping_list_id:"1", product_id:1}   -> HTTP 400   <- the old guessed shape
+//   {list_id:1, product_id:1, amount:2}    -> HTTP 200, row removed from Grocy
+//
+// OQ-2: it keys on PRODUCT id, not the shopping-list ENTRY id (they differ).
+// OQ-3: the key is `list_id`, not `shopping_list_id`.
+//
+// `amount` decrements, and reaching zero DELETES the row — so passing the row's
+// full amount is how ✓ removes an item outright. ⚠️ FRACTIONAL amounts are
+// silently ignored (0.5 against a 1.5 row returned 200 and changed nothing), so
+// any future "decrement by one" control must send integers.
+export function buildRemovePayload(shoppingListId: string, productId: number, amount: number) {
+  return { list_id: Number(shoppingListId), product_id: productId, amount };
 }
 
 // ---- Slice 2: recipes ----------------------------------------------------
