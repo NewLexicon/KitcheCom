@@ -44,18 +44,28 @@ cd custom_cards/<pkg> && npm install && npm run build && npm test && npm run typ
 
 - **Push main to origin** — 105 commits unpushed. `git push origin main` from `.worktrees/main-merge`.
 - **S1 Task 10 (Tier-2)** for the meal-plan/shopping cards — unblocked by the dev-HA, and newly relevant since those two cards also carried the bare-`lit` defect and have never loaded in HA.
-- **Touch is still not working** — see §5.
+- **Confirm touch survives a reboot.** Touch works now (§5), but the hub was added while the Pi was running; nobody has yet verified the panel comes up touch-enabled from cold.
 - `feat/choreops-chores` (16 commits) is unmerged and belongs to a **concurrent session**. Leave it alone.
 
 ## 5. Carry-forwards
 
-**Touch hardware — unresolved.** The ViewSonic TD1655's touch panel (`G2Touch`, `2a94:504d`, 100mA, 12 Mb/s) has **never enumerated on the Pi**, across 4 cables, multiple USB-A ports, a raised `usb_max_current_enable`, a reboot, and a Thunderbolt dock. The Pi's USB is provably healthy (a keyboard hot-plug enumerated live in `dmesg`).
+**Touch hardware — ✅ RESOLVED 2026-08-13. A USB HUB IS REQUIRED between the Pi and the monitor.**
 
-**It DOES enumerate on the MacBook — including over USB-A→USB-C — but only through a GenesysLogic hub.** That is the difference: a hub is in the working path, absent from the Pi path.
+The ViewSonic TD1655's touch panel does **not** enumerate on a direct Pi USB-A → monitor USB-C connection. Verified exhaustively: 4 cables, multiple USB-A ports, `usb_max_current_enable=1`, a reboot, and a Thunderbolt dock — **zero kernel events every time**, never even a failed enumeration. The Pi's USB was provably healthy throughout (a keyboard hot-plug enumerated live in `dmesg`).
 
-→ **Recommended part: the official [Raspberry Pi USB 3 Hub](https://www.raspberrypi.com/products/usb-3-hub/)** (~$12, USB-A upstream captive cable, 4× USB-A downstream, USB-C power input for self-powered mode). Wire: `Pi USB-A → hub → USB-A→C cable → monitor USB-C`. Not yet purchased or tested.
+**Put any powered USB hub in the path and it works immediately.** With a hub:
 
-Note macOS enumerates the panel but binds **no driver** (no external-touchscreen support), so "touch does nothing on the Mac" says nothing about Linux, which supports this device class natively.
+```
+Bus 003 Device 008: ID 2a94:504d G2Touch Multi-Touch
+hid-multitouch 0003:2A94:504D.0008: USB HID v1.11 Device [G2Touch Multi-Touch]
+H: Handlers=mouse1 event8
+```
+
+Linux binds `hid-multitouch` automatically — no drivers, no config. The working hub here is a generic Realtek **RTS5411** (it appears as two chained hubs). The MacBook's working path used a GenesysLogic hub, so this is not vendor-specific: **the hub itself is the requirement**, presumably because the monitor needs a USB-C-capable host to negotiate before it presents the HID device, and the Pi's USB-A cannot.
+
+The official [Raspberry Pi USB 3 Hub](https://www.raspberrypi.com/products/usb-3-hub/) (~$12) is a good permanent choice if the current one is a temporary loaner.
+
+Note macOS enumerates the panel but binds **no driver** (no external-touchscreen support), so "touch does nothing on the Mac" said nothing about Linux — which supports this device class natively, as proven above.
 
 **The screensaver safety switch.** `input_boolean.kitchen_screensaver_enabled` gates blanking. It is currently **on**. If a future change makes the panel unrecoverable, turn it off.
 
