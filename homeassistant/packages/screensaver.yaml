@@ -42,6 +42,23 @@ automation:
         target:
           entity_id: input_boolean.kitchen_idle
 
+  # Restart the countdown whenever the screensaver is switched ON (2026-08-13).
+  # WHY: a timer only emits timer.finished while it is actively counting. On
+  # startup the timer runs once; if it finishes while the safety switch is OFF,
+  # the condition above rejects the event and NOTHING restarts the timer. It then
+  # sits in `idle` forever and the screensaver can never engage — observed live:
+  # switch on, wait 10 minutes, screen never blanked, timer state "idle".
+  # Turning the switch on must therefore (re)start the countdown itself.
+  - alias: "Kitchen — start inactivity timer when the screensaver is enabled"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.kitchen_screensaver_enabled
+        to: "on"
+    action:
+      - service: timer.start
+        target:
+          entity_id: timer.kitchen_inactivity
+
   - alias: "Kitchen — wake on activity ping (M-10 browser->HA bridge)"
     mode: restart
     # The kiosk fires input_button.kitchen_activity on touch (wired on hardware,
