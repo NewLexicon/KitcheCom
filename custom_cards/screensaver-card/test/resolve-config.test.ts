@@ -11,6 +11,10 @@ describe("resolveConfig", () => {
       showClock: true,
       shuffle: false,
       kenBurnsIntensity: 0.5,
+      // Activity bridge (M-10): on by default, since a panel that cannot be
+      // woken is worse than one that pings HA occasionally.
+      activityEntity: "input_button.kitchen_activity",
+      activityBridge: true,
     });
   });
   it("honors provided overrides", () => {
