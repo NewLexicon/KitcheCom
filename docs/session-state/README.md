@@ -8,10 +8,10 @@ Read this first. Everything below is verified, with the command that verifies it
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `1e29942` — `docs: cold-open close-out — Task 10 in progress, dev rig documented`, **plus the fix-up commit that set this line.** Last **code** commit is still `1ff0b98` (timer restart fix) — the 2026-08-13 evening session was **docs-only by design** (see §4).
+- **HEAD:** `7de6e16` — `fix(recipes): drop Grocy's negative-id meal-plan scaffolding rows`, **plus the cold-open refresh + fix-up commits that set this line.** That is also the last **code** commit.
 - **Branch:** `main`. A scratch worktree for the merge lives at `.worktrees/main-merge` — **`main` is checked out there, not in the primary checkout.**
 - **Ahead of origin/main:** **0** (4 evening commits pushed; `origin/main` at the fix-up commit).
-- Recent arc: `91252c9` (touch resolution) → `ed6e481` (cold-open refresh) → `f601e1f` (Task 10 OQ-1 findings) → `3dd1585` (recipe seed + negative-id defect).
+- Recent arc: `91252c9` (touch resolution) → `ed6e481` (cold-open refresh) → `f601e1f` (Task 10 OQ-1 findings) → `3dd1585` (recipe seed + negative-id defect) → `1e29942` (close-out) → `29ce9fb` (**OQ-1 resolved, fixtures corrected**) → `7de6e16` (**negative-id filter**).
 
 ```bash
 git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 0
@@ -23,7 +23,7 @@ git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 0
 
 | Package | Tests | Typecheck | Build | dist imports |
 |---|---|---|---|---|
-| `custom_cards/grocy-food-card` | **100 / 14 files** | 0 errors | clean | **0** |
+| `custom_cards/grocy-food-card` | **103 / 14 files** | 0 errors | clean | **0** |
 | `custom_cards/screensaver-card` | **73 / 13 files** | 0 errors | clean | **0** |
 
 ```bash
@@ -40,8 +40,14 @@ if they are down.
 | Piece | Where | State |
 |---|---|---|
 | Grocy **4.6.0** | `http://localhost:9283` | up; seeded (below) |
-| dev-HA | `http://localhost:8124` | up, 0 errors, login preserved |
-| HACS + grocy integration | — | ❌ **NOT installed — this is the blocker** |
+| dev-HA | `http://localhost:8124` | up, 0 errors. Login **`dev` / `devdev123`** |
+| HACS **2.0.5** | dev-HA sidebar | ✅ installed |
+| grocy integration **v1.3.0** | `pygrocy2==2.4.1` | ✅ configured; both sensors **enabled** |
+
+⚠️ **Version wall — do not "upgrade" the grocy integration.** HA 2025.7.4 pins pydantic
+2.11.7; grocy v1.3.1+ needs `pygrocy2` ≥2.5.0 → pydantic ≥2.12.2 → `RequirementsNotFound`,
+which surfaces only as **"Config flow could not be loaded: 500"**. **v1.3.0 is the newest
+version that works here.** Full table in the findings doc §4-DONE.
 
 - **API key:** `sqlite3 deploy/grocy/grocy-config/data/grocy.db "select api_key from api_keys limit 1;"`
 - **Seeded data:** 4 recipes / 21 ingredients, 18 products, 11 units, 3 shopping-list items
@@ -68,21 +74,30 @@ if they are down.
 
 ## 4. Next moves
 
-- **S1 Task 10 (Tier-2) — IN PROGRESS, blocked on one browser step.**
-  **Read `docs/session-state/2026-08-13-s1-task10-oq1-findings.md` first** — it holds the live
-  Grocy shapes, three defect findings, and the exact next steps. Absolute path:
+- **S1 Task 10 (Tier-2) — OQ-1 RESOLVED; only the check-off round-trip remains.**
+  **Read this first:**
   `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/docs/session-state/2026-08-13-s1-task10-oq1-findings.md`
+  (§2-RESOLVED = the live sensor shapes; §4-DONE = what's left + the version wall).
 
-  **The literal first action:** install HACS + the `custom-components/grocy` integration in the
-  dev-HA at `http://localhost:8124`, enable `sensor.grocy_shopping_list` +
-  `sensor.grocy_meal_plan` (**they ship disabled**), then read their attributes in
-  Developer Tools → States. That single screen resolves **OQ-1**. Steps: findings doc §4.
-  - ⚠️ The Step-4 round-trip needs **a human with a real browser** — see trap §6.4. Claude can
-    stand up the stack, seed data, and correct fixtures/tests, but cannot confirm an HA render.
-  - **Environment is already up and seeded** (§2b): Grocy 4.6.0 + dev-HA both running.
-  - **Three defects found but deliberately NOT patched** — each needs OQ-1 answered first to
-    know which layer owns the fix. See findings doc §2 (Finding 1 nested objects, Finding 2
-    `done` filtering) and §4b (negative-id recipe rows).
+  **The literal first action — needs a human at the browser (trap §6.4):** register the card
+  resources in the dev-HA, add the shopping card with `shopping_list_id: 1`, press ✓ on a row,
+  then confirm in **Grocy's own UI** (`localhost:9283`) that the item is gone. That resolves
+  **OQ-2** (product_id vs entry id) and **OQ-3** (list-id key). If it 500s, read the real
+  service contract and correct `buildRemovePayload` / `canCheckOff` + the Task 5 test.
+
+  Settled on 2026-08-13 evening — do not re-litigate:
+  - **OQ-1: pygrocy HYDRATES** the nested `product`/`recipe` objects. The provisional fixtures
+    were RIGHT; both are now verbatim live captures. The raw-REST "nested objects are missing"
+    scare was a false alarm — *the sensor layer is the authority, not `/api/objects/...`.*
+  - **`done` filtering: NOT our bug.** pygrocy drops the field, so the card cannot filter
+    checked-off items. Do not add a filter — there is nothing to filter on.
+  - **Negative-id recipe rows: FIXED** (`7de6e16`) and deployed to the dev-HA.
+  - **Still open (cosmetic):** live `day` is a full ISO datetime (`2026-08-14T00:00:00`) and
+    the meal-plan card renders it raw. Format at the card render layer — `parseMeals` keeps
+    `day` opaque on purpose.
+  - ⚠️ **The Pi may run a newer HA**, which would pull grocy **v1.15.0** → the **`grocy-py`**
+    library instead of `pygrocy2`. Hydration behavior there is **unverified**; tonight's
+    answer is authoritative only for `pygrocy2`. Check the Pi's HA version before relying on it.
 - **Confirm touch survives a reboot.** Touch works now (§5), but the hub was added while the Pi was running; nobody has yet verified the panel comes up touch-enabled from cold.
 - `feat/choreops-chores` (16 commits) is unmerged and belongs to a **concurrent session**. Leave it alone.
 
