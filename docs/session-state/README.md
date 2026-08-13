@@ -8,9 +8,9 @@ Read this first. Everything below is verified, with the command that verifies it
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `1ff0b98` — `fix(screensaver): restart the timer when the screensaver is switched on`, **plus the cold-open + fix-up commits that set this line.**
+- **HEAD:** `5bd6cd4` — `docs: project cold-open for main after the merge`, **plus the fix-up commit that set this line.** Last **code** commit is `1ff0b98` (timer restart fix).
 - **Branch:** `main`. A scratch worktree for the merge lives at `.worktrees/main-merge`.
-- **Ahead of origin/main:** **105** commits. **NOT PUSHED** — pushing is outward-facing and was deliberately left to Garrett.
+- **Ahead of origin/main:** **107** commits (106 at `5bd6cd4`, +1 for the fix-up). **NOT PUSHED** — pushing is outward-facing and was deliberately left to Garrett.
 - Recent arc: `2979235` (activity bridge) → `ac16298` (merge grocy) → `3f0c153` (merge hardware) → `1ff0b98` (timer restart fix).
 
 ```bash
