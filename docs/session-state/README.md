@@ -8,7 +8,7 @@ Read this first. Everything below is verified, with the command that verifies it
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `7de6e16` — `fix(recipes): drop Grocy's negative-id meal-plan scaffolding rows`, **plus the cold-open refresh + fix-up commits that set this line.** That is also the last **code** commit.
+- **HEAD:** `ef4a2cd` — `docs: cold-open — OQ-1 resolved, only the check-off round-trip left`, **plus the fix-up commit that set this line.** Last **code** commit is `7de6e16` (negative-id recipe filter).
 - **Branch:** `main`. A scratch worktree for the merge lives at `.worktrees/main-merge` — **`main` is checked out there, not in the primary checkout.**
 - **Ahead of origin/main:** **0** (4 evening commits pushed; `origin/main` at the fix-up commit).
 - Recent arc: `91252c9` (touch resolution) → `ed6e481` (cold-open refresh) → `f601e1f` (Task 10 OQ-1 findings) → `3dd1585` (recipe seed + negative-id defect) → `1e29942` (close-out) → `29ce9fb` (**OQ-1 resolved, fixtures corrected**) → `7de6e16` (**negative-id filter**).
