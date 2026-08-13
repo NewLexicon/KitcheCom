@@ -172,7 +172,16 @@ export type RecipeRow = {
 
 export function parseRecipes(recipes?: any[] | null): RecipeRow[] {
   if (!Array.isArray(recipes)) return [];
-  return recipes.map((r) => {
+  return recipes
+    // Grocy's /objects/recipes mixes INTERNAL meal-plan scaffolding in with real
+    // recipes: one auto-created row per meal-plan day plus one per ISO week, all
+    // with NEGATIVE ids and date-like names ("2026-08-14", "2026-32"). Confirmed
+    // at Tier-2 on 2026-08-13 — they were rendering as recipe tiles on a real
+    // dashboard. They cannot be deleted (Grocy recreates them, and the meal plan
+    // depends on them), so the boundary is here. A real recipe id is a positive
+    // integer; anything else is scaffolding or malformed and is dropped.
+    .filter((r) => Number.isInteger(r?.id) && r.id > 0)
+    .map((r) => {
     // base is a DIVISOR in scaleIngredients — 0/negative/missing must become 1.
     const rawBase = r?.base_servings;
     const baseServings =

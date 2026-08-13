@@ -6,6 +6,33 @@ describe("parseRecipes", () => {
   it("maps each recipe to a row", () => {
     expect(parseRecipes(fixture.recipes as any).length).toBe(3);
   });
+
+  // Tier-2, 2026-08-13: GET /objects/recipes returns Grocy's INTERNAL meal-plan
+  // scaffolding alongside real recipes — rows with NEGATIVE ids whose names are
+  // dates ("2026-08-14") or ISO weeks ("2026-32"). Grocy auto-creates one per
+  // meal-plan day, so any populated meal plan produces them. Seen rendering as
+  // recipe tiles on a real dashboard; they are not recipes and must not appear.
+  // They cannot be deleted (Grocy recreates them and the meal plan needs them),
+  // so the card filters them out.
+  it("drops Grocy's negative-id meal-plan scaffolding rows", () => {
+    const rows = parseRecipes([
+      { id: -16, name: "2026-32", base_servings: 1 },
+      { id: -6, name: "2026-08-14", base_servings: 1 },
+      { id: 1, name: "Tacos", base_servings: 4 },
+    ] as any);
+    expect(rows.map((r) => r.name)).toEqual(["Tacos"]);
+  });
+
+  it("drops id 0 and non-numeric ids too (only positive ints are real recipes)", () => {
+    const rows = parseRecipes([
+      { id: 0, name: "zero" },
+      { id: null, name: "null-id" },
+      { id: undefined, name: "undefined-id" },
+      { id: "3", name: "string-id" },
+      { id: 2, name: "Real" },
+    ] as any);
+    expect(rows.map((r) => r.name)).toEqual(["Real"]);
+  });
   it("never builds a picture URL — the picture path is disabled in v1", () => {
     // Two live-verified blockers (2026-08-11): Grocy's files API needs the
     // filename BASE64-encoded (raw name -> 404), and the fetch requires the API
