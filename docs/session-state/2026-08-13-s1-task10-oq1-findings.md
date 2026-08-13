@@ -1,10 +1,15 @@
-# S1 Task 10 — Tier-2 in progress: OQ-1 findings + HACS steps (2026-08-13, evening)
+# S1 Task 10 — Tier-2: OQ-1 RESOLVED, fixtures corrected (2026-08-13, evening)
 
-**Status:** PARTIAL. OQ-1 investigated against live Grocy 4.6.0 REST API; **not yet resolved**
-— the authority is the HACS integration's sensor attributes, which requires Step 2 (below).
-OQ-2/OQ-3 untouched (blocked on the same step).
+**Status:** **OQ-1 RESOLVED** ✅ — read from live `sensor.grocy_shopping_list` +
+`sensor.grocy_meal_plan`. Fixtures corrected and committed; suite **101 passing**.
+**OQ-2/OQ-3 still open** — they need the check-off round-trip (a human ✓ press, trap §6.4).
 
 Plan: `docs/superpowers/plans/2026-07-02-grocy-food-slice1.md` → Task 10.
+
+> **⚠️ §2 below is superseded by §2-RESOLVED.** It records the raw-REST investigation that
+> preceded the sensor read, and its "Finding 1" (nested objects absent) was a **FALSE ALARM**
+> at the sensor layer. Kept because the reasoning — *don't patch parse code on raw-API
+> inference* — is why no damage was done.
 
 ---
 
@@ -108,7 +113,46 @@ settled offline**. Do not change parse code until Step 2 answers it.
 
 ---
 
-## 4. Exact next steps (Step 2 — browser, ~10–15 min)
+## 4-DONE. Step 2 is COMPLETE. What remains is OQ-2/OQ-3.
+
+HACS **2.0.5** + grocy **v1.3.0** are installed and configured; both sensors are **enabled**
+and reporting. **The steps below are historical** — kept for the version-compatibility wall,
+which is the reusable part.
+
+**Remaining work (needs a human at the browser — trap §6.4):**
+1. Register the card resources in dev-HA and add the shopping card with `shopping_list_id: 1`.
+2. Press ✓ on a row → confirm in **Grocy's own UI** (`localhost:9283`) that the item is gone.
+3. If it 500s, read the real service contract and correct `buildRemovePayload` / `canCheckOff`
+   + the Task 5 test. That resolves **OQ-2** (product_id vs entry id) and **OQ-3** (list-id key).
+
+### ⚠️ Version-compatibility wall (cost ~40min; do not rediscover)
+
+The dev-HA is pinned to **HA 2025.7**, and that gates the integration hard:
+
+| grocy release | needs HA | pygrocy2 | needs pydantic | works on 2025.7.4? |
+|---|---|---|---|---|
+| v1.15.0 → v1.5.0 | 2026.1.3+ | grocy-py / — | — | ❌ HA too old |
+| v1.4.0, v1.3.3 | 2025.11.2 | — | — | ❌ HA too old |
+| v1.3.2, v1.3.1 | 2025.6.1 | 2.5.0 / 2.5.1 | **≥2.12.2** | ❌ **pydantic conflict** |
+| **v1.3.0** | **2025.6.1** | **2.4.1** | **~=2.11.3** | ✅ **the one that works** |
+
+HA 2025.7.4 pins **pydantic 2.11.7**. v1.3.2 clears the HA-version gate but fails at
+`RequirementsNotFound`, which surfaces in the UI as **"Config flow could not be loaded:
+500 Internal Server Error"** — not as a dependency message. Check `requirements` in the
+integration's `manifest.json` against the container's pydantic, not just `hacs.json`.
+
+**Other traps hit:** HACS 2.x has **no Integrations tab** (one unified list, search at top);
+a **leading space** in the pasted API key produced `Invalid leading whitespace ... in header
+value` and a generic *"Something went wrong"*; and both sensors ship **disabled** — they were
+enabled by editing `disabled_by` → `null` in `.storage/core.entity_registry` + restart
+(backup: `core.entity_registry.bak`).
+
+**dev-HA login:** `dev` / `devdev123` (password was reset in place this session; the old
+bcrypt hash is in `.storage/auth_provider.homeassistant.bak`).
+
+---
+
+## 4. Historical: original Step-2 instructions (superseded by §4-DONE)
 
 1. **HACS** → https://hacs.xyz/docs/use/download/download/ (container method):
    ```bash
@@ -134,6 +178,75 @@ settled offline**. Do not change parse code until Step 2 answers it.
    `shopping_list_id: 1`, press ✓, then confirm in **Grocy's own UI** that the item is gone.
    If it 500s, inspect the service's real fields and correct `buildRemovePayload` / the
    Task 5 test.
+
+---
+
+## 2-RESOLVED. OQ-1 — the authoritative answer (live sensors, 2026-08-13 ~17:30)
+
+**Stack:** Grocy **4.6.0** → grocy integration **v1.3.0** (`pygrocy2==2.4.1`) → HA **2025.7.4**.
+
+### ✅ pygrocy HYDRATES. The provisional fixtures were RIGHT.
+
+```jsonc
+// sensor.grocy_shopping_list → attributes.products[]
+{ "id": 1, "product_id": 1, "amount": 2.0, "note": null,
+  "product": { "name": "Eggs", "id": 1, /* +12 more fields */ } }
+
+// sensor.grocy_meal_plan → attributes.meals[]
+{ "id": 1, "day": "2026-08-14T00:00:00", "type": "recipe", "recipe_id": 1,
+  "recipe": { "id": 1, "name": "Tacos", "base_servings": 4, ... },
+  "section_id": -1, "section": { "id": -1, "name": null, ... }, "picture_url": null }
+```
+
+**§2 Finding 1 was a FALSE ALARM.** The raw REST API returns flat foreign keys, but pygrocy
+fetches products/recipes separately and attaches them before the sensor is built. Verified by
+running the **real** `parseShoppingItems` / `parseMeals` from `shared.ts` against the live
+payloads:
+
+| id | name | amountLabel | note |   | id | day | label | kind |
+|---|---|---|---|---|---|---|---|---|
+| 1 | **Eggs** | 2 | `""` |   | 1 | `2026-08-14T00:00:00` | **Tacos** | recipe |
+| 2 | **Milk** | 1.5 | organic |   | 2 | `2026-08-15T00:00:00` | **Leftovers night** | note |
+| 3 | (unnamed) | 1 | paper towels |   | | | | |
+
+Real names, not placeholders. Row 3's `(unnamed)` is the intended no-`product_id` fail-safe.
+
+**Had the parse code been "fixed" on the raw-REST inference, working code would have broken.**
+This is the concrete payoff of the don't-patch-on-inference call made earlier in the session.
+
+### Drifts found (fixtures corrected accordingly)
+
+1. **`day` is a full ISO DATETIME** — `"2026-08-14T00:00:00"`, not `"2026-08-14"`.
+   `parseMeals` passes it through opaque, so **the card renders the raw datetime on screen**.
+   Cosmetic, not broken. → **carry-forward: format the day for display.**
+2. **No `type: "section"` ROW exists.** Every row carries `section_id: -1` **plus a hydrated
+   `section` object** whose `name` is `null`. The `case "section"` arm of `parseMeals` is
+   therefore **unreachable from real data**; the synthetic open-set test guards the `default`
+   branch instead.
+3. **`note` is `null`**, never `""`. `?? ""` already normalizes it (now asserted explicitly).
+4. **`picture_url`** exists on meal rows — previously unmodelled.
+5. **Live entry ids are 1/2/3**, not the invented 11/12/13.
+
+### ✅ Finding 2 (`done`) — RESOLVED, and it is NOT our bug
+
+`done` **is not present** on sensor rows at all — pygrocy drops it. Proven empirically:
+set `done: 1` on Milk via the Grocy API, forced `homeassistant.update_entity`, and the
+sensor **still listed all 3 items** with `count: 3`; row keys remained
+`id, product_id, amount, note, product`.
+
+**The card cannot filter checked-off items because the field never reaches it.** The defect is
+upstream in pygrocy2 2.4.1, not in `shared.ts`. Do **not** add a `done` filter to the card —
+there is nothing to filter on. (Test data was restored to `done: 0` afterwards.)
+
+### Fixtures + tests corrected
+
+Both fixture files now carry **verbatim live payloads** with provenance in `_note`.
+Suite: **101 passing / 14 files** (was 100 — net +1), typecheck clean.
+
+- `shopping-parse.test.ts` — ids 11→1; **new** explicit null-note normalization test.
+- `mealplan-parse.test.ts` — count 3→2; the fixture-coupled `kind === "section"` assertion
+  replaced by one asserting the **real** shape (hydrated `section` + `section_id: -1` on an
+  ordinary row does **not** change `kind`); the `day` test now pins the ISO-datetime format.
 
 ---
 
@@ -205,4 +318,15 @@ product's stock unit or create `quantity_unit_conversions` rows first.
   seeded here. `recipes_pos_resolved?recipe_id=1` returns **0 rows** (Tacos has no
   ingredients), so the recipe card's ingredient view will be empty for it. Add ingredients
   in Grocy's UI if the recipe card is to be exercised.
-- The `done` filtering gap (Finding 2) is worth a test **regardless** of how OQ-1 resolves.
+- ~~The `done` filtering gap (Finding 2) is worth a test regardless~~ — **RESOLVED**: `done`
+  never reaches the card (see §2-RESOLVED). No card-side fix is possible or wanted.
+- **NEW — format `day` for display.** Live sends `"2026-08-14T00:00:00"`; the meal-plan card
+  renders it raw. Cosmetic but visible on the kitchen screen. Decide where it belongs (card
+  render layer, not `parseMeals` — that deliberately stays opaque).
+- **NEW — the Pi's HA version gates which integration it can run.** This rig is pinned to HA
+  2025.7 → grocy **v1.3.0** (`pygrocy2`). A newer HA on the Pi could run v1.15.0, which uses
+  **`grocy-py` instead** — a different library whose hydration behavior is **unverified**.
+  Tonight's OQ-1 answer is authoritative *for `pygrocy2`*. **Check the Pi's HA version before
+  treating it as final there.**
+- The `case "section"` arm of `parseMeals` is **dead code against real data** (§2-RESOLVED
+  drift 2). Harmless; left in place because `type` is an open set per spec §3.2.

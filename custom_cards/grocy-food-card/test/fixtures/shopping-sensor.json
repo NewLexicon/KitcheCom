@@ -1,10 +1,72 @@
 {
-  "_note": "PROVISIONAL — source-derived from pygrocy ShoppingListProduct; confirm against live sensor at Tier-2 (OQ-1).",
+  "_note": "CONFIRMED against live sensor.grocy_shopping_list 2026-08-13 (Tier-2, OQ-1 RESOLVED). Captured from HA 2025.7.4 + grocy integration v1.3.0 (pygrocy2 2.4.1) + Grocy 4.6.0. pygrocy HYDRATES the nested `product` object; the provisional guess was correct. Row keys are exactly: id, product_id, amount, note, product — note there is NO `done` field (pygrocy drops it; see the findings doc).",
   "attributes": {
     "products": [
-      { "id": 11, "product_id": 3, "amount": 2.0, "note": "", "product": { "id": 3, "name": "Eggs" } },
-      { "id": 12, "product_id": 7, "amount": 1.5, "note": "organic", "product": { "id": 7, "name": "Milk" } },
-      { "id": 13, "product_id": 9, "amount": 1.0, "note": "" }
-    ]
+      {
+        "id": 1,
+        "product_id": 1,
+        "amount": 2.0,
+        "note": null,
+        "product": {
+          "name": "Eggs",
+          "id": 1,
+          "product_group_id": null,
+          "available_amount": 0.0,
+          "amount_aggregated": null,
+          "amount_opened": null,
+          "amount_opened_aggregated": null,
+          "is_aggregated_amount": null,
+          "best_before_date": null,
+          "barcodes": [],
+          "product_barcodes": [],
+          "amount_missing": null,
+          "is_partly_in_stock": null,
+          "default_quantity_unit_purchase": {
+            "id": 2,
+            "name": "Piece",
+            "name_plural": "Pieces",
+            "description": null
+          }
+        }
+      },
+      {
+        "id": 2,
+        "product_id": 2,
+        "amount": 1.5,
+        "note": "organic",
+        "product": {
+          "name": "Milk",
+          "id": 2,
+          "product_group_id": null,
+          "available_amount": 0.0,
+          "amount_aggregated": null,
+          "amount_opened": null,
+          "amount_opened_aggregated": null,
+          "is_aggregated_amount": null,
+          "best_before_date": null,
+          "barcodes": [],
+          "product_barcodes": [],
+          "amount_missing": null,
+          "is_partly_in_stock": null,
+          "default_quantity_unit_purchase": {
+            "id": 5,
+            "name": "gallon",
+            "name_plural": "gallons",
+            "description": null
+          }
+        }
+      },
+      {
+        "id": 3,
+        "product_id": null,
+        "amount": 1.0,
+        "note": "paper towels",
+        "product": null
+      }
+    ],
+    "count": 3,
+    "unit_of_measurement": "Product(s)",
+    "icon": "mdi:cart-outline",
+    "friendly_name": "Grocy shopping list"
   }
 }
