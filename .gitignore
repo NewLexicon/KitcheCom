@@ -44,3 +44,5 @@ venv/
 
 # Playwright MCP scratch dir (browser-verification console/page dumps)
 .playwright-mcp/
+
+.superpowers/
