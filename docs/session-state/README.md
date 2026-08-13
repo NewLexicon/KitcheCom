@@ -8,10 +8,10 @@ Read this first. Everything below is verified, with the command that verifies it
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `91252c9` — `docs: touch works — a USB hub between Pi and monitor is the requirement`. Last **code** commit is `1ff0b98` (timer restart fix).
+- **HEAD:** `3dd1585` — `docs: seed 4 recipes for Tier-2; log negative-id recipe defect`, **plus the fix-up commit that set this line.** Last **code** commit is still `1ff0b98` (timer restart fix) — the 2026-08-13 evening session was **docs-only by design** (see §4).
 - **Branch:** `main`. A scratch worktree for the merge lives at `.worktrees/main-merge` — **`main` is checked out there, not in the primary checkout.**
-- **Ahead of origin/main:** **0.** All 108 commits are **PUSHED**; `origin/main` is at `91252c9`.
-- Recent arc: `ac16298` (merge grocy) → `3f0c153` (merge hardware) → `1ff0b98` (timer restart fix) → `5bd6cd4` (cold-open) → `91252c9` (touch resolution).
+- **Ahead of origin/main:** **0** (4 evening commits pushed; `origin/main` at the fix-up commit).
+- Recent arc: `91252c9` (touch resolution) → `ed6e481` (cold-open refresh) → `f601e1f` (Task 10 OQ-1 findings) → `3dd1585` (recipe seed + negative-id defect).
 
 ```bash
 git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 0
@@ -32,6 +32,30 @@ cd custom_cards/<pkg> && npm install && npm run build && npm test && npm run typ
 
 ⚠️ **Build BEFORE testing in a fresh worktree.** `dist-browser-loadable.test.ts` reads `dist/`, so on a clean checkout it fails 8 tests until `npm run build` has run once. That is the guard working, not a regression.
 
+## 2b. Live dev environment (Tier-2 rig — Mac only, nothing to do with the Pi)
+
+Both containers were left **running** on 2026-08-13 evening. Restart with the compose files
+if they are down.
+
+| Piece | Where | State |
+|---|---|---|
+| Grocy **4.6.0** | `http://localhost:9283` | up; seeded (below) |
+| dev-HA | `http://localhost:8124` | up, 0 errors, login preserved |
+| HACS + grocy integration | — | ❌ **NOT installed — this is the blocker** |
+
+- **API key:** `sqlite3 deploy/grocy/grocy-config/data/grocy.db "select api_key from api_keys limit 1;"`
+- **Seeded data:** 4 recipes / 21 ingredients, 18 products, 11 units, 3 shopping-list items
+  (one with `product_id: null`), 2 meal-plan entries. Edge cases covered: text amounts
+  (`"a pinch"`), fractional amounts (0.333), varied units, differing `base_servings`.
+- ⚠️ **The dev-HA config is mounted from the `grocy-chores` worktree**, not `main-merge`:
+  `.worktrees/grocy-chores/deploy/homeassistant/dev-config`. Harmless (the one package it
+  keeps is byte-identical to `main`'s), but **do NOT naively re-run `dev-setup.sh` from
+  `main-merge`** — it stages an *empty* config and destroys the HA login/onboarding/DB.
+  To change secrets, edit `dev-config/secrets.yaml` in place and `docker restart`.
+- ⚠️ **Recreating the Grocy container invalidates the API key** in that `secrets.yaml`,
+  which shows up as `rest_command` **401s** and an empty "No recipes" dashboard — not as an
+  obvious auth error. Cost real time on 2026-08-13.
+
 ## 3. What just shipped
 
 **The kitchen panel works end-to-end for the first time.** The screensaver blanks after 3 minutes, cycles 26 Maine photos, and wakes on mouse/keyboard input. That required three independent fixes that only came together at the merge:
@@ -44,8 +68,21 @@ cd custom_cards/<pkg> && npm install && npm run build && npm test && npm run typ
 
 ## 4. Next moves
 
-- **S1 Task 10 (Tier-2)** for the meal-plan/shopping cards — **the next move, and NOT Pi-blocked** (runs on the Mac via Docker; `deploy/grocy/` + `deploy/homeassistant/` both present). Plan: `docs/superpowers/plans/2026-07-02-grocy-food-slice1.md` → Task 10. Resolves OQ-1 (live sensor field names — the fixtures are **source-derived guesses**, never confirmed), OQ-2/OQ-3 (the check-off id + list-id contract). Newly relevant since those two cards also carried the bare-`lit` defect and have **never loaded in HA**.
-  - ⚠️ Step 4's round-trip needs **a human with a real browser** — see trap §6.4. Claude can stand up the stack, seed data, and correct fixtures/tests, but cannot confirm an HA render.
+- **S1 Task 10 (Tier-2) — IN PROGRESS, blocked on one browser step.**
+  **Read `docs/session-state/2026-08-13-s1-task10-oq1-findings.md` first** — it holds the live
+  Grocy shapes, three defect findings, and the exact next steps. Absolute path:
+  `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/docs/session-state/2026-08-13-s1-task10-oq1-findings.md`
+
+  **The literal first action:** install HACS + the `custom-components/grocy` integration in the
+  dev-HA at `http://localhost:8124`, enable `sensor.grocy_shopping_list` +
+  `sensor.grocy_meal_plan` (**they ship disabled**), then read their attributes in
+  Developer Tools → States. That single screen resolves **OQ-1**. Steps: findings doc §4.
+  - ⚠️ The Step-4 round-trip needs **a human with a real browser** — see trap §6.4. Claude can
+    stand up the stack, seed data, and correct fixtures/tests, but cannot confirm an HA render.
+  - **Environment is already up and seeded** (§2b): Grocy 4.6.0 + dev-HA both running.
+  - **Three defects found but deliberately NOT patched** — each needs OQ-1 answered first to
+    know which layer owns the fix. See findings doc §2 (Finding 1 nested objects, Finding 2
+    `done` filtering) and §4b (negative-id recipe rows).
 - **Confirm touch survives a reboot.** Touch works now (§5), but the hub was added while the Pi was running; nobody has yet verified the panel comes up touch-enabled from cold.
 - `feat/choreops-chores` (16 commits) is unmerged and belongs to a **concurrent session**. Leave it alone.
 
