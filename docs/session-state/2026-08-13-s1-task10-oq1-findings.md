@@ -1,8 +1,7 @@
-# S1 Task 10 — Tier-2: OQ-1 RESOLVED, fixtures corrected (2026-08-13, evening)
+# S1 Task 10 — Tier-2/Tier-3 COMPLETE (2026-08-13, evening)
 
-**Status:** **OQ-1 RESOLVED** ✅ — read from live `sensor.grocy_shopping_list` +
-`sensor.grocy_meal_plan`. Fixtures corrected and committed; suite **101 passing**.
-**OQ-2/OQ-3 still open** — they need the check-off round-trip (a human ✓ press, trap §6.4).
+**Status:** ✅ **DONE.** OQ-1, OQ-2 and OQ-3 all resolved; the check-off round-trip was
+confirmed by a human in a real browser. Suite **110 passing**, typecheck clean. Read §0 first.
 
 Plan: `docs/superpowers/plans/2026-07-02-grocy-food-slice1.md` → Task 10.
 
@@ -113,7 +112,49 @@ settled offline**. Do not change parse code until Step 2 answers it.
 
 ---
 
-## 4-DONE. Step 2 is COMPLETE. What remains is OQ-2/OQ-3.
+## 0. ✅ TASK 10 COMPLETE — all three OQs resolved, round-trip confirmed by a human
+
+**2026-08-13 evening.** Every open question in the slice-1 plan is closed, and the final
+check-off was **seen working in a real browser** (the one thing trap §6.4 says Claude cannot
+self-certify).
+
+| Question | Answer |
+|---|---|
+| **OQ-1** sensor field names | pygrocy **HYDRATES** nested `product` / `recipe`; fixtures were right (§2-RESOLVED) |
+| **OQ-2** product id vs entry id | keys on **PRODUCT id** — the card was sending the entry id |
+| **OQ-3** list-id key name | **`list_id`**, not `shopping_list_id` |
+| Tier-3 visual | ✅ 3 rows, real names, ✓ correctly hidden on the product-less row, press → row gone from Grocy |
+
+**Verified on screen:** the shopping card rendered `(unnamed)` / `Eggs` / `Milk` with ✓ on
+Eggs and Milk only; pressing both removed them from Grocy (row count 3 → 1). The meal-plan
+card rendered **Tacos** and **Leftovers night** — nested `recipe.name` hydration confirmed
+visually, not just via API.
+
+### ⚠️ NEW UX DEFECT — the 30-second poll makes ✓ look broken
+
+`custom_components/grocy/const.py:14` → `SCAN_INTERVAL = timedelta(seconds=30)`.
+
+The service call removes the Grocy row **instantly**, but the card does not re-render until
+the coordinator's next poll — **up to 30s later**. On screen this is indistinguishable from a
+dead button.
+
+**This bit us during verification, and it will bite a real user harder:** the natural response
+to "nothing happened" is to press again, and the second press fires a **second removal**. That
+is how two items disappeared while testing one button this session.
+
+Options (a design decision — deliberately NOT improvised at session end):
+1. **Optimistic local hide** — drop the row from the card's own state immediately, let the
+   poll confirm. Best perceived latency; needs a re-appear path if the call fails.
+2. **Call `homeassistant.update_entity`** right after the service call — forces an immediate
+   refresh. Simple, one extra call, still a round-trip of lag.
+3. **Disable the button** for a beat after a press — cheapest guard against double-fire, does
+   not fix the perceived lag.
+
+Leaning (1) + (3) for a wall panel where taps are cheap and feedback must be instant.
+
+---
+
+## 4-DONE. Step 2 is COMPLETE. What remains is OQ-2/OQ-3. *(historical — now also done)*
 
 HACS **2.0.5** + grocy **v1.3.0** are installed and configured; both sensors are **enabled**
 and reporting. **The steps below are historical** — kept for the version-compatibility wall,

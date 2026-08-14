@@ -8,10 +8,10 @@ Read this first. Everything below is verified, with the command that verifies it
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `ef4a2cd` — `docs: cold-open — OQ-1 resolved, only the check-off round-trip left`, **plus the fix-up commit that set this line.** Last **code** commit is `7de6e16` (negative-id recipe filter).
+- **HEAD:** `231e683` — `fix(shopping): correct the check-off contract; hide the dead button`, **plus the cold-open close-out + fix-up commits that set this line.** That is also the last **code** commit.
 - **Branch:** `main`. A scratch worktree for the merge lives at `.worktrees/main-merge` — **`main` is checked out there, not in the primary checkout.**
 - **Ahead of origin/main:** **0** (4 evening commits pushed; `origin/main` at the fix-up commit).
-- Recent arc: `91252c9` (touch resolution) → `ed6e481` (cold-open refresh) → `f601e1f` (Task 10 OQ-1 findings) → `3dd1585` (recipe seed + negative-id defect) → `1e29942` (close-out) → `29ce9fb` (**OQ-1 resolved, fixtures corrected**) → `7de6e16` (**negative-id filter**).
+- Recent arc (2026-08-13 evening, **S1 Task 10 start → finish**): `91252c9` (touch resolution) → `ed6e481` (cold-open refresh) → `f601e1f` (OQ-1 findings) → `3dd1585` (recipe seed + negative-id defect) → `1e29942` (close-out) → `29ce9fb` (**OQ-1 resolved, fixtures corrected**) → `7de6e16` (**negative-id filter**) → `231e683` (**check-off contract fixed; Task 10 complete**).
 
 ```bash
 git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 0
@@ -23,7 +23,7 @@ git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 0
 
 | Package | Tests | Typecheck | Build | dist imports |
 |---|---|---|---|---|
-| `custom_cards/grocy-food-card` | **103 / 14 files** | 0 errors | clean | **0** |
+| `custom_cards/grocy-food-card` | **110 / 14 files** | 0 errors | clean | **0** |
 | `custom_cards/screensaver-card` | **73 / 13 files** | 0 errors | clean | **0** |
 
 ```bash
@@ -49,7 +49,23 @@ if they are down.
 which surfaces only as **"Config flow could not be loaded: 500"**. **v1.3.0 is the newest
 version that works here.** Full table in the findings doc §4-DONE.
 
+- **Dashboards ready to use:** the default lovelace has a **Recipes** view (recipe card) and a
+  **Shopping** view (shopping + meal-plan cards, `shopping_list_id: 1`). All three cards are
+  registered resources. **Cards were added by editing `.storage/lovelace` directly + restart** —
+  faster and less error-prone than HA's editor, where the badge `+`, the card `+`, and the
+  per-view pencil are easy to confuse.
 - **API key:** `sqlite3 deploy/grocy/grocy-config/data/grocy.db "select api_key from api_keys limit 1;"`
+- **Redeploy a card here:** build → copy `dist/*.js` into `dev-config/www/` → **bump `?v=N`** in
+  `.storage/lovelace_resources` → restart HA. Skipping the bump serves a cached module.
+- **Seeded shopping list:** paper towels (**no product_id** — the fail-safe row, ✓ correctly
+  hidden), Eggs ×2, Milk ×1.5. **Re-seed after check-off testing** — pressing ✓ really does
+  delete the Grocy row:
+  ```bash
+  K=$(sqlite3 deploy/grocy/grocy-config/data/grocy.db "select api_key from api_keys limit 1;")
+  curl -s -X POST -H "GROCY-API-KEY: $K" -H "Content-Type: application/json" \
+    -d '{"shopping_list_id":1,"product_id":1,"amount":2,"note":""}' \
+    http://localhost:9283/api/objects/shopping_list
+  ```
 - **Seeded data:** 4 recipes / 21 ingredients, 18 products, 11 units, 3 shopping-list items
   (one with `product_id: null`), 2 meal-plan entries. Edge cases covered: text amounts
   (`"a pinch"`), fractional amounts (0.333), varied units, differing `base_servings`.
@@ -74,30 +90,35 @@ version that works here.** Full table in the findings doc §4-DONE.
 
 ## 4. Next moves
 
-- **S1 Task 10 (Tier-2) — OQ-1 RESOLVED; only the check-off round-trip remains.**
-  **Read this first:**
+- **S1 Task 10 — ✅ COMPLETE (2026-08-13 evening).** All three OQs resolved and the check-off
+  round-trip **confirmed by a human in a real browser**. Detail:
   `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/docs/session-state/2026-08-13-s1-task10-oq1-findings.md`
-  (§2-RESOLVED = the live sensor shapes; §4-DONE = what's left + the version wall).
+  (§0 = completion + the poll-lag defect; §2-RESOLVED = live sensor shapes; §4-DONE = version wall).
 
-  **The literal first action — needs a human at the browser (trap §6.4):** register the card
-  resources in the dev-HA, add the shopping card with `shopping_list_id: 1`, press ✓ on a row,
-  then confirm in **Grocy's own UI** (`localhost:9283`) that the item is gone. That resolves
-  **OQ-2** (product_id vs entry id) and **OQ-3** (list-id key). If it 500s, read the real
-  service contract and correct `buildRemovePayload` / `canCheckOff` + the Task 5 test.
-
-  Settled on 2026-08-13 evening — do not re-litigate:
+  Settled — do not re-litigate:
   - **OQ-1: pygrocy HYDRATES** the nested `product`/`recipe` objects. The provisional fixtures
     were RIGHT; both are now verbatim live captures. The raw-REST "nested objects are missing"
     scare was a false alarm — *the sensor layer is the authority, not `/api/objects/...`.*
+  - **OQ-2/OQ-3:** the service is `remove_product_in_shopping_list(list_id, product_id,
+    amount)` — keys on the **PRODUCT** id, and the key is **`list_id`**. Fixed at `231e683`.
   - **`done` filtering: NOT our bug.** pygrocy drops the field, so the card cannot filter
     checked-off items. Do not add a filter — there is nothing to filter on.
-  - **Negative-id recipe rows: FIXED** (`7de6e16`) and deployed to the dev-HA.
-  - **Still open (cosmetic):** live `day` is a full ISO datetime (`2026-08-14T00:00:00`) and
-    the meal-plan card renders it raw. Format at the card render layer — `parseMeals` keeps
-    `day` opaque on purpose.
-  - ⚠️ **The Pi may run a newer HA**, which would pull grocy **v1.15.0** → the **`grocy-py`**
-    library instead of `pygrocy2`. Hydration behavior there is **unverified**; tonight's
-    answer is authoritative only for `pygrocy2`. Check the Pi's HA version before relying on it.
+  - **Negative-id recipe rows: FIXED** (`7de6e16`) and deployed.
+
+- **NEXT — the ✓ button feels dead for up to 30s.** The grocy integration polls on
+  `SCAN_INTERVAL = 30s` (`custom_components/grocy/const.py:14`), so a removed row lingers on
+  screen until the next poll. **A user's natural response is to press again, firing a second
+  removal** — that is how two items vanished while testing one button. Options and a leaning
+  are in the findings doc §0; it is a design decision, deliberately not improvised at session
+  end. **This is the highest-value next piece of work on the food slice.**
+
+- **Also open (cosmetic):** live `day` is a full ISO datetime and the meal-plan card renders it
+  raw — visible on screen as `2026-08-14T00:00:00`. Format at the card render layer;
+  `parseMeals` keeps `day` opaque on purpose.
+
+- ⚠️ **The Pi may run a newer HA**, which would pull grocy **v1.15.0** → the **`grocy-py`**
+  library instead of `pygrocy2`. Hydration behavior there is **unverified**; the OQ-1 answer is
+  authoritative only for `pygrocy2`. Check the Pi's HA version before relying on it.
 - **Confirm touch survives a reboot.** Touch works now (§5), but the hub was added while the Pi was running; nobody has yet verified the panel comes up touch-enabled from cold.
 - `feat/choreops-chores` (16 commits) is unmerged and belongs to a **concurrent session**. Leave it alone.
 
