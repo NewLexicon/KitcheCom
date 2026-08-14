@@ -8,7 +8,7 @@ Read this first. Everything below is verified, with the command that verifies it
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `231e683` — `fix(shopping): correct the check-off contract; hide the dead button`, **plus the cold-open close-out + fix-up commits that set this line.** That is also the last **code** commit.
+- **HEAD:** `ff08a09` — `docs: S1 Task 10 COMPLETE — all OQs closed, poll-lag defect logged`, **plus the fix-up commit that set this line.** Last **code** commit is `231e683` (check-off contract).
 - **Branch:** `main`. A scratch worktree for the merge lives at `.worktrees/main-merge` — **`main` is checked out there, not in the primary checkout.**
 - **Ahead of origin/main:** **0** (4 evening commits pushed; `origin/main` at the fix-up commit).
 - Recent arc (2026-08-13 evening, **S1 Task 10 start → finish**): `91252c9` (touch resolution) → `ed6e481` (cold-open refresh) → `f601e1f` (OQ-1 findings) → `3dd1585` (recipe seed + negative-id defect) → `1e29942` (close-out) → `29ce9fb` (**OQ-1 resolved, fixtures corrected**) → `7de6e16` (**negative-id filter**) → `231e683` (**check-off contract fixed; Task 10 complete**).
