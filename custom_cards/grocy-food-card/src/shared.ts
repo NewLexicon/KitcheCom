@@ -83,11 +83,32 @@ export function canCheckOff(shoppingListId?: string, productId?: number | null):
 // OQ-3: the key is `list_id`, not `shopping_list_id`.
 //
 // `amount` decrements, and reaching zero DELETES the row — so passing the row's
-// full amount is how ✓ removes an item outright. ⚠️ FRACTIONAL amounts are
-// silently ignored (0.5 against a 1.5 row returned 200 and changed nothing), so
-// any future "decrement by one" control must send integers.
+// full amount is how ✓ removes an item outright.
+//
+// ⚠️ GROCY TRUNCATES THE REMOVAL AMOUNT, so we round UP. Verified 2026-08-13 by
+// reading Grocy 4.6.0's source and reproducing against its REST API directly:
+//
+//   StockApiController.php:745   $amount = intval($requestBody['product_amount']);
+//
+// intval(1.5) === 1, so sending a 1.5 row's true amount decremented it to 0.5 and
+// the row SURVIVED — the ✓ looked broken on any fractional item (observed on the
+// panel: Milk 1.5 would not clear, while Eggs 2 cleared first press). An earlier
+// note here guessed fractional amounts were "silently ignored"; they are not —
+// they are truncated, which is worse, because it partially removes.
+//
+// Math.ceil is the correct fix, not Math.round: 0.5 must become 1, not 0 (a 0
+// removal is a no-op and would leave the row untouched forever). Over-removing is
+// safe — StockService.php:1169-1174 deletes the row once the remainder falls below
+// the user's decimal precision, and it never clamps to a floor.
+//
+// This is a GROCY-side constraint, not an HA one: the HA service schema coerces to
+// float (services.py:154) and pygrocy2 forwards it unchanged (grocy_api_client.py:689).
 export function buildRemovePayload(shoppingListId: string, productId: number, amount: number) {
-  return { list_id: Number(shoppingListId), product_id: productId, amount };
+  return {
+    list_id: Number(shoppingListId),
+    product_id: productId,
+    amount: Number.isFinite(amount) ? Math.ceil(amount) : 1,
+  };
 }
 
 // ---- Slice 2: recipes ----------------------------------------------------

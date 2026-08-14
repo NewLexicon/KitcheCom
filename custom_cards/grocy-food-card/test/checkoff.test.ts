@@ -43,8 +43,40 @@ describe("buildRemovePayload", () => {
   });
   // Reaching zero deletes the row (Tier-2-verified), so sending the row's FULL
   // amount is how ✓ removes an item outright.
-  it("passes the full row amount through, so ✓ zeroes and deletes the row", () => {
-    expect(buildRemovePayload("1", 3, 1.5).amount).toBe(1.5);
+  it("passes a whole row amount through unchanged", () => {
+    expect(buildRemovePayload("1", 3, 2).amount).toBe(2);
+  });
+
+  // ⚠️ GROCY TRUNCATES THE REMOVAL AMOUNT — Tier-2-verified 2026-08-13 by reading
+  // Grocy 4.6.0's own source and reproducing against its REST API directly:
+  //
+  //   StockApiController.php:745   $amount = intval($requestBody['product_amount']);
+  //
+  // intval(1.5) === 1, so a 1.5 row decrements to 0.5 and SURVIVES. Observed
+  // end-to-end (start -> send -> result):
+  //   1.5 -> 1.5 (intval 1)  -> 0.5   row survives  <- the defect
+  //   1.5 -> 2   (intval 2)  -> DELETED
+  //   0.5 -> 1   (intval 1)  -> DELETED
+  //
+  // The service layer itself handles floats fine (StockService.php:1169); only the
+  // REST controller truncates. Removing MORE than the row holds is safe — Grocy
+  // deletes at "< 0.1"-ish rather than clamping at zero — so rounding UP is the
+  // correct fix. Do not "simplify" this to pass the raw amount.
+  it("rounds a fractional amount UP so the row actually deletes", () => {
+    expect(buildRemovePayload("1", 3, 1.5).amount).toBe(2);
+  });
+  it("rounds a sub-1 fractional amount up to 1", () => {
+    expect(buildRemovePayload("1", 3, 0.5).amount).toBe(1);
+  });
+  it("leaves a whole amount alone rather than inflating it", () => {
+    expect(buildRemovePayload("1", 3, 3).amount).toBe(3);
+  });
+  // A non-finite amount would serialise as null/NaN and 400 the service. Grocy's
+  // own controller defaults to 1 (StockApiController.php:736), so match it.
+  it("falls back to 1 when the amount is not a finite number", () => {
+    expect(buildRemovePayload("1", 3, NaN).amount).toBe(1);
+    expect(buildRemovePayload("1", 3, Infinity).amount).toBe(1);
+    expect(buildRemovePayload("1", 3, undefined as unknown as number).amount).toBe(1);
   });
 });
 
