@@ -31,7 +31,11 @@ views:
         cards:
           - type: calendar
             entities:
-              - calendar.family     # PLACEHOLDER
+              # CONFIRMED 2026-08-14 (dev rig): the Google Calendar integration
+              # names a secondary calendar titled "Family" exactly calendar.family,
+              # so the old placeholder resolved on its own. Read AND write verified
+              # (calendar.create_event succeeded against the live calendar).
+              - calendar.family
           - type: todo-list
             title: Chores
             entity: todo.chores     # local_todo (wired 2026-06-15)

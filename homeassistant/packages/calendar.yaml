@@ -19,7 +19,11 @@ intent_script:
     action:
       - service: calendar.create_event
         target:
-          entity_id: calendar.family    # PLACEHOLDER — set the real calendar entity at hardware setup
+          # CONFIRMED 2026-08-14 on the dev rig — no longer a placeholder. The
+          # Google Calendar integration names a secondary calendar titled "Family"
+          # exactly calendar.family. This intent's write path is VERIFIED: calling
+          # calendar.create_event against it returned 200 and the event read back.
+          entity_id: calendar.family
         data:
           summary: "{{ summary }}"
           start_date_time: "{{ start }}"
