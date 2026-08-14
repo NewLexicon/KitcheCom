@@ -21,17 +21,17 @@ Status against that promise:
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `912b1ed` — `feat(calendar): connect Google Calendar — calendar.family is real now`,
+- **HEAD:** `aec3c07` — `docs: refresh cold-open — calendar shipped, Grocy intval fix, rig migrated`,
   **plus the fix-up commit that set this line.** Last **code** commit is `2119d98`
   (fractional-delete fix).
 - **Branch:** `main`, checked out at `.worktrees/main-merge` — **not in the primary checkout.**
-- **Ahead of origin/main:** **3** (unpushed — see §9).
+- **Ahead of origin/main:** **5** (unpushed — see §9).
 - Recent arc (2026-08-13 evening → 2026-08-14): `231e683` (check-off contract) → `ff08a09`
   (Task 10 complete) → `a67742e` (fix-up) → `2119d98` (**Grocy `intval` fractional-delete fix**)
   → `912b1ed` (**Google Calendar connected**).
 
 ```bash
-git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 3
+git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 5
 ```
 
 ⚠️ **The primary checkout `/Users/jdehart1/___Code_DEV/KitchenCOM` is usually on a *different* branch** (a concurrent session parks `feat/choreops-chores` there — see §4). Work on `main` from `.worktrees/main-merge`. Verify `git branch --show-current` before every commit.
@@ -268,10 +268,11 @@ In `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memo
 
 ## 9. Unpushed work
 
-**3 commits ahead of `origin/main`** as of this refresh:
+**5 commits ahead of `origin/main`** as of this refresh:
 
 - `2119d98` — `fix(shopping): round the removal amount up — Grocy truncates it`
 - `912b1ed` — `feat(calendar): connect Google Calendar — calendar.family is real now`
+- `aec3c07` — `docs: refresh cold-open — calendar shipped, Grocy intval fix, rig migrated`
 - *(+ the cold-start sanity-check fix-up commit that set §1's HEAD line)*
 
 ```bash
