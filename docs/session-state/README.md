@@ -21,17 +21,17 @@ Status against that promise:
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `aec3c07` — `docs: refresh cold-open — calendar shipped, Grocy intval fix, rig migrated`,
+- **HEAD:** `d919b40` — `docs: correct the ahead count (4, not 5)`,
   **plus the fix-up commit that set this line.** Last **code** commit is `2119d98`
   (fractional-delete fix).
 - **Branch:** `main`, checked out at `.worktrees/main-merge` — **not in the primary checkout.**
-- **Ahead of origin/main:** **4** (unpushed — see §9).
+- **Ahead of origin/main:** **0** — everything below is **PUSHED**.
 - Recent arc (2026-08-13 evening → 2026-08-14): `231e683` (check-off contract) → `ff08a09`
   (Task 10 complete) → `a67742e` (fix-up) → `2119d98` (**Grocy `intval` fractional-delete fix**)
   → `912b1ed` (**Google Calendar connected**).
 
 ```bash
-git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 4
+git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 0
 ```
 
 ⚠️ **The primary checkout `/Users/jdehart1/___Code_DEV/KitchenCOM` is usually on a *different* branch** (a concurrent session parks `feat/choreops-chores` there — see §4). Work on `main` from `.worktrees/main-merge`. Verify `git branch --show-current` before every commit.
@@ -266,17 +266,19 @@ In `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memo
   enforcement layer (does the AT&T gateway even support per-device time windows?) is **unresearched
   and constrains everything above it** — check feasibility before designing reward mechanics.
 
-## 9. Unpushed work
+## 9. Push state
 
-**4 commits ahead of `origin/main`** as of this refresh:
+**Everything is PUSHED.** `origin/main` == `main` == `d919b40` (plus this fix-up).
+
+This session's commits:
 
 - `2119d98` — `fix(shopping): round the removal amount up — Grocy truncates it`
 - `912b1ed` — `feat(calendar): connect Google Calendar — calendar.family is real now`
 - `aec3c07` — `docs: refresh cold-open — calendar shipped, Grocy intval fix, rig migrated`
-- `5f94717` — `docs: cold-start sanity-check fix-ups (HEAD SHA + ahead count)`
+- `5f94717` + `d919b40` — cold-start sanity-check fix-ups
 
 ```bash
 cd /Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge
-git branch --show-current    # MUST print `main` before pushing
-git push
+git branch --show-current    # MUST print `main` before any commit
+git rev-list --count origin/main..HEAD   # expect 0
 ```
