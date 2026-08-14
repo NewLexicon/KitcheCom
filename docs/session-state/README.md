@@ -1,20 +1,37 @@
 # KitchenCOM — cold-open (main)
 
-**Last refreshed:** 2026-08-13 (evening), after the 108-commit push landed. Prior refresh: earlier the same day, when `feat/grocy-chores` + `feat/hardware-deploy` merged and the kitchen panel came fully to life.
+**Last refreshed:** 2026-08-14 (late morning), after the Google Calendar OAuth arc. Prior refresh: 2026-08-13 evening, after the 108-commit push landed.
 
 Read this first. Everything below is verified, with the command that verifies it.
 
 ---
 
+## ⏰ THE REAL DEADLINE — **Tuesday 2026-08-18**
+
+Garrett promised his wife the **calendar and chore chart** would be **up and working** when she
+returns Tuesday. That is the priority filter for every call. Prefer shipping a working panel over
+polish. The food slice is already past the bar — **do not sink more time into it.**
+
+Status against that promise:
+- **Calendar → DONE** (2026-08-14). Google Calendar connected, read+write verified, on the dashboard.
+- **Chore chart → mostly done, ON THE PI, NOT ON MAIN.** ChoreOps 1.0.7 is installed on the Pi via
+  HACS with profiles + **11 chores entered, parents as approvers**. That work is documented on
+  `feat/choreops-chores` (a **concurrent session's** branch — leave it alone). **What is unverified
+  is whether the Pi panel actually displays it.** That is the highest-value remaining check.
+
 ## 1. Where is HEAD?
 
-- **HEAD:** `ff08a09` — `docs: S1 Task 10 COMPLETE — all OQs closed, poll-lag defect logged`, **plus the fix-up commit that set this line.** Last **code** commit is `231e683` (check-off contract).
-- **Branch:** `main`. A scratch worktree for the merge lives at `.worktrees/main-merge` — **`main` is checked out there, not in the primary checkout.**
-- **Ahead of origin/main:** **0** (4 evening commits pushed; `origin/main` at the fix-up commit).
-- Recent arc (2026-08-13 evening, **S1 Task 10 start → finish**): `91252c9` (touch resolution) → `ed6e481` (cold-open refresh) → `f601e1f` (OQ-1 findings) → `3dd1585` (recipe seed + negative-id defect) → `1e29942` (close-out) → `29ce9fb` (**OQ-1 resolved, fixtures corrected**) → `7de6e16` (**negative-id filter**) → `231e683` (**check-off contract fixed; Task 10 complete**).
+- **HEAD:** `912b1ed` — `feat(calendar): connect Google Calendar — calendar.family is real now`,
+  **plus the fix-up commit that set this line.** Last **code** commit is `2119d98`
+  (fractional-delete fix).
+- **Branch:** `main`, checked out at `.worktrees/main-merge` — **not in the primary checkout.**
+- **Ahead of origin/main:** **3** (unpushed — see §9).
+- Recent arc (2026-08-13 evening → 2026-08-14): `231e683` (check-off contract) → `ff08a09`
+  (Task 10 complete) → `a67742e` (fix-up) → `2119d98` (**Grocy `intval` fractional-delete fix**)
+  → `912b1ed` (**Google Calendar connected**).
 
 ```bash
-git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 0
+git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 3
 ```
 
 ⚠️ **The primary checkout `/Users/jdehart1/___Code_DEV/KitchenCOM` is usually on a *different* branch** (a concurrent session parks `feat/choreops-chores` there — see §4). Work on `main` from `.worktrees/main-merge`. Verify `git branch --show-current` before every commit.
@@ -23,7 +40,7 @@ git log --oneline -4 && git rev-list --count origin/main..HEAD   # expect 0
 
 | Package | Tests | Typecheck | Build | dist imports |
 |---|---|---|---|---|
-| `custom_cards/grocy-food-card` | **110 / 14 files** | 0 errors | clean | **0** |
+| `custom_cards/grocy-food-card` | **114 / 14 files** | 0 errors | clean | **0** |
 | `custom_cards/screensaver-card` | **73 / 13 files** | 0 errors | clean | **0** |
 
 ```bash
@@ -69,11 +86,25 @@ version that works here.** Full table in the findings doc §4-DONE.
 - **Seeded data:** 4 recipes / 21 ingredients, 18 products, 11 units, 3 shopping-list items
   (one with `product_id: null`), 2 meal-plan entries. Edge cases covered: text amounts
   (`"a pinch"`), fractional amounts (0.333), varied units, differing `base_servings`.
-- ⚠️ **The dev-HA config is mounted from the `grocy-chores` worktree**, not `main-merge`:
-  `.worktrees/grocy-chores/deploy/homeassistant/dev-config`. Harmless (the one package it
-  keeps is byte-identical to `main`'s), but **do NOT naively re-run `dev-setup.sh` from
-  `main-merge`** — it stages an *empty* config and destroys the HA login/onboarding/DB.
-  To change secrets, edit `dev-config/secrets.yaml` in place and `docker restart`.
+- ✅ **MIGRATED 2026-08-14 — the dev-HA config now lives in `main-merge`.** It used to be mounted
+  from the `grocy-chores` worktree. Both containers now mount from
+  `.worktrees/main-merge/deploy/homeassistant/dev-config` and `.../deploy/grocy/grocy-config`.
+  The copy was `cp -a` and verified byte-identical (`diff -r` empty; DB + `.storage/auth` +
+  `lovelace_resources` all checksum-matched). **The original is still in `.worktrees/grocy-chores`
+  (detached HEAD, 55M) as a rollback** — delete it once you are confident. `dev-config/` is
+  **gitignored** (`.gitignore:34`), so this added no repo noise.
+  **Still do NOT naively re-run `dev-setup.sh`** — it stages an *empty* config and destroys the HA
+  login/onboarding/DB. To change secrets, edit `dev-config/secrets.yaml` in place and `docker restart`.
+- ⚠️ **`dev-config/configuration.yaml` is a GENERATED COPY.** The canonical file is
+  `deploy/homeassistant/dev-configuration.yaml`. Editing the copy is how a stray character got in
+  and put HA into **recovery mode** on 2026-08-14. After any edit:
+  `diff deploy/homeassistant/dev-configuration.yaml deploy/homeassistant/dev-config/configuration.yaml`
+  (expect identical).
+- **Google Calendar is configured here** (2026-08-14): entity **`calendar.family`**, read+write
+  verified, plus a **Calendar** dashboard view. Full runbook and the redirect-URI traps:
+  `docs/session-state/2026-08-14-google-calendar-oauth-setup.md`. **`internal_url`/`external_url`
+  are now set to `http://localhost:8124`** in `.storage/core.config` — they were `None`, which is
+  what broke the OAuth callback.
 - ⚠️ **Recreating the Grocy container invalidates the API key** in that `secrets.yaml`,
   which shows up as `rest_command` **401s** and an empty "No recipes" dashboard — not as an
   obvious auth error. Cost real time on 2026-08-13.
@@ -105,7 +136,29 @@ version that works here.** Full table in the findings doc §4-DONE.
     checked-off items. Do not add a filter — there is nothing to filter on.
   - **Negative-id recipe rows: FIXED** (`7de6e16`) and deployed.
 
-- **NEXT — the ✓ button feels dead for up to 30s.** The grocy integration polls on
+- **RESOLVED 2026-08-14 — fractional rows could not be checked off** (`2119d98`). Pressing ✓ on a
+  1.5 row left it at 0.5; only whole-number rows cleared. **Grocy's own controller truncates the
+  removal amount** — `StockApiController.php:745` does `intval($requestBody['product_amount'])`,
+  and `intval(1.5)` is `1`. Not a card bug and not an HA bug: the HA schema coerces to float
+  (`services.py:154`) and pygrocy2 forwards it unchanged (`grocy_api_client.py:689`); Grocy's own
+  service layer handles floats fine (`StockService.php:1169`). Fix is `Math.ceil` in
+  `buildRemovePayload` — **ceil, not round**, since 0.5 must become 1 (a 0 removal is a no-op that
+  would strand the row forever). Verified end-to-end through the real HA service. ⚠️ **The old test
+  asserted `amount` stayed `1.5` — a green test locking in the bug.** That is trap #6 (§6) firing
+  again: *when a check passes, ask what it supplied that production will not.*
+
+- ⚠️ **STOP INVESTING IN THE FOOD CARD** (raised by Garrett 2026-08-14, and it is correct).
+  Grocy already ships a complete shopping list at `http://localhost:9283/shoppinglist` — real
+  done/undone toggles, quantity editing, add-item, clear-list, add-from-recipe. The custom card
+  reimplements a thin slice of that through a **lossy** integration, and it cannot reach parity:
+  **pygrocy drops the `done` field**, so the card can only DELETE, never mark-done. That is why the
+  ✓ is semantically wrong (Grocy's ✓ means "done" and is reversible; ours means "gone forever") and
+  why the card "doesn't feel like fully-realized app functionality" — it isn't, and it structurally
+  cannot be. **Open direction, not yet decided:** embed Grocy's own UI in an iframe/webpage card for
+  *management*, and keep the custom card for the glanceable *view*. Test that before building a
+  quantity stepper, a ✓→✗ swap, or any further parity work — those may all be moot.
+
+- **NEXT (food slice, if it is ever picked back up) — the ✓ button feels dead for up to 30s.** The grocy integration polls on
   `SCAN_INTERVAL = 30s` (`custom_components/grocy/const.py:14`), so a removed row lingers on
   screen until the next poll. **A user's natural response is to press again, firing a second
   removal** — that is how two items vanished while testing one button. Options and a leaning
@@ -120,7 +173,40 @@ version that works here.** Full table in the findings doc §4-DONE.
   library instead of `pygrocy2`. Hydration behavior there is **unverified**; the OQ-1 answer is
   authoritative only for `pygrocy2`. Check the Pi's HA version before relying on it.
 - **Confirm touch survives a reboot.** Touch works now (§5), but the hub was added while the Pi was running; nobody has yet verified the panel comes up touch-enabled from cold.
-- `feat/choreops-chores` (16 commits) is unmerged and belongs to a **concurrent session**. Leave it alone.
+- `feat/choreops-chores` (16 commits, all docs) is unmerged and belongs to a **concurrent session**.
+  Leave it alone. It is 120 behind `main`. **It documents the ChoreOps work already performed on the
+  Pi** — profiles, 11 chores with parents as approvers, plus reward-store / bonuses-penalties /
+  achievements entry sheets.
+
+- ✅ **Branches cleaned 2026-08-14: 5 → 2.** `feat/audio-music` (`0cdc0f5`), `feat/hardware-deploy`
+  (`2979235`), and `feat/grocy-chores` (`f2e561c`) were all **fully merged into `main`** (zero unique
+  commits, confirmed with `git merge-base --is-ancestor`) and deleted; SHAs recorded here in case a
+  reflog recovery is ever wanted. Only `main` + `feat/choreops-chores` remain.
+  ⚠️ **`git branch -d` will falsely claim "not fully merged"** when the primary checkout is parked on
+  `feat/choreops-chores` — `-d` compares against the *current* HEAD, not `main`. Verify with
+  `git merge-base --is-ancestor <branch> main` before reaching for `-D`.
+
+## 4b. 🎯 THE LITERAL NEXT MOVE (2026-08-14 → Tuesday 2026-08-18)
+
+Ordered against the deadline, not against technical interest.
+
+1. **Push the 3 unpushed commits.** `cd .worktrees/main-merge && git push` (see §9).
+2. **Get on the Pi and verify the chore chart actually displays.** ChoreOps + 11 chores are already
+   entered there, but **nobody has confirmed the panel renders them**. This is the biggest unknown
+   standing between now and the promise. The Pi was **unreachable** from the work network on
+   2026-08-14 (`ssh kitchencom` → timeout on `192.168.1.234`); use `ssh kitchencom-eth` +
+   `docs/session-state/` ethernet notes, or try again from the home network.
+3. **Repeat the Google Calendar OAuth on the Pi.** The dev-rig setup does NOT carry over — the Pi
+   needs its own redirect URI and its own `my.home-assistant.io` instance URL. Follow
+   `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/docs/session-state/2026-08-14-google-calendar-oauth-setup.md`
+   §3 exactly; that trap cost the most time on 2026-08-14 and **will recur**.
+4. **Put real events on `calendar.family`.** It holds only the "KitchenCOM test event" that proved
+   the write path. An empty calendar on the wall is not a working calendar.
+5. **Rotate the OAuth client secret** (see the runbook §6 — it was screenshotted into a transcript).
+
+**Explicitly NOT next:** the food-card poll lag, the quantity stepper, the ✓→✗ swap, and the card
+styling. All are real, all are logged, none are on the Tuesday path — and the stepper/✓ items may be
+mooted entirely by the embed-Grocy direction in §4.
 
 ## 5. Carry-forwards
 
@@ -174,3 +260,22 @@ In `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memo
 - `pi-kiosk-wayland-labwc.md` — labwc/Wayland, not X11
 - `pi-direct-ethernet-fallback.md` — `kitchencom-eth`, the `%%` escaping gotcha
 - `concurrent-sessions-branch-hazard.md` — **multiple sessions share this checkout; verify `git branch --show-current` before every commit**
+- `viewsonic-touch-needs-hub.md` — TD1655 touch needs a USB hub in the path
+- `v3-internet-time-as-chore-reward.md` — **V3/V4 idea + the Tuesday deadline.** Earned chore points
+  unlock per-device internet time via an AT&T-managed network gate; kid picks the device. The
+  enforcement layer (does the AT&T gateway even support per-device time windows?) is **unresearched
+  and constrains everything above it** — check feasibility before designing reward mechanics.
+
+## 9. Unpushed work
+
+**3 commits ahead of `origin/main`** as of this refresh:
+
+- `2119d98` — `fix(shopping): round the removal amount up — Grocy truncates it`
+- `912b1ed` — `feat(calendar): connect Google Calendar — calendar.family is real now`
+- *(+ the cold-start sanity-check fix-up commit that set §1's HEAD line)*
+
+```bash
+cd /Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge
+git branch --show-current    # MUST print `main` before pushing
+git push
+```
