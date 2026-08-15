@@ -69,6 +69,53 @@ which `redirect_uri` HA recorded.
 
 **On the Pi this recurs** with the Pi's own address. Same three places.
 
+## 3b. ⚠️ The autofill trap — hit TWICE on 2026-08-14, will recur on the Pi
+
+HA's "add application credentials" dialog has two text fields. **Chrome treats it as a login form
+and autofills the Client ID field.** It happened twice in a row, silently:
+
+| Attempt | What landed in `client_id` | Google's response |
+|---|---|---|
+| 1 | `dev` (the saved HA username) | `Error 401: invalid_client` |
+| 2 | `garrettdehart@gmail.com` (saved email) | `Error 401: invalid_client` |
+
+The **Client Secret was correct every time** — only the ID was clobbered. The failure surfaces on
+Google's side as **"Access blocked: Authorization Error / The OAuth client was not found"**, which
+reads like a Google-side problem and sends you to the console to re-check the client. It is not.
+It is a browser autofill overwriting a field you already pasted.
+
+**A Google Client ID is ~72 chars and ALWAYS ends in `.apps.googleusercontent.com`.** If it is short,
+or contains an `@`, it is wrong. Verify before submitting:
+
+```bash
+python3 -c "
+import json;d=json.load(open('<config>/.storage/application_credentials'))
+for i in d['data']['items']:
+    c=i.get('client_id','') or ''
+    print(i.get('name'), len(c), c.endswith('.apps.googleusercontent.com'))"
+```
+
+**Procedure that works:** clear the Client ID field (`Cmd+A`, Delete) → paste → fill the secret →
+**re-check the Client ID, because autofill can repopulate it when focus moves** → submit. An
+incognito window has no saved form data and sidesteps the whole problem.
+
+**Recovery if a bad credential is already stored:** filter `.storage/application_credentials` to
+entries whose `client_id` ends in `.apps.googleusercontent.com`, restart HA, and re-add. Removing
+the `google` config entry does NOT delete the dashboard view — Lovelace config is independent, so
+the Calendar view survives and repopulates once the integration returns.
+
+### Three identities that are easy to conflate
+
+| Identity | What it is | Where it is used |
+|---|---|---|
+| `dev` / `devdev123` | the **HA login** (user `Dev`, the owner account) | signing into `localhost:8124` |
+| `garrettdehart@gmail.com` | the **Google account** | the consent screen — *whose calendar* |
+| `4388...apps.googleusercontent.com` | the **OAuth Client ID** | identifies *the app*, not a person |
+
+The dev-HA `.storage/auth` holds exactly two users: **`Dev`** (owner, that's Garrett) and
+**`Home Assistant Content`** (`system_generated: true` — an internal service account, not a person,
+cannot be logged into, leave it alone).
+
 ## 4. Publishing status — do not skip
 
 The app starts in **Testing**, where refresh tokens **expire after 7 days** and the calendar

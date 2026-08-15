@@ -186,23 +186,75 @@ version that works here.** Full table in the findings doc §4-DONE.
   `feat/choreops-chores` — `-d` compares against the *current* HEAD, not `main`. Verify with
   `git merge-base --is-ancestor <branch> main` before reaching for `-D`.
 
+## 4a. ChoreOps on the dev rig — INSTALLED, NOT YET EXERCISED
+
+**The Pi is unavailable until Monday 2026-08-17** (Garrett worked remote Friday). The Tuesday date
+may slip, and that is fine — but the chore-chart display risk can be retired **without the Pi**,
+because ChoreOps is vendored locally and the dev rig can run it.
+
+Staged on 2026-08-14, all verified:
+
+| Piece | State |
+|---|---|
+| ChoreOps **1.0.8** (from `reference/ChoreOps-main`) | ✅ copied into `dev-config/custom_components/choreops`, loads clean |
+| HA version gate (`hacs.json` wants ≥2025.6) | ✅ dev-HA is 2025.7.4 |
+| `python-dateutil>=2.9.0` | ✅ 2.9.0.post0 already in the image |
+| `button-card` | ✅ `www/community/button-card/`, registered `?v=1`, serves 200 |
+| `auto-entities` | ✅ `www/community/lovelace-auto-entities/`, registered `?v=1`, serves 200 |
+
+**No version wall here** — unlike the grocy integration, every dependency is satisfied.
+
+⚠️ **Dev runs 1.0.8; the Pi runs 1.0.7.** If the generated dashboard differs on Monday, suspect this
+first.
+
+⚠️ `auto-entities` publishes **no release assets** — the `releases/latest/download/` URL 404s. Fetch
+the built file from the tag instead:
+`https://raw.githubusercontent.com/thomasloven/lovelace-auto-entities/v1.16.1/auto-entities.js`
+
+**NOT YET DONE: nobody has run the config-flow wizard, so the generated dashboard has never been
+seen.** That is the actual open question. Add the integration
+(**Settings → Devices & Services → + ADD INTEGRATION → ChoreOps**) with **2 kids and 2-3 chores** —
+this is a *display* test, not a data-entry session.
+
+⚠️ **Confirm you picked the right integration.** ChoreOps' first screen mentions a **points label**
+or an intro. **It never shows a Google sign-in.** On 2026-08-14 "Google Calendar" was selected by
+mistake instead, which deleted the working calendar integration and cost a recovery cycle.
+
+🔑 **Do NOT re-enter the 11 Pi chores by hand.** `config_flow.py:469` has an
+`async_step_paste_json_input` that accepts a **diagnostics export**. Pull diagnostics from the Pi on
+Monday and paste them in to replicate everything exactly.
+
+💡 ChoreOps ships a **`calendar.py`** — it exposes chores as a *calendar entity*. Chores and family
+events may be able to share one view. Worth checking before designing the panel layout.
+
 ## 4b. 🎯 THE LITERAL NEXT MOVE (2026-08-14 → Tuesday 2026-08-18)
 
-Ordered against the deadline, not against technical interest.
+Ordered against the deadline, not against technical interest. **The Pi is gone until Monday
+2026-08-17**, so items 1-2 are the weekend's work and 3-5 wait for hardware.
 
-1. **Push the 3 unpushed commits.** `cd .worktrees/main-merge && git push` (see §9).
-2. **Get on the Pi and verify the chore chart actually displays.** ChoreOps + 11 chores are already
-   entered there, but **nobody has confirmed the panel renders them**. This is the biggest unknown
-   standing between now and the promise. The Pi was **unreachable** from the work network on
-   2026-08-14 (`ssh kitchencom` → timeout on `192.168.1.234`); use `ssh kitchencom-eth` +
-   `docs/session-state/` ethernet notes, or try again from the home network.
-3. **Repeat the Google Calendar OAuth on the Pi.** The dev-rig setup does NOT carry over — the Pi
+1. **Run the ChoreOps config-flow wizard on the DEV rig** (§4a). Everything is installed and
+   verified; nobody has seen the generated dashboard yet. **This is the single highest-value thing
+   available without the Pi** — it converts Monday from "discover ChoreOps display problems under
+   deadline pressure" into "deploy a known-good config". 2 kids, 2-3 chores is enough.
+2. **Decide the Grocy-embed question** (§4). Add an iframe/webpage view pointing at
+   `http://localhost:9283/shoppinglist`, compare it against the custom card on a touch-sized
+   viewport. If the embed is acceptable, a whole category of planned card work disappears.
+3. **Get on the Pi (Monday) and verify the chore chart actually displays.** ChoreOps + 11 chores are
+   already entered there, but **nobody has confirmed the panel renders them**. The Pi was
+   **unreachable** from the work network on 2026-08-14 (`ssh kitchencom` → timeout on
+   `192.168.1.234`); use `ssh kitchencom-eth` + the ethernet notes, or try from the home network.
+   Pull a **diagnostics export** while you are there — it is the no-retyping path into any other HA
+   (§4a).
+4. **Repeat the Google Calendar OAuth on the Pi.** The dev-rig setup does NOT carry over — the Pi
    needs its own redirect URI and its own `my.home-assistant.io` instance URL. Follow
    `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/docs/session-state/2026-08-14-google-calendar-oauth-setup.md`
-   §3 exactly; that trap cost the most time on 2026-08-14 and **will recur**.
-4. **Put real events on `calendar.family`.** It holds only the "KitchenCOM test event" that proved
+   §3 **and §3b** exactly. Both traps cost real time on 2026-08-14 and **will recur**.
+5. **Put real events on `calendar.family`.** It holds only the "KitchenCOM test event" that proved
    the write path. An empty calendar on the wall is not a working calendar.
-5. **Rotate the OAuth client secret** (see the runbook §6 — it was screenshotted into a transcript).
+6. **Rotate the OAuth client secret** (see the runbook §6 — it was screenshotted into a transcript).
+   Also tidy the orphaned grant(s) at https://myaccount.google.com/permissions — the integration was
+   removed and re-added on 2026-08-14, so KitchenCOM may appear more than once. **Do not revoke the
+   one currently in use.**
 
 **Explicitly NOT next:** the food-card poll lag, the quantity stepper, the ✓→✗ swap, and the card
 styling. All are real, all are logged, none are on the Tuesday path — and the stepper/✓ items may be
