@@ -16,7 +16,23 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 
 ## 1. WHERE HEAD IS
 
-- **Branch `feat/choreops-chores`, HEAD = `3941577`, 26 ahead / 0 BEHIND `origin/main`** (incl. the fix-up commit on top). Clean tree.
+> ## 🚨 THIS BRANCH HAS NEVER BEEN PUSHED
+>
+> **There is no `origin/feat/choreops-chores`.** `git branch -r` lists only `origin/main`. All
+> **26 commits** of ChoreOps work — the content generator, the round-trip verification, all three
+> entry sheets, this cold-open — exist **only on this local disk**, three days before the deadline
+> they are meant to satisfy. One disk failure or one bad `git` command loses the entire arc.
+>
+> ```bash
+> git branch --show-current                          # MUST print feat/choreops-chores
+> git push -u origin feat/choreops-chores
+> git rev-list --count origin/feat/choreops-chores..HEAD   # expect 0
+> ```
+>
+> Discovered 2026-08-15 during the AT&T spike. Nothing else in this file matters if the work is lost.
+
+- **Branch `feat/choreops-chores`, HEAD = `529c766`, 26 ahead / 0 BEHIND `origin/main`.** Clean tree.
+  (Earlier drafts of this line said `3941577` — that was the pre-fix-up SHA and is **stale**.)
 - This session's arc: `238599f` (prior fixup) → `88033b4` (reward-sheet rehearsal findings) → `07db4d8` (this cold-open) → `12c526f` ("3 SERVICES" resolved) → `18d8cd0` (merge `origin/main`, 128 behind → 0) → `eca19df` (content generator, round-trip verified) → **`3941577`** (session-state + UI paste flow verified).
 - **Branch map (verify `git branch --show-current` before EVERY commit — concurrent-session hazard):**
   - `feat/choreops-chores` — **this checkout, active slice.**
@@ -67,6 +83,39 @@ Three corrections to the 2026-07-06 doc, all verified this session:
    - Achievements THEN Badges: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-05-choreops-achievements-badges-entry-sheet.md` — ⚠️ **achievements first**; achievement-linked badges need the achievement to exist (blueprint's "Badges + Achievements together" is wrong).
 3. **Then Task 8** — Dashboard Generator, runnable on the dev rig. Plan: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/plans/2026-06-15-choreops-chores.md`. **Select ONLY Rowan + Wystan** (excludes stale parent entities, §5). Correct every `kc_` grep to `platform=choreops`.
 4. **Pi tasks when it returns:** import the JSON → icon pass → Task 9 (nav button) → 10 (delete orphaned local_todo) → 11 (claim→approve smoke test) → 12 (commit + handoff).
+
+### 🗓️ PARKED UNTIL WEDNESDAY 2026-08-19 — internet-time reward prototype
+
+**Deliberately deferred 2026-08-15. Do NOT pick this up before the Tuesday promise is satisfied.**
+
+Research spike done: **the AT&T gateway cannot enforce this.** It is a **BGW320-500** (Humax) on
+firmware **6.34.7**; its own sitemap has **no** scheduling / restrictions / parental-control page
+(those URLs 400). Packet Filter is binary MAC/IP blocking with **no time dimension**. Findings:
+`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-15-att-network-control-feasibility.md`
+on branch **`research/att-network-control`** (commit `a2086a8`, unmerged, docs-only).
+
+What *is* confirmed available in HA (verified against `reference/core-dev` source, not assumed):
+- `schedule` helper — weekly drag-grid, **UI-editable, storage-backed** (`components/schedule/__init__.py` uses `StorageCollection`), live edits need no restart.
+- `timer.change` — accepts a duration with **`allow_negative: true`** (`components/timer/services.yaml`), applies to a **running** timer. This is the "+30 minutes tonight" primitive.
+- The `input_boolean` + `timer` pattern is already in-repo at `homeassistant/packages/screensaver.yaml`.
+
+**The parked task:** prototype the control surface on the dev rig against an `input_boolean` dummy
+(no firewall needed — a service call is identical whether the target is real or fake). ~1 hour.
+Proves schedule → timer → button → points-gate → deduct → expiry. Swapping in real enforcement
+later is a one-line entity change.
+
+**⚠️ Do not ship the control surface without enforcement.** A dashboard where the kid taps "+30
+min", the timer counts down, and the PS5 keeps working the whole time is worse than nothing — it
+*looks* like it works. Same silent-failure shape as the penalty-sign bug.
+
+**Also NOT proven by a dummy prototype:** rule-push failure handling, enforcement latency, API
+rate-limits, and **MAC randomization** (iOS/Android randomize by default — this could sink any
+MAC-based gate regardless of hardware). Check MAC randomization *before* buying anything.
+
+Enforcement options, cheapest first: smart plug (~$15, cuts power not internet, bad for a
+mid-game console) → **downstream firewall (OPNsense/pfSense/Firewalla — the correct answer, but a
+hardware + network project that touches the Pi's `.234` reservation)** → device-native controls
+(free, enforce per-*account* so they survive device-switching, but cannot be automated from HA).
 
 ## 5. CARRY-FORWARDS / LATENT ISSUES
 
