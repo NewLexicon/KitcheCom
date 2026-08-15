@@ -55,11 +55,13 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 > git rev-list --count origin/feat/choreops-chores..HEAD   # expect 0
 > ```
 
-- **Branch `feat/choreops-chores`, HEAD = `15cd1d2`, 31 ahead / 0 BEHIND `origin/main`, 0 unpushed.** Clean tree.
-  (Earlier drafts said `3941577` / `529c766` / `2c08aa2` — all **stale**; fixed up post-commit.)
+- **Branch `feat/choreops-chores`, HEAD = `d03b939`, 32 ahead / 0 BEHIND `origin/main`, 0 unpushed.** Clean tree.
+  (Earlier drafts said `3941577` / `529c766` / `2c08aa2` / `15cd1d2` — all **stale**; this line is
+  fixed up post-commit, per the self-referential-gotcha rule.)
 - **2026-08-15 late arc:** `529c766` → `1fb339d` (park internet-time for Wed + push alarm) →
   `3e6f55c` (**Monday Pi runbook**) → `2c08aa2` (cold-open pointers) → `15cd1d2` (power/touch
-  are two SEPARATE solved problems — power was never a live Monday risk).
+  are two SEPARATE solved problems — power was never a live Monday risk) → `d03b939` (this
+  cold-open refresh: Monday banner + side-branch map).
 - This session's arc: `238599f` (prior fixup) → `88033b4` (reward-sheet rehearsal findings) → `07db4d8` (this cold-open) → `12c526f` ("3 SERVICES" resolved) → `18d8cd0` (merge `origin/main`, 128 behind → 0) → `eca19df` (content generator, round-trip verified) → **`3941577`** (session-state + UI paste flow verified).
 - **Branch map (verify `git branch --show-current` before EVERY commit — concurrent-session hazard):**
   - `feat/choreops-chores` — **this checkout, THE ONLY TUESDAY-PATH BRANCH.** Everything below is
