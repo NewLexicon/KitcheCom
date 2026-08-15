@@ -8,19 +8,19 @@
 
 Three corrections to the 2026-07-06 doc, all verified this session:
 
-1. **`feat/hardware-deploy` NO LONGER EXISTS.** The old §4 said to run `git show feat/hardware-deploy:homeassistant/dashboards/kitchen.yaml` before Task 9 — **that command now fails** (`fatal: bad revision`). The newer kitchen.yaml is on **`origin/main`** (verified: `weather.forecast_home`, Groceries/Chores headings). Use `git show origin/main:homeassistant/dashboards/kitchen.yaml`.
-2. **`main` moved far ahead.** This branch is **17 ahead / 128 BEHIND** `origin/main`. A whole shopping-list + Google Calendar arc landed there (`912b1ed` calendar, `2119d98` Grocy intval fix, head `5d877f4`) that this branch has never seen. Old doc said `main = 0cdc0f5` — stale.
+1. **`feat/hardware-deploy` NO LONGER EXISTS.** The old §4 said to run `git show feat/hardware-deploy:homeassistant/dashboards/kitchen.yaml` before Task 9 — **that command now fails** (`fatal: bad revision`). Moot as of the merge below: the newer kitchen.yaml (`weather.forecast_home`, Groceries/Chores headings) is now **in the working tree** at `homeassistant/dashboards/kitchen.yaml`. Just edit it.
+2. **✅ `main` MERGED IN 2026-08-15 — this branch is now 0 behind.** It had been 128 behind (the shopping-list + Google Calendar arc: `912b1ed` calendar, `2119d98` Grocy intval fix, head `5d877f4`). Merge commit `18d8cd0`. Both conflicts were v1.0.7-vs-v1.0.8 in the plan + spec; **resolved to 1.0.7** — what the Pi actually runs (`ccpk1/ChoreOps` tags top out at 1.0.7; the vendored 1.0.8 is an untagged snapshot HACS can't install). Old doc said `main = 0cdc0f5` — stale.
 3. **The Pi is NOT required for the next phase.** A dev-HA rig runs ChoreOps locally. See §3.
 
 **Pi state (unchanged, still true):** unreachable as of 2026-08-15. Reserved at `192.168.1.234`, gate with `ipconfig getifaddr en0` → `192.168.1.x` then `ssh kitchencom 'echo UP'`. **The 27W brick is mandatory** — a laptop dock browns it out under load (3 drops in 40min on 2026-08-05). Never power it from the ViewSonic.
 
 ## 1. WHERE HEAD IS
 
-- **Branch `feat/choreops-chores`, HEAD = `07db4d8`, 18 ahead / 128 behind `origin/main`** (+1 for the fix-up commit on top). Clean tree.
-- This session's arc: `238599f` (prior fixup) → `88033b4` (reward-sheet rehearsal findings) → **`07db4d8`** (this cold-open).
+- **Branch `feat/choreops-chores`, HEAD = `18d8cd0`, 21 ahead / 0 BEHIND `origin/main`** (+1 for the fix-up commit on top). Clean tree.
+- This session's arc: `238599f` (prior fixup) → `88033b4` (reward-sheet rehearsal findings) → `07db4d8` (this cold-open) → `12c526f` ("3 SERVICES" resolved) → **`18d8cd0`** (merge `origin/main`, 128 behind → 0).
 - **Branch map (verify `git branch --show-current` before EVERY commit — concurrent-session hazard):**
   - `feat/choreops-chores` — **this checkout, active slice.**
-  - `main` — checked out in worktree `.worktrees/main-merge` (= `origin/main` = `5d877f4`).
+  - `main` — checked out in worktree `.worktrees/main-merge` (= `origin/main` = `5d877f4`). **Merged into this branch 2026-08-15.**
   - `.worktrees/grocy-chores` — **detached HEAD** at `f2e561c`.
   - `feat/hardware-deploy`, `feat/audio-music` — **GONE.**
 
@@ -69,8 +69,8 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 ## 5. CARRY-FORWARDS / LATENT ISSUES
 
 - **✅ "3 SERVICES" vs 1 config entry — RESOLVED 2026-08-15, benign.** HA's integration card counts **devices**, not integrations. ChoreOps registers one `entry_type: service` device per user plus one system device — Rowan / Wystan / System — all sharing the single config entry `01M01GJ0HV7DPPVVFB4HV7BR3E`. Same pattern as HACS ("2 SERVICES", one entry). `deleted_devices` is **empty**, so nothing orphaned survived the 2026-08-14 failed setups. **No cleanup needed, and no duplicate entries to trip the JSON import.** Useful derived check: after importing on the Pi (4 users) expect **5** choreops devices.
-- **Task 9 clobber risk — INSTRUCTION CORRECTED:** this branch's `homeassistant/dashboards/kitchen.yaml` is OLD (placeholders `weather.home`, `todo.chores`). The good one is on **`origin/main`**. Diff `git show origin/main:homeassistant/dashboards/kitchen.yaml` and merge the weather + headings deltas before Task 9.
-- **128 commits behind `main` — DECISION PENDING.** Rebase/merge now, or keep separate until ChoreOps lands? Unresolved; worth settling before more commits pile up.
+- **✅ Task 9 clobber risk — GONE, resolved by the merge.** `homeassistant/dashboards/kitchen.yaml` in the working tree is now **main's newer version** (`weather.forecast_home`, Groceries/Chores headings) — verified post-merge. No `git show` recovery dance, no deltas to hand-merge. Task 9 edits this file directly.
+- **✅ 128-behind-`main` — RESOLVED 2026-08-15** via merge `18d8cd0` (see §0.2). Branch is **0 behind**. Note this branch carries **no code** — it is docs-only; all code in the tree came from main.
 - **STALE PARENT ENTITIES (Pi, benign):** garrett/rebecca still own ~27 choreops entities from before they became approvers-only. Harmless — Task 8 selects only the kids. To clean: ChoreOps → Edit User → Save for each.
 - **🚩 PREFIX:** installed ChoreOps uses **`choreops`**, NOT `kc_`. Plan/spec docs still say `kc_` — that grep returns 0.
 - **✅ SOURCE VENDORED at `/Users/jdehart1/___Code_DEV/KitchenCOM/reference/ChoreOps-main/`** (v1.0.8; Pi runs 1.0.7). Read schemas/enums here instead of guessing: `helpers/flow_helpers.py` (`build_*_schema`), `options_flow.py`, `const.py`.
@@ -91,4 +91,4 @@ Dir: `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/me
 
 - subagent-driven-development adapted for deployment: gates are empirical verification (storage reads, entity counts), not pytest. Tasks 1–7 done; gamification content in progress; Task 8 next.
 - **Tooling note:** nested-SSH quoting is fragile — write probe scripts to a file, `scp` to the Pi, `docker cp` into the container, then run. Don't inline heredocs with regex/quotes.
-- **Self-referential fixup:** DONE 2026-08-15 — §1 HEAD points at `07db4d8` (this cold-open) with the fix-up commit on top (18 ahead).
+- **Self-referential fixup:** DONE 2026-08-15 — §1 HEAD points at `18d8cd0` (the origin/main merge) with the fix-up commit on top (21 ahead, 0 behind).
