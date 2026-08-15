@@ -29,8 +29,11 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 > git rev-list --count origin/feat/choreops-chores..HEAD   # expect 0
 > ```
 
-- **Branch `feat/choreops-chores`, HEAD = `529c766`, 26 ahead / 0 BEHIND `origin/main`.** Clean tree.
-  (Earlier drafts of this line said `3941577` — that was the pre-fix-up SHA and is **stale**.)
+- **Branch `feat/choreops-chores`, HEAD = `2c08aa2`, 29 ahead / 0 BEHIND `origin/main`, 0 unpushed.** Clean tree.
+  (Earlier drafts said `3941577` then `529c766` — both **stale**; this line is fixed up post-commit.)
+- **2026-08-15 late arc:** `529c766` → `1fb339d` (park internet-time for Wed + push alarm) →
+  `3e6f55c` (**Monday Pi runbook**) → `2c08aa2` (cold-open pointers). Sibling branch
+  **`research/att-network-control`** = `a2086a8` (AT&T findings, docs-only, unmerged).
 - This session's arc: `238599f` (prior fixup) → `88033b4` (reward-sheet rehearsal findings) → `07db4d8` (this cold-open) → `12c526f` ("3 SERVICES" resolved) → `18d8cd0` (merge `origin/main`, 128 behind → 0) → `eca19df` (content generator, round-trip verified) → **`3941577`** (session-state + UI paste flow verified).
 - **Branch map (verify `git branch --show-current` before EVERY commit — concurrent-session hazard):**
   - `feat/choreops-chores` — **this checkout, active slice.**
