@@ -106,9 +106,34 @@ export type ScreensaverConfig = {
   showClock: boolean;
   shuffle: boolean;
   kenBurnsIntensity: number;
+  activityEntity: string;
+  activityBridge: boolean;
 };
 
 const PHOTO_DURATION_FLOOR = 2;
+
+// ── Activity bridge (M-10) ───────────────────────────────────────────────────
+// The button the screensaver package watches to clear idle and restart the
+// inactivity timer. Nothing was pressing it: the wake automation existed but its
+// trigger was only ever going to fire from a touch handler that was never built.
+// On hardware with no touch wired that made idle a ONE-WAY DOOR — the panel went
+// black and could not be recovered from the kitchen at all.
+export const ACTIVITY_ENTITY = "input_button.kitchen_activity";
+
+// A single swipe emits dozens of pointermove events. Ping at most this often so a
+// burst of real input becomes one service call, not dozens.
+export const ACTIVITY_THROTTLE_MS = 5000;
+
+/** Whether an observed user interaction should ping HA now.
+ *  `last` is the timestamp of the previous ping (undefined = never). Pure so the
+ *  throttle is testable without faking timers or the DOM. */
+export function shouldSendActivityPing(last: number | undefined, now: number): boolean {
+  if (last === undefined) return true;
+  // now < last means the clock moved backwards; send rather than stay wedged
+  // until real time catches up to a stale future timestamp.
+  if (now < last) return true;
+  return now - last >= ACTIVITY_THROTTLE_MS;
+}
 
 // Apply defaults + clamp to raw card YAML config (spec §2 defaults table).
 export function resolveConfig(raw: Record<string, unknown> = {}): ScreensaverConfig {
@@ -124,6 +149,13 @@ export function resolveConfig(raw: Record<string, unknown> = {}): ScreensaverCon
     shuffle: raw.shuffle === true,
     kenBurnsIntensity: Math.min(1, Math.max(0,
       typeof raw.ken_burns_intensity === "number" ? raw.ken_burns_intensity : 0.5)),
+    activityEntity:
+      typeof raw.activity_entity === "string" && raw.activity_entity
+        ? raw.activity_entity
+        : ACTIVITY_ENTITY,
+    // On by default: a panel that cannot be woken is worse than one that pings
+    // HA occasionally. Opt out only if a second display should observe nothing.
+    activityBridge: raw.activity_bridge === undefined ? true : Boolean(raw.activity_bridge),
   };
 }
 
@@ -155,7 +187,18 @@ export function shuffleOrder<T>(items: T[], rand: () => number): T[] {
   return out;
 }
 
-type HassWS = HassLike & { callWS?: (msg: Record<string, unknown>) => Promise<any> };
+type HassWS = HassLike & {
+  callWS?: (msg: Record<string, unknown>) => Promise<any>;
+  callService?: (domain: string, service: string, data?: unknown) => Promise<unknown> | void;
+};
+
+// Events that count as "a human is using this panel". pointerdown covers touch,
+// pen and mouse-click in one event; pointermove catches a mouse being moved
+// without clicking. keydown means a keyboard is in use. All are listened for on
+// `window` in the CAPTURE phase so they are observed even when another element
+// stops propagation — the card must see input aimed at any part of the dashboard,
+// not only at itself.
+export const ACTIVITY_EVENTS = ["pointerdown", "pointermove", "keydown", "wheel"] as const;
 
 // Bounded recursive browse limits (I-1). HA browse_media is lazy/one-level, so the
 // glue walks subdirectories itself. Cap depth + total folder calls per activation so
@@ -187,10 +230,57 @@ export class ScreensaverCard extends LitElement {
   private _clock?: ReturnType<typeof setInterval>;
   private _loopRunning = false;
   private _gen = 0;
+  private _lastActivityPing?: number;
+  private _activityHandler?: (ev: Event) => void;
 
   setConfig(config: Record<string, unknown>): void {
     this._rawConfig = config ?? {};
     this._cfg = resolveConfig(this._rawConfig);
+  }
+
+  // ── Activity bridge (M-10) ─────────────────────────────────────────────────
+  // Observe real user input and press input_button.kitchen_activity, which the
+  // screensaver package's wake automation watches (it clears kitchen_idle and
+  // restarts the inactivity timer). Without this the wake path had no producer:
+  // the automation was waiting on a button nothing ever pressed.
+  //
+  // Listening for pointer AND key events (not just touch) is deliberate — it
+  // means a mouse or keyboard wakes the panel too, so the wake path is testable
+  // before touch hardware exists.
+  private _startActivityBridge(): void {
+    if (!this._cfg.activityBridge || this._activityHandler) return;
+    this._activityHandler = () => this._onUserActivity();
+    for (const ev of ACTIVITY_EVENTS) {
+      // capture:true — see input even if a handler below stops propagation.
+      // passive:true — never delay scrolling/touch; this only observes.
+      window.addEventListener(ev, this._activityHandler, { capture: true, passive: true });
+    }
+  }
+
+  private _stopActivityBridge(): void {
+    if (!this._activityHandler) return;
+    for (const ev of ACTIVITY_EVENTS) {
+      window.removeEventListener(ev, this._activityHandler, { capture: true });
+    }
+    this._activityHandler = undefined;
+  }
+
+  private _onUserActivity(): void {
+    const now = Date.now();
+    if (!shouldSendActivityPing(this._lastActivityPing, now)) return;
+    this._lastActivityPing = now;
+
+    const [domain, object_id] = this._cfg.activityEntity.split(".");
+    if (domain !== "input_button" || !object_id) return;
+    try {
+      // Fire-and-forget: a failed ping must never surface on a kitchen screen or
+      // break rendering. The next interaction retries anyway.
+      void this.hass?.callService?.("input_button", "press", {
+        entity_id: this._cfg.activityEntity,
+      });
+    } catch {
+      /* ignore — see above */
+    }
   }
 
   updated(changed: PropertyValues): void {
@@ -307,9 +397,19 @@ export class ScreensaverCard extends LitElement {
     this._now = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    // Bridge runs whenever the card is on the page, NOT only while the screensaver
+    // is showing: input during normal dashboard use must keep restarting the
+    // inactivity timer, or the panel would blank while someone is actively using it.
+    this._startActivityBridge();
+  }
+
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this._stopLoop();
+    // Window listeners outlive the element unless removed explicitly.
+    this._stopActivityBridge();
   }
 
   render() {

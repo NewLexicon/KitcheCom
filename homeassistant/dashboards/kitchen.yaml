@@ -10,7 +10,7 @@ views:
         cards:
           - type: clock            # native HA clock card
           - type: weather-forecast
-            entity: weather.home   # PLACEHOLDER
+            entity: weather.forecast_home   # Met.no (built-in, no API key) — wired 2026-06-15
           - type: button
             name: Hold to talk
             icon: mdi:microphone
@@ -24,15 +24,21 @@ views:
       - type: grid
         cards:
           - type: todo-list
-            entity: todo.groceries  # PLACEHOLDER (local_todo canonical, spec M-2)
+            title: Groceries
+            entity: todo.groceries  # local_todo (wired 2026-06-15, spec M-2)
       # Calendar + chores
       - type: grid
         cards:
           - type: calendar
             entities:
-              - calendar.family     # PLACEHOLDER
+              # CONFIRMED 2026-08-14 (dev rig): the Google Calendar integration
+              # names a secondary calendar titled "Family" exactly calendar.family,
+              # so the old placeholder resolved on its own. Read AND write verified
+              # (calendar.create_event succeeded against the live calendar).
+              - calendar.family
           - type: todo-list
-            entity: todo.chores     # PLACEHOLDER
+            title: Chores
+            entity: todo.chores     # local_todo (wired 2026-06-15)
 # Screensaver: the custom card (custom:screensaver-card) is now instantiated in
 # the hero grid section above. It renders nothing unless idle, driven by the
 # kitchen_idle automation (packages/screensaver.yaml, Task 4). Its JS resource

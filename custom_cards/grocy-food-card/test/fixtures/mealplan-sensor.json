@@ -1,0 +1,54 @@
+{
+  "_note": "CONFIRMED against live sensor.grocy_meal_plan 2026-08-13 (Tier-2, OQ-1 RESOLVED). Captured from HA 2025.7.4 + grocy integration v1.3.0 (pygrocy2 2.4.1) + Grocy 4.6.0. pygrocy HYDRATES `recipe` and `section`. TWO DRIFTS from the provisional guess: (1) `day` is a full ISO DATETIME ('2026-08-14T00:00:00'), not a date string; (2) there is no `type: \"section\"` ROW — instead every row carries section_id: -1 plus a hydrated `section` object whose name is null. Also present and previously unmodelled: `picture_url`.",
+  "attributes": {
+    "meals": [
+      {
+        "id": 1,
+        "day": "2026-08-14T00:00:00",
+        "recipe_id": 1,
+        "recipe_servings": 4,
+        "note": null,
+        "recipe": {
+          "id": 1,
+          "name": "Tacos",
+          "description": "<p>Weeknight tacos.</p>",
+          "base_servings": 4,
+          "desired_servings": 4,
+          "picture_file_name": null
+        },
+        "section_id": -1,
+        "section": {
+          "id": -1,
+          "name": null,
+          "sort_number": -1,
+          "row_created_timestamp": "2026-08-13T15:19:26"
+        },
+        "type": "recipe",
+        "product_id": null,
+        "picture_url": null
+      },
+      {
+        "id": 2,
+        "day": "2026-08-15T00:00:00",
+        "recipe_id": null,
+        "recipe_servings": 1,
+        "note": "Leftovers night",
+        "recipe": null,
+        "section_id": -1,
+        "section": {
+          "id": -1,
+          "name": null,
+          "sort_number": -1,
+          "row_created_timestamp": "2026-08-13T15:19:26"
+        },
+        "type": "note",
+        "product_id": null,
+        "picture_url": null
+      }
+    ],
+    "count": 2,
+    "unit_of_measurement": "Meals",
+    "icon": "mdi:silverware-variant",
+    "friendly_name": "Grocy meal plan"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "_note": "CAPTURED SHAPE — GET /api/objects/quantity_units against live Grocy 4.6.0 (2026-08-07). 6 rows, ~900 B, static and cacheable. Fetched once per card lifetime.",
+  "quantity_units": [
+    { "id": 2, "name": "Piece", "name_plural": "Pieces" },
+    { "id": 3, "name": "Pack", "name_plural": "Packs" },
+    { "id": 4, "name": "Pound", "name_plural": "Pounds" },
+    { "id": 5, "name": "Tablespoon", "name_plural": "Tablespoons" },
+    { "id": 6, "name": "Cup", "name_plural": "Cups" },
+    { "id": 7, "name": "Gram", "name_plural": "Grams" }
+  ]
+}
