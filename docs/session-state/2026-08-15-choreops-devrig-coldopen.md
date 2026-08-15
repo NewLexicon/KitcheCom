@@ -55,7 +55,10 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 > git rev-list --count origin/feat/choreops-chores..HEAD   # expect 0
 > ```
 
-- **Branch `feat/choreops-chores`, HEAD = `d03b939`, 32 ahead / 0 BEHIND `origin/main`, 0 unpushed.** Clean tree.
+- **Branch `feat/choreops-chores`, HEAD = `028eb2d` (or one fix-up commit later — the tip is
+  always a `cold-start sanity-check fix-ups` commit), ~33 ahead / 0 BEHIND `origin/main`,
+  0 unpushed.** Clean tree. **Verify rather than trust this line:**
+  `git log --oneline -1 && git rev-list --count origin/main..HEAD && git status --short`
   (Earlier drafts said `3941577` / `529c766` / `2c08aa2` / `15cd1d2` — all **stale**; this line is
   fixed up post-commit, per the self-referential-gotcha rule.)
 - **2026-08-15 late arc:** `529c766` → `1fb339d` (park internet-time for Wed + push alarm) →
