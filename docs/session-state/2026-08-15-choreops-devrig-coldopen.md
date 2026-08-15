@@ -16,8 +16,8 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 
 ## 1. WHERE HEAD IS
 
-- **Branch `feat/choreops-chores`, HEAD = `eca19df`, 24 ahead / 0 BEHIND `origin/main`** (incl. the fix-up commit on top). Clean tree.
-- This session's arc: `238599f` (prior fixup) → `88033b4` (reward-sheet rehearsal findings) → `07db4d8` (this cold-open) → `12c526f` ("3 SERVICES" resolved) → `18d8cd0` (merge `origin/main`, 128 behind → 0) → **`eca19df`** (content generator, round-trip verified).
+- **Branch `feat/choreops-chores`, HEAD = `3941577`, 26 ahead / 0 BEHIND `origin/main`** (incl. the fix-up commit on top). Clean tree.
+- This session's arc: `238599f` (prior fixup) → `88033b4` (reward-sheet rehearsal findings) → `07db4d8` (this cold-open) → `12c526f` ("3 SERVICES" resolved) → `18d8cd0` (merge `origin/main`, 128 behind → 0) → `eca19df` (content generator, round-trip verified) → **`3941577`** (session-state + UI paste flow verified).
 - **Branch map (verify `git branch --show-current` before EVERY commit — concurrent-session hazard):**
   - `feat/choreops-chores` — **this checkout, active slice.**
   - `main` — checked out in worktree `.worktrees/main-merge` (= `origin/main` = `5d877f4`). **Merged into this branch 2026-08-15.**
@@ -96,4 +96,4 @@ Dir: `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/me
 
 - subagent-driven-development adapted for deployment: gates are empirical verification (storage reads, entity counts), not pytest. Tasks 1–7 done; gamification content in progress; Task 8 next.
 - **Tooling note:** nested-SSH quoting is fragile — write probe scripts to a file, `scp` to the Pi, `docker cp` into the container, then run. Don't inline heredocs with regex/quotes.
-- **Self-referential fixup:** DONE 2026-08-15 — §1 HEAD points at `eca19df` (content generator) with the fix-up commit on top (24 ahead, 0 behind).
+- **Self-referential fixup:** DONE 2026-08-15 — §1 HEAD points at `3941577` (session-state + paste verification) with the fix-up commit on top (26 ahead, 0 behind).
