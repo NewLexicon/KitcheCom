@@ -138,23 +138,43 @@ input_boolean:
 #    The `zha` integration IS built into HA core, so the software costs nothing —
 #    the missing piece is a **USB Zigbee coordinator dongle** in the Pi.
 #
-#    ✅ SELECTED 2026-08-15: **Sonoff Zigbee 3.0 USB Dongle Plus-E (ZBDongle-E)**,
-#    EFR32MG21 coordinator, +20dBm, bought as the **kit with the 1.5m shielded
-#    extension cable**. Good fit: EFR32MG21 is the same silicon family as HA's
-#    own SkyConnect, ZHA support is first-class (no HACS), and the bundled
-#    shielded extension is exactly the interference mitigation below.
+#    ✅ SELECTED 2026-08-15: **Sonoff Zigbee 3.0 USB Dongle Plus-P (ZBDongle-P)**,
+#    TI CC2652P. Both -P and -E work with ZHA, but per ITead's own spec page the
+#    **device-capacity gap is decisive**:
+#
+#      | | ZBDongle-P (CC2652P) | ZBDongle-E (EFR32MG21) |
+#      |---|---|---|
+#      | direct children  | 50  | 30 |
+#      | max with routers | 200 | **30 — does not scale** |
+#      | housing          | aluminium, damps interference | plastic |
+#
+#    Four bulbs fit either. But Zigbee networks grow (sensors, plugs, buttons),
+#    and the -E has a hard 30-device ceiling that routers do NOT raise. The -P's
+#    aluminium housing also helps with the interference problem below.
+#
+#    ⚠️ SUPERSEDES an earlier note in this file that recommended the -E. That was
+#    argued from firmware maturity (the -E's early firmware was rough, which is
+#    no longer true) — a real but much smaller factor than the 30-device ceiling.
+#    Buy the -P.
+#
+#    ⚠️ THE EXTENSION CABLE IS **NOT** INCLUDED with the bare dongle (either
+#    model). ITead sells a 1.5m USB male-female extension separately (~$2) and
+#    calls it "highly recommended". **Order one alongside the dongle.** Some
+#    Amazon bundles include it — check what is actually in the box.
 #
 #    ⚠️ Plan for the Pi's USB quirks: touch already requires a powered hub in the
 #    path. Run the dongle on that **extension cable**, not flush against the Pi —
 #    Zigbee radios next to a Pi's USB3/wifi pick up interference and silently
 #    drop devices. This is the single most common ZHA complaint.
 #
-#    ⚠️ FIRST-SETUP GOTCHA: ZBDongle-E units sometimes ship with older firmware,
-#    and updating means a moderately fiddly flashing procedure. If pairing
-#    misbehaves out of the box, **suspect dongle firmware before suspecting the
-#    bulbs.** (Model note: the sibling ZBDongle-**P** is TI CC2652P. Both work
-#    with ZHA; older forum posts favour the -P from the -E's early firmware days,
-#    which is no longer the state of things. The -E is the right call today.)
+#    ⚠️ BEFORE ORDERING: SONOFF sells both variants under near-identical titles
+#    ("Zigbee 3.0 USB Dongle Plus"), and many listings have a variant dropdown.
+#    Confirm the listing says **ZBDongle-P** or **CC2652P** explicitly — a title
+#    with no suffix could be either model.
+#
+#    ⚠️ FIRST-SETUP GOTCHA: dongles sometimes ship with older firmware, and
+#    updating means a moderately fiddly flashing procedure. If pairing misbehaves
+#    out of the box, **suspect dongle firmware before suspecting the bulbs.**
 #
 #    Until a coordinator exists, steps 1-6 cannot run.
 #
