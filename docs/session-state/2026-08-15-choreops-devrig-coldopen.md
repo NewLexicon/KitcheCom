@@ -4,6 +4,32 @@
 
 ---
 
+## 🎯 MONDAY 2026-08-17 — START HERE, THEN STOP READING
+
+**If the Pi is back, open the runbook and execute it. It is self-contained:**
+
+**`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-17-monday-pi-runbook.md`**
+
+Backup → regenerate against the **Pi's own** storage → paste → Task 8 → 9 → 10 → 11 → icons →
+OAuth last. Every command in it was executed or dry-run on 2026-08-15, not transcribed.
+
+**The three things that will cost you time if you skip them:**
+1. **Never paste the dev-rig JSON onto the Pi** — it embeds dev-rig IDs. Regenerate against the
+   Pi's live storage file (runbook §2).
+2. **Back up first** — the paste flow OVERWRITES storage, it does not merge. The Pi's 11 chores +
+   4 users are hand-entered and irreplaceable (runbook §1).
+3. **If the generator prints a WARNING about an unresolved chore id, STOP** — that achievement
+   would silently never track (runbook §2).
+
+**The deadline is Tuesday 2026-08-18: calendar + chore chart working.** Calendar is DONE. The
+chore chart is the whole remaining job. **Four side branches exist (lighting, irrigation, panel
+features, AT&T research) — none are on the Tuesday path. Do not touch them Monday.**
+
+If the Pi is still unreachable, the dev rig at port **8124** runs the full stack (§3), and runbook
+§10 covers the fallback.
+
+---
+
 ## 0. ⚠️ READ FIRST — what changed since the last cold-open
 
 Three corrections to the 2026-07-06 doc, all verified this session:
@@ -29,17 +55,28 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 > git rev-list --count origin/feat/choreops-chores..HEAD   # expect 0
 > ```
 
-- **Branch `feat/choreops-chores`, HEAD = `2c08aa2`, 29 ahead / 0 BEHIND `origin/main`, 0 unpushed.** Clean tree.
-  (Earlier drafts said `3941577` then `529c766` — both **stale**; this line is fixed up post-commit.)
+- **Branch `feat/choreops-chores`, HEAD = `15cd1d2`, 31 ahead / 0 BEHIND `origin/main`, 0 unpushed.** Clean tree.
+  (Earlier drafts said `3941577` / `529c766` / `2c08aa2` — all **stale**; fixed up post-commit.)
 - **2026-08-15 late arc:** `529c766` → `1fb339d` (park internet-time for Wed + push alarm) →
-  `3e6f55c` (**Monday Pi runbook**) → `2c08aa2` (cold-open pointers). Sibling branch
-  **`research/att-network-control`** = `a2086a8` (AT&T findings, docs-only, unmerged).
+  `3e6f55c` (**Monday Pi runbook**) → `2c08aa2` (cold-open pointers) → `15cd1d2` (power/touch
+  are two SEPARATE solved problems — power was never a live Monday risk).
 - This session's arc: `238599f` (prior fixup) → `88033b4` (reward-sheet rehearsal findings) → `07db4d8` (this cold-open) → `12c526f` ("3 SERVICES" resolved) → `18d8cd0` (merge `origin/main`, 128 behind → 0) → `eca19df` (content generator, round-trip verified) → **`3941577`** (session-state + UI paste flow verified).
 - **Branch map (verify `git branch --show-current` before EVERY commit — concurrent-session hazard):**
-  - `feat/choreops-chores` — **this checkout, active slice.**
+  - `feat/choreops-chores` — **this checkout, THE ONLY TUESDAY-PATH BRANCH.** Everything below is
+    parked side work; **none of it competes with Monday.**
   - `main` — checked out in worktree `.worktrees/main-merge` (= `origin/main` = `5d877f4`). **Merged into this branch 2026-08-15.**
   - `.worktrees/grocy-chores` — **detached HEAD** at `f2e561c`.
   - `feat/hardware-deploy`, `feat/audio-music` — **GONE.**
+  - **Four side branches created 2026-08-15 (all pushed, all docs/config-only, all off `origin/main`,
+    none merged, NONE on the Tuesday path). Do not work these Monday:**
+    - `research/att-network-control` = `a2086a8` — AT&T findings: the BGW320-500 gateway **cannot**
+      do per-device scheduling. Internet-time prototype parked to **Wed 2026-08-19** (see §4).
+    - `feat/adaptive-lighting` = `161b35e` — `homeassistant/packages/lighting.yaml`, staged INACTIVE
+      and validated on the dev rig. Blocked on a **Zigbee coordinator (ZBDongle-P)**.
+    - `feat/irrigation` = `5fe5359` — rainwater capture + pump design. Blocked on the same dongle
+      **plus an electrician** (mains near water).
+    - `feat/panel-features` = `fc6227c` — six kitchen-panel features. **Unblocked**, buildable any
+      time; half are surface-existing rather than build-new.
 
 ## 2. WHAT'S DONE
 
@@ -99,7 +136,9 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 Research spike done: **the AT&T gateway cannot enforce this.** It is a **BGW320-500** (Humax) on
 firmware **6.34.7**; its own sitemap has **no** scheduling / restrictions / parental-control page
 (those URLs 400). Packet Filter is binary MAC/IP blocking with **no time dimension**. Findings:
-`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-15-att-network-control-feasibility.md`
+`docs/session-state/2026-08-15-att-network-control-feasibility.md` — ⚠️ **lives on branch
+`research/att-network-control`, NOT here**, so it is not in this working tree. Read it with:
+`git show research/att-network-control:docs/session-state/2026-08-15-att-network-control-feasibility.md`
 on branch **`research/att-network-control`** (commit `a2086a8`, unmerged, docs-only).
 
 What *is* confirmed available in HA (verified against `reference/core-dev` source, not assumed):
