@@ -59,6 +59,7 @@ Three corrections to the 2026-07-06 doc, all verified this session:
    - **Version gap is low-risk:** `schema_version` is absent from the 1.0.8 file and the validator treats it as optional/migratable, so 1.0.7 has nothing to reject. A `normalize_bonus_penalty_apply_shapes` pass runs on paste.
    - **✅ ROUND-TRIP VERIFIED 2026-08-15 on the dev rig.** Generator at `/Users/jdehart1/___Code_DEV/KitchenCOM/deploy/choreops-content/gen_content.py` (+ README) builds the whole content set from the 3 entry sheets. Loaded it, restarted HA: content survived (**16 rewards · 4 bonuses · 2 penalties · 3 achievements · 6 badges**) and **236 choreops entities** generated, up from 81. Semantics verified, not just storage: penalties stored **negative** (−5/−2), all 6 badge types round-tripped, `Streak Master` resolved `associated_achievement` → the real `7-Day Streak` id (not dangling), and per-achievement progress sensors generated for each type.
    - **Bonus:** writing JSON directly sets icons correctly with no picker — sidesteps §3's icon problem entirely.
+   - **✅ THE UI PASTE FLOW ITSELF IS ALSO VERIFIED (2026-08-15, later).** The user pasted the generated JSON through the real config-flow dialog, producing a second entry ("ChoreOps 2", `01M034V0PN86ZJMPDF4MVKRJ3Q`) with **identical** content: 16/4/2/3/6, penalties still −5/−2, `Streak Master` still linked to the real `7-Day Streak`. So both application paths are proven — direct file write AND the paste dialog. **Dev rig now shows ~432 entities because TWO entries coexist**; that is the duplicate, not a content bug. Delete the spare entry in the UI (Settings → Devices & Services → ChoreOps 2 → ⋮ → Delete) to return to ~236.
    - **⚠️ ONE OPEN ITEM for the Pi run:** the dev rig has only 3 chores, so `Early Riser`'s `Brush Teeth` lookup fails there and the script leaves `selected_chore_id` **empty** (it warns loudly rather than inventing an id). The Pi has all 11 chores, so it should resolve — **but if the WARNING fires on the Pi, stop**: that achievement would silently never track.
 2. **✅ CONTENT IS BUILT — as JSON, not typed.** All three sheets are transcribed into `deploy/choreops-content/gen_content.py` and verified on the dev rig (see step 1). The sheets below remain the decision-of-record; consult them only to change content or to type manually as a fallback:
    - Rewards: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-07-22-choreops-reward-store-entry-sheet.md` (**read §5a REHEARSAL FINDINGS first**)
@@ -82,11 +83,14 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 
 Dir: `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memory/`
 
-- `dev-ha-rig-for-offline-choreops.md` — **(new this session)** the 8124 rig + the icon-search version artifact.
+- `choreops-content-is-generated-json.md` — **(new)** content comes from the generator; penalties must be stored NEGATIVE.
+- `dev-ha-rig-for-offline-choreops.md` — **(new this session)** the 8124 rig + the icon-search version artifact; HA-UI facts (Configure location, "N SERVICES" = devices).
 - `pi-ssh-access-from-claude.md` — `.234` reserved, MAC-rediscovery, gateway reservation.
 - `pi-power-and-kiosk-login.md` — 27W brick mandatory; kiosk login = "keep me logged in".
 - `pi-direct-ethernet-fallback.md` — `kitchencom-eth`, the `%%` escaping gotcha, `kitchencom.local:8123`.
 - `choreops-source-vendored-locally.md`, `choreops-templates-hand-vendored.md` (prefix is `choreops`), `pi-kiosk-wayland-labwc.md`, `concurrent-sessions-branch-hazard.md`, `kitchencom-github-remote.md` (remote name typo'd `KitcheCom`).
+
+**Session reasoning record (why, not what):** `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-15-devrig-content-generator-session.md`
 
 ## 7. PROCESS STATE
 
