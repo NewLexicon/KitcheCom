@@ -1,6 +1,12 @@
 # KitchenCOM — COLD-OPEN (2026-07-06): chores done, next = rewards/gamification
 
-**THIS IS THE CURRENT COLD-OPEN.** Read end-to-end before acting. Supersedes `2026-07-02-choreops-gamification-coldopen.md`. A fresh session should resume from THIS file + the artifacts it names with absolute paths.
+> # ⛔ SUPERSEDED 2026-08-15 — DO NOT FOLLOW
+>
+> **Current cold-open: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-15-choreops-devrig-coldopen.md`.** Read that instead.
+>
+> Known-wrong below: **§1/§4 reference `feat/hardware-deploy`, which no longer exists** (the Task 9 `git show` command fails — the newer kitchen.yaml is on `origin/main`); `main` is `5d877f4`, not `0cdc0f5`, and this branch is **128 behind**; and §3's "Pi required" framing is obsolete — a local dev-HA rig on port 8124 runs ChoreOps offline. Kept for the Pi baseline in §2 and the environment notes in §0, which remain accurate.
+
+**~~THIS IS THE CURRENT COLD-OPEN.~~** Read end-to-end before acting. Supersedes `2026-07-02-choreops-gamification-coldopen.md`. A fresh session should resume from THIS file + the artifacts it names with absolute paths.
 
 ---
 
