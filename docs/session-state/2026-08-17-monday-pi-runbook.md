@@ -25,9 +25,22 @@ ssh kitchencom 'echo PI_UP; hostname -I'
 `pi-direct-ethernet-fallback` memory entry. `169.254.x.x` does **not** route from macOS —
 browse HA through a tunnel: `ssh -f -N -L 8123:localhost:8123 kitchencom-eth` → `http://localhost:8123`.
 
-**Power:** the Pi needs its **own 27W brick**. Never power it from the ViewSonic or a laptop dock —
-both brown it out under load. **Touch needs a USB hub in the path** (direct Pi→monitor never
-enumerates). Both are settled findings; don't re-debug them.
+**Power and touch are two SEPARATE solved problems** — they share no hardware path. The Pi's only
+USB-C is power-input; it does no video and no USB-host, so touch (USB-A) and power (USB-C) are
+physically independent. Fixing one never affected the other.
+
+- **Power — solved 2026-07-02 by the 27W brick.** At home, on its own brick, this is a non-issue.
+  It recurred 2026-08-05 only because the Pi was at the work office on a laptop dock with no brick.
+  Rule, not hazard: **Pi → its own 27W adapter → wall; ViewSonic → its own power → wall; never chain.**
+- **Touch — solved 2026-08-13 by adding a USB hub.** Direct Pi→monitor never enumerates; any hub
+  fixes it instantly.
+
+Neither is an open risk for Monday at home. Don't re-debug them.
+
+**If a drop DOES happen:** `vcgencmd get_throttled` reading `0x0` proves nothing after a reboot —
+the counter resets at boot, and `journalctl -b -1` is empty because the trail is erased. The
+reliable signature is **load-correlated drops + `uptime` showing `up 0 min`**. Sticky `0x50000`
+(undervolt+throttle occurred) is only meaningful if the Pi has *not* restarted since.
 
 ---
 

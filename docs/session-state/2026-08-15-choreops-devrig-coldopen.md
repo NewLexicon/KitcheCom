@@ -12,7 +12,7 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 2. **✅ `main` MERGED IN 2026-08-15 — this branch is now 0 behind.** It had been 128 behind (the shopping-list + Google Calendar arc: `912b1ed` calendar, `2119d98` Grocy intval fix, head `5d877f4`). Merge commit `18d8cd0`. Both conflicts were v1.0.7-vs-v1.0.8 in the plan + spec; **resolved to 1.0.7** — what the Pi actually runs (`ccpk1/ChoreOps` tags top out at 1.0.7; the vendored 1.0.8 is an untagged snapshot HACS can't install). Old doc said `main = 0cdc0f5` — stale.
 3. **The Pi is NOT required for the next phase.** A dev-HA rig runs ChoreOps locally. See §3.
 
-**Pi state (unchanged, still true):** unreachable as of 2026-08-15. Reserved at `192.168.1.234`, gate with `ipconfig getifaddr en0` → `192.168.1.x` then `ssh kitchencom 'echo UP'`. **The 27W brick is mandatory** — a laptop dock browns it out under load (3 drops in 40min on 2026-08-05). Never power it from the ViewSonic.
+**Pi state (unchanged, still true):** unreachable as of 2026-08-15. Reserved at `192.168.1.234`, gate with `ipconfig getifaddr en0` → `192.168.1.x` then `ssh kitchencom 'echo UP'`. **Power is SOLVED, not an open risk** — the 27W brick fixed it 2026-07-02 and it has held at home since. The 2026-08-05 drops (3 in 40min) happened at the **work office on a laptop dock with no brick** — the rule reconfirming itself, not a regression. Rule: Pi → own 27W adapter → wall; ViewSonic → own power → wall; never chain. **Separately**, touch needs a USB hub in the path (solved 2026-08-13) — different hardware path, unrelated fix; the Pi's USB-C is power-only and does no USB-host.
 
 ## 1. WHERE HEAD IS
 
