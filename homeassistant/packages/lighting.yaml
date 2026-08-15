@@ -136,21 +136,41 @@ input_boolean:
 #    This HA has **no Zigbee coordinator**: zha / mqtt / zwave_js / matter /
 #    deconz are all unconfigured (checked against core.config_entries 2026-08-15).
 #    The `zha` integration IS built into HA core, so the software costs nothing —
-#    the missing piece is a **USB Zigbee coordinator dongle** in the Pi
-#    (e.g. Home Assistant SkyConnect / Sonoff ZBDongle-E, ~$20-30).
+#    the missing piece is a **USB Zigbee coordinator dongle** in the Pi.
+#
+#    ✅ SELECTED 2026-08-15: **Sonoff Zigbee 3.0 USB Dongle Plus-E (ZBDongle-E)**,
+#    EFR32MG21 coordinator, +20dBm, bought as the **kit with the 1.5m shielded
+#    extension cable**. Good fit: EFR32MG21 is the same silicon family as HA's
+#    own SkyConnect, ZHA support is first-class (no HACS), and the bundled
+#    shielded extension is exactly the interference mitigation below.
 #
 #    ⚠️ Plan for the Pi's USB quirks: touch already requires a powered hub in the
-#    path. Put the dongle on a **short USB extension cable**, not flush against
-#    the Pi — Zigbee radios sitting next to a Pi's USB3/wifi pick up interference
-#    and silently drop devices. This is the single most common ZHA complaint.
+#    path. Run the dongle on that **extension cable**, not flush against the Pi —
+#    Zigbee radios next to a Pi's USB3/wifi pick up interference and silently
+#    drop devices. This is the single most common ZHA complaint.
+#
+#    ⚠️ FIRST-SETUP GOTCHA: ZBDongle-E units sometimes ship with older firmware,
+#    and updating means a moderately fiddly flashing procedure. If pairing
+#    misbehaves out of the box, **suspect dongle firmware before suspecting the
+#    bulbs.** (Model note: the sibling ZBDongle-**P** is TI CC2652P. Both work
+#    with ZHA; older forum posts favour the -P from the -E's early firmware days,
+#    which is no longer the state of things. The -E is the right call today.)
 #
 #    Until a coordinator exists, steps 1-6 cannot run.
 #
 # 1. Onboard the LEDs and confirm entities exist:
-#      Settings → Devices & Services → Add Integration → Zigbee Home Automation
-#      → select the dongle's serial port → pair each bulb (power-cycle an
-#      unprovisioned ZL1 to put it in pairing mode).
-#      Verify: Developer Tools → States → filter `light.`
+#    a. Plug the dongle into the Pi **via the shielded extension cable**.
+#       Confirm the Pi sees it — expect a CP210x/silabs serial device:
+#         ssh kitchencom 'ls -l /dev/serial/by-id/ 2>/dev/null; dmesg | tail -20'
+#       Use the stable `/dev/serial/by-id/...` path, NOT `/dev/ttyUSB0` — the
+#       ttyUSB number can move between reboots and silently break ZHA.
+#    b. Settings → Devices & Services → Add Integration → Zigbee Home Automation
+#       → select that by-id serial port → let it form a new network.
+#    c. Pair each bulb (power-cycle an unprovisioned ZL1 to enter pairing mode).
+#       ⚠️ Pair bulbs **in their final fixtures**, not at a bench. Zigbee builds
+#       a mesh from where devices actually live; mains-powered bulbs act as
+#       routers, so pairing location shapes the mesh.
+#    d. Verify: Developer Tools → States → filter `light.`
 #
 # 2. Check what the lights actually SUPPORT before picking `mode`:
 #      Developer Tools → States → your light → attribute `supported_color_modes`
