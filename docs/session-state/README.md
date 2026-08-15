@@ -21,7 +21,7 @@ Status against that promise:
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `d919b40` — `docs: correct the ahead count (4, not 5)`,
+- **HEAD:** `dd021ca` — `docs: capture the OAuth autofill trap + ChoreOps dev-rig staging`,
   **plus the fix-up commit that set this line.** Last **code** commit is `2119d98`
   (fractional-delete fix).
 - **Branch:** `main`, checked out at `.worktrees/main-merge` — **not in the primary checkout.**
@@ -320,7 +320,7 @@ In `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memo
 
 ## 9. Push state
 
-**Everything is PUSHED.** `origin/main` == `main` == `d919b40` (plus this fix-up).
+**Everything is PUSHED.** `origin/main` == `main` == `dd021ca` (plus this fix-up).
 
 This session's commits:
 
@@ -328,6 +328,7 @@ This session's commits:
 - `912b1ed` — `feat(calendar): connect Google Calendar — calendar.family is real now`
 - `aec3c07` — `docs: refresh cold-open — calendar shipped, Grocy intval fix, rig migrated`
 - `5f94717` + `d919b40` — cold-start sanity-check fix-ups
+- `dd021ca` — `docs: capture the OAuth autofill trap + ChoreOps dev-rig staging`
 
 ```bash
 cd /Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge
