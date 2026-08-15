@@ -1,9 +1,11 @@
 # Time-of-day LED colour (adaptive / "circadian" lighting).
 #
-# STATUS 2026-08-15: STAGED, NOT ACTIVE. No light entities exist in this HA yet
-# (`light.*` count is 0 — the only switches are HACS pre-release toggles), so the
-# flux platform below is COMMENTED OUT. It cannot validate against entities that
-# do not exist. Onboard the LEDs first, then follow the checklist in §4.
+# STATUS 2026-08-15: STAGED, NOT ACTIVE — BLOCKED ON A ZIGBEE COORDINATOR.
+# The bulbs are Third Reality ZL1 (Zigbee). This HA has no Zigbee radio and no
+# light entities (`light.*` count is 0 — the only switches are HACS pre-release
+# toggles), so the flux platform below is COMMENTED OUT; it cannot validate
+# against entities that do not exist. **Read §4 step 0 first — a USB Zigbee
+# dongle is required before any of this can run.**
 #
 # Built with HA's BUILT-IN `flux` switch platform — no HACS dependency. Schema
 # verified against reference/core-dev/homeassistant/components/flux/switch.py
@@ -126,18 +128,40 @@ input_boolean:
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. ACTIVATION CHECKLIST — when the LEDs are onboarded
 # ─────────────────────────────────────────────────────────────────────────────
+# 0. ⚠️ THE HARDWARE IS ZIGBEE — A COORDINATOR IS REQUIRED FIRST. THIS IS THE GATE.
+#    Confirmed 2026-08-15 from the box: **Third Reality ZL1 Smart Color Bulbs**
+#    (A19, E26 base, 800 lm, 4-pack). The `ZL` prefix = Zigbee, NOT WiFi. Zigbee
+#    bulbs cannot join over the network — they need a radio.
+#
+#    This HA has **no Zigbee coordinator**: zha / mqtt / zwave_js / matter /
+#    deconz are all unconfigured (checked against core.config_entries 2026-08-15).
+#    The `zha` integration IS built into HA core, so the software costs nothing —
+#    the missing piece is a **USB Zigbee coordinator dongle** in the Pi
+#    (e.g. Home Assistant SkyConnect / Sonoff ZBDongle-E, ~$20-30).
+#
+#    ⚠️ Plan for the Pi's USB quirks: touch already requires a powered hub in the
+#    path. Put the dongle on a **short USB extension cable**, not flush against
+#    the Pi — Zigbee radios sitting next to a Pi's USB3/wifi pick up interference
+#    and silently drop devices. This is the single most common ZHA complaint.
+#
+#    Until a coordinator exists, steps 1-6 cannot run.
+#
 # 1. Onboard the LEDs and confirm entities exist:
-#      Developer Tools → States → filter `light.`
-#    Brand determines effort: Hue/Zigbee are trivial; WiZ/Govee/Tuya vary; some
-#    cheap strips need ESPHome reflashing before HA sees them at all.
+#      Settings → Devices & Services → Add Integration → Zigbee Home Automation
+#      → select the dongle's serial port → pair each bulb (power-cycle an
+#      unprovisioned ZL1 to put it in pairing mode).
+#      Verify: Developer Tools → States → filter `light.`
 #
 # 2. Check what the lights actually SUPPORT before picking `mode`:
 #      Developer Tools → States → your light → attribute `supported_color_modes`
 #      - `color_temp` present        → use `mode: mired`   (best colour accuracy)
 #      - only `hs` / `rgb` / `xy`    → use `mode: xy` or `rgb`
-#    A colour-temp mode on an RGB-only bulb produces wrong colours, not an error.
-#    Cheap RGB strips often cannot do true warm white at all — they fake it, and
-#    2200K may come out pink. Test before trusting the numbers above.
+#    ✅ LIKELY GOOD NEWS FOR THE ZL1: the box advertises **"Tunable White"** next
+#    to "Multi Color", so these should report `color_temp`, and `mode: mired`
+#    should be correct — real white-balance hardware rather than RGB faking warm
+#    white. Confirm the attribute anyway; if `color_temp` is absent, use `xy`.
+#    (The trap avoided: a colour-temp mode on an RGB-only bulb yields wrong
+#    colours rather than an error — cheap strips render 2200K as pink.)
 #
 # 3. Uncomment §2 and §3, replace `light.REPLACE_ME` with the real entity_ids.
 #
