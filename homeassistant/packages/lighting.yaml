@@ -178,6 +178,12 @@ input_boolean:
 #
 #    Until a coordinator exists, steps 1-6 cannot run.
 #
+#    🔗 SHARED GATE: the rainwater-irrigation project needs this same coordinator
+#    (porch smart plug as a Zigbee router, outdoor switching). If you are buying
+#    the dongle for lighting, read that design first so one purchase covers both:
+#    docs/superpowers/specs/2026-08-15-rainwater-irrigation-design.md
+#    (branch `feat/irrigation`).
+#
 # 1. Onboard the LEDs and confirm entities exist:
 #    a. Plug the dongle into the Pi **via the shielded extension cable**.
 #       Confirm the Pi sees it — expect a CP210x/silabs serial device:
