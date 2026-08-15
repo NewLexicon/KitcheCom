@@ -1,0 +1,154 @@
+# Time-of-day LED colour (adaptive / "circadian" lighting).
+#
+# STATUS 2026-08-15: STAGED, NOT ACTIVE. No light entities exist in this HA yet
+# (`light.*` count is 0 — the only switches are HACS pre-release toggles), so the
+# flux platform below is COMMENTED OUT. It cannot validate against entities that
+# do not exist. Onboard the LEDs first, then follow the checklist in §4.
+#
+# Built with HA's BUILT-IN `flux` switch platform — no HACS dependency. Schema
+# verified against reference/core-dev/homeassistant/components/flux/switch.py
+# (PLATFORM_SCHEMA at :65). If you later want manual-override detection and
+# proper brightness curves, the HACS "Adaptive Lighting" integration is the
+# modern successor; this package is deliberately the zero-dependency option.
+#
+# ✅ EMPIRICALLY VALIDATED 2026-08-15 on the dev rig (container kitchencom-ha-dev),
+# not merely desk-checked:
+#   - This file as-shipped passes `check_config` clean, and HA registers
+#     input_boolean.adaptive_lighting_enabled from it.
+#   - The §2 flux block was temporarily uncommented against a `light: platform: demo`
+#     light and ALSO passed clean — HA echoed back every key (start_colortemp,
+#     sunset_colortemp, stop_colortemp, mode: mired, interval, transition,
+#     disable_brightness_adjust). So uncommenting §2 will work; the key names and
+#     the mode value are correct. The probe file was removed afterwards.
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. SAFETY / OVERRIDE SWITCH
+# ─────────────────────────────────────────────────────────────────────────────
+# Same pattern as kitchen_screensaver_enabled in screensaver.yaml: anything that
+# reaches out and changes hardware state on a timer gets a documented off-switch.
+#
+# Flux re-asserts colour every `interval` seconds (default 30). That means a
+# human who manually sets a light warm-white at dinner gets overridden within
+# 30s. Turning this OFF stops the loop and leaves the lights alone.
+input_boolean:
+  adaptive_lighting_enabled:
+    name: Adaptive Lighting Enabled
+    icon: mdi:theme-light-dark
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. THE FLUX SWITCH  — ⚠️ COMMENTED OUT UNTIL REAL LIGHTS EXIST
+# ─────────────────────────────────────────────────────────────────────────────
+# Uncomment and replace the `lights:` list with your real entity_ids.
+#
+# ⚠️ KEY NAMES ARE NOT WHAT THE DOCS ABBREVIATE THEM TO. The YAML keys are
+# `start_colortemp` / `sunset_colortemp` / `stop_colortemp` — NOT `start_ct`.
+# Verified at switch.py:52-58. Wrong keys fail config validation.
+#
+# ⚠️ FLUX ONLY ADJUSTS LIGHTS THAT ARE ALREADY ON. Every call site is guarded by
+# `if is_on(hass, light)` (switch.py:98, :112, :126). It will never turn a light
+# on, and never turns one off. This is a feature — it means flux cannot light up
+# the house at 3am — but it also means "nothing happened" is expected when the
+# lights are off. Do not debug that as a fault.
+#
+# Colour temperature reference (Kelvin, valid range 1000-40000):
+#   4000  crisp daylight-ish  — morning, task lighting
+#   3000  warm white          — sunset
+#   2200  amber / candlelight — night, melatonin-friendly
+#
+# switch:
+#   - platform: flux
+#     name: Adaptive Lighting
+#     lights:
+#       - light.REPLACE_ME          # ← real entity_ids go here
+#     start_time: "06:30"           # omit to use sunrise instead
+#     stop_time: "22:30"
+#     start_colortemp: 4000
+#     sunset_colortemp: 3000
+#     stop_colortemp: 2200
+#     mode: mired                   # xy (default) | mired | rgb — see §4 note
+#     interval: 60                  # seconds between re-assertions
+#     transition: 30                # fade seconds; keeps changes unnoticeable
+#     disable_brightness_adjust: true   # colour only; leave brightness to humans
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. WIRE THE SAFETY SWITCH TO THE FLUX SWITCH
+# ─────────────────────────────────────────────────────────────────────────────
+# Flux exposes itself as a switch entity that must be ON to run its loop. These
+# automations bind it to the input_boolean above so there is ONE thing to toggle
+# (and one thing on the dashboard), rather than two switches that can disagree.
+#
+# ⚠️ COMMENTED OUT alongside §2 — these reference switch.adaptive_lighting,
+# which does not exist until the flux platform is uncommented. An automation
+# pointing at a non-existent entity logs errors on every trigger.
+#
+# automation:
+#   - alias: "Lighting — start adaptive loop when enabled"
+#     trigger:
+#       - platform: state
+#         entity_id: input_boolean.adaptive_lighting_enabled
+#         to: "on"
+#     action:
+#       - service: switch.turn_on
+#         target:
+#           entity_id: switch.adaptive_lighting
+#
+#   - alias: "Lighting — stop adaptive loop when disabled"
+#     trigger:
+#       - platform: state
+#         entity_id: input_boolean.adaptive_lighting_enabled
+#         to: "off"
+#     action:
+#       - service: switch.turn_off
+#         target:
+#           entity_id: switch.adaptive_lighting
+#
+#   # Restore intent across restarts: input_boolean state survives a reboot, the
+#   # flux switch's does not. Without this, adaptive lighting silently stops
+#   # after every HA restart while the dashboard still shows "enabled".
+#   - alias: "Lighting — re-assert adaptive loop after restart"
+#     trigger:
+#       - platform: homeassistant
+#         event: start
+#     condition:
+#       - condition: state
+#         entity_id: input_boolean.adaptive_lighting_enabled
+#         state: "on"
+#     action:
+#       - delay: "00:00:30"        # let light integrations finish loading
+#       - service: switch.turn_on
+#         target:
+#           entity_id: switch.adaptive_lighting
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. ACTIVATION CHECKLIST — when the LEDs are onboarded
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Onboard the LEDs and confirm entities exist:
+#      Developer Tools → States → filter `light.`
+#    Brand determines effort: Hue/Zigbee are trivial; WiZ/Govee/Tuya vary; some
+#    cheap strips need ESPHome reflashing before HA sees them at all.
+#
+# 2. Check what the lights actually SUPPORT before picking `mode`:
+#      Developer Tools → States → your light → attribute `supported_color_modes`
+#      - `color_temp` present        → use `mode: mired`   (best colour accuracy)
+#      - only `hs` / `rgb` / `xy`    → use `mode: xy` or `rgb`
+#    A colour-temp mode on an RGB-only bulb produces wrong colours, not an error.
+#    Cheap RGB strips often cannot do true warm white at all — they fake it, and
+#    2200K may come out pink. Test before trusting the numbers above.
+#
+# 3. Uncomment §2 and §3, replace `light.REPLACE_ME` with the real entity_ids.
+#
+# 4. Validate BEFORE restarting — a bad package takes all of HA down, not just
+#    this file:
+#      docker exec homeassistant python -m homeassistant \
+#        --script check_config --config /config
+#
+# 5. Turn on input_boolean.adaptive_lighting_enabled, turn a light ON (flux
+#    ignores lights that are off), and watch the colour move. With
+#    `interval: 60` the first change can take a minute — that is not a fault.
+#
+# 6. Sanity-check the extremes: at 2200K a light should look distinctly amber.
+#    If it looks white, the mode is wrong for that hardware (see step 2).
