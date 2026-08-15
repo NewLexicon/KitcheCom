@@ -2,7 +2,9 @@
 
 **Purpose:** type-and-go sheet for entering the reward store in the ChoreOps UI. Every decision is pre-made; at the keyboard you only transcribe. Blueprint source: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-07-02-choreops-gamification-blueprint.md` §2.
 
-**Status:** DRAFTED OFFLINE — Pi was powered down (2026-07-22). Nothing entered yet. Schema verified against local source `reference/ChoreOps-main` (v1.0.8) — see §5 for the version caveat.
+**Status:** DRAFTED OFFLINE 2026-07-22 — Pi powered down. **REHEARSED 2026-08-15 on the dev-HA rig (not the Pi); nothing entered on the Pi yet.** Schema verified against local source `reference/ChoreOps-main` (v1.0.8) — see §5 for the version caveat.
+
+> **⚡ 2026-08-15 — 5 rewards entered on the DEV RIG (`http://localhost:8124`), not the Pi.** The sheet's mechanics are now empirically proven rather than schema-guessed. See **§5a REHEARSAL FINDINGS** before doing the real entry — it changes two things about how you type these.
 
 ---
 
@@ -48,6 +50,8 @@ Names are unique-checked, so adding a second "Treat" or "Cash" fails validation.
 ## 3. ADD THESE — 14 new rewards
 
 Enter in order. Assigned Users: leave the pre-filled Rowan + Wystan.
+
+> **⚠️ Per §5a Finding 2: type the `—` as ASCII.** Names below use a true em-dash; substitute parens or a hyphen (`Screen Time (15 Min)`), which is rehearsal-proven. Slugging is identical either way. **Icons: if the picker has no search box, skip them and fix later** — cosmetic only.
 
 ### Screen Time (3 new)
 | # | Name | Cost | Description | Icon |
@@ -122,6 +126,46 @@ sudo docker exec homeassistant grep -c '"platform": "choreops"' /config/.storage
 (Count should rise vs. the pre-entry number — capture that number *before* you start. Use `platform=choreops`, **never** the `kc_` prefix — that returns 0.)
 
 **Tooling note (carried forward):** nested-SSH quoting is fragile. If the inline probe above misbehaves, write it to a file, `scp` to the Pi, `docker cp` into the container, then run.
+
+---
+
+## 5a. REHEARSAL FINDINGS — dev rig, 2026-08-15
+
+Entered 5 rewards on the **dev-HA rig** (`deploy/homeassistant/dev-config`, port **8124**) while the Pi was unreachable. ChoreOps **1.0.8** there vs **1.0.7** on the Pi. What this settled:
+
+### ✅ CONFIRMED — the sheet's mechanics are correct
+
+- **8 entities per reward, exactly.** Baseline 41 → 73 after 4 rewards → **81 after 5**. Per reward: 1 sensor + 3 buttons (claim/approve/disapprove) **× 2 kids**. The §5 math holds.
+- **Assigned Users pre-fill works.** All 5 landed with `assigned_user_ids` length **2** (Rowan + Wystan) without touching the field. §4's "never touch" instruction is safe.
+- **Cost accepts floats** — stored as `8.0`, `150.0`.
+- **Punctuation in names is SAFE.** Slugging strips it cleanly, no collisions:
+  - `Day Out/Special Trip` → `day_out_special_trip` (**forward slash — the big one, now closed**)
+  - `Screen Time (30 Min)` → `screen_time_30_min` (parens)
+  - `Cash Out $1` → `cash_out_1` (bare `$`)
+
+### ⚠️ FINDING 1 — the dev rig has NO ICON SEARCH (dev-rig artifact, NOT a Pi problem)
+
+The icon picker on the dev rig renders as a plain scroll list of ~1000 icons with **no search box**, making icon entry impractical. **Cause: the dev rig is pinned to `home-assistant:2025.7` (running 2025.7.4)** in `docker-compose.ha-dev.yml:24` — a much older frontend. ChoreOps just calls HA's stock `selector.IconSelector()` (`helpers/flow_helpers.py:196`), so the picker UI is **Home Assistant's, not ChoreOps'**.
+
+The Pi runs a newer HA and **did** have icon search during earlier setup. **Do not chase this on the Pi — it is not a real defect.**
+
+**Consequence for rehearsal:** the 5 dev-rig rewards have deliberately junk icons (`mdi:candle`, `mdi:air-filter`, …). Ignore them. Icons are cosmetic — they don't affect entity IDs, costs, claim/approve, or the dashboard. **Fix icons on the Pi, where search works.**
+
+### ⚠️ FINDING 2 — DROP THE EM-DASH from the canonical names
+
+§2/§3 name rewards `Category — Variant` using a true em-dash (`—`). **That is hard to type on a real keyboard and was never actually tested** — every rehearsal entry used ASCII. The proven-safe equivalents are parens: `Screen Time (30 Min)`.
+
+**Decision: use ASCII punctuation, not `—`.** Slugging strips both identically (`screen_time_30_min` either way), so nothing downstream cares, and the sort-together property §3 wanted is preserved by the `Category` prefix alone. If you prefer the em-dash's look on the kiosk, it is *probably* fine — but it is **unverified**, so a single test entry should precede the other 15.
+
+### Rehearsal state (dev rig only — DISCARD, do not port costs)
+
+`Special Snack` 8 · `Screen Time (30 Min)` 10 · `Cash Out $1` 10 · `Stay up 30 minutes late` **10** · `Day Out/Special Trip` 150.
+
+Two deliberate deviations from this sheet, both typing shortcuts during rehearsal, **not** schema findings: "Stay up late" should be **20** (§3 #8), and the 30-min screen tier should be **18** (§3 #2). **The sheet's costs are correct; the rehearsal's are not.**
+
+### ⚠️ Open: consider diagnostics-import instead of retyping
+
+ChoreOps supports a **diagnostics export/import** path (`config_flow.py:469`). If the dev rig is built out to the full 16 rewards + bonuses/penalties/badges/achievements, it may be importable to the Pi wholesale — turning the Pi session from ~40 manual form entries into one import + an icon pass. **Untested.** Verify the export actually round-trips before relying on it; the 1.0.8→1.0.7 version gap is the main risk.
 
 ---
 
