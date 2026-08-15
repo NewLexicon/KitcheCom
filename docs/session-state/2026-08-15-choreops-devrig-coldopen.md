@@ -16,20 +16,18 @@ Three corrections to the 2026-07-06 doc, all verified this session:
 
 ## 1. WHERE HEAD IS
 
-> ## 🚨 THIS BRANCH HAS NEVER BEEN PUSHED
+> ## ✅ PUSHED 2026-08-15 — was local-only for 26 commits
 >
-> **There is no `origin/feat/choreops-chores`.** `git branch -r` lists only `origin/main`. All
-> **26 commits** of ChoreOps work — the content generator, the round-trip verification, all three
-> entry sheets, this cold-open — exist **only on this local disk**, three days before the deadline
-> they are meant to satisfy. One disk failure or one bad `git` command loses the entire arc.
+> This branch had **never been pushed**; `origin` held only `main`. The entire ChoreOps arc —
+> generator, round-trip verification, all three entry sheets, this cold-open — existed on one
+> local disk three days before its deadline. Caught during the AT&T spike and pushed the same day.
+> `origin/feat/choreops-chores` and `origin/research/att-network-control` now both exist.
+>
+> **Keep it that way — `git push` after every commit on this branch.**
 >
 > ```bash
-> git branch --show-current                          # MUST print feat/choreops-chores
-> git push -u origin feat/choreops-chores
 > git rev-list --count origin/feat/choreops-chores..HEAD   # expect 0
 > ```
->
-> Discovered 2026-08-15 during the AT&T spike. Nothing else in this file matters if the work is lost.
 
 - **Branch `feat/choreops-chores`, HEAD = `529c766`, 26 ahead / 0 BEHIND `origin/main`.** Clean tree.
   (Earlier drafts of this line said `3941577` — that was the pre-fix-up SHA and is **stale**.)
@@ -82,7 +80,14 @@ Three corrections to the 2026-07-06 doc, all verified this session:
    - Bonuses + Penalties: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-05-choreops-bonuses-penalties-entry-sheet.md` — ⚠️ type penalty points **POSITIVE**, the form negates internally.
    - Achievements THEN Badges: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-05-choreops-achievements-badges-entry-sheet.md` — ⚠️ **achievements first**; achievement-linked badges need the achievement to exist (blueprint's "Badges + Achievements together" is wrong).
 3. **Then Task 8** — Dashboard Generator, runnable on the dev rig. Plan: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/plans/2026-06-15-choreops-chores.md`. **Select ONLY Rowan + Wystan** (excludes stale parent entities, §5). Correct every `kc_` grep to `platform=choreops`.
-4. **Pi tasks when it returns:** import the JSON → icon pass → Task 9 (nav button) → 10 (delete orphaned local_todo) → 11 (claim→approve smoke test) → 12 (commit + handoff).
+4. **Pi tasks when it returns → 📕 FOLLOW THE RUNBOOK, don't re-derive:**
+   **`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-17-monday-pi-runbook.md`**
+   Backup → regenerate against the **Pi's own** storage → paste → Task 8 → 9 → 10 → 11 → icons →
+   OAuth last. Every command pre-verified 2026-08-15; the generator was dry-run against the dev-rig
+   file (correct counts, penalties negative, badge linkage real). Covers the `Early Riser` stop
+   condition, the `premier`-not-`premiere` template spelling, and the 1.0.7-vs-1.0.8 label drift.
+   Sequence summary: import the JSON → icon pass → Task 9 (nav button) → 10 (delete orphaned
+   local_todo) → 11 (claim→approve smoke test) → 12 (commit + handoff).
 
 ### 🗓️ PARKED UNTIL WEDNESDAY 2026-08-19 — internet-time reward prototype
 
