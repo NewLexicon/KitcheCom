@@ -98,6 +98,27 @@ The dev rig has only 3 chores, so `Early Riser`'s **`Brush Teeth`** lookup faile
 **If the generator prints a WARNING about an unresolved chore id on the Pi — STOP.** That
 achievement would silently never track. Fix the lookup before pasting; do not paste past it.
 
+**Verified on the dev rig 2026-08-17 (before the Pi session) — read this before diagnosing:**
+
+- **Only `Early Riser` can produce this warning.** All three achievements show an empty
+  `selected_chore_id` on the rig, which *looks* like three failures but is not. Per the
+  `ACHIEVEMENTS` table at `gen_content.py:68-72`, only `Early Riser` is type `chore_streak`
+  and binds to a named chore (`Brush Teeth`). `7-Day Streak` (`daily_minimum`) and
+  `Chore Champion` (`chore_total`) are **chore-agnostic by design** — empty is CORRECT for
+  them. The warning at `gen_content.py:144-147` only fires when a name is specified and not
+  found, so an empty id with no warning is benign. **Do not "fix" those two.**
+- **Chore-name matching is EXACT and lowercased** (`gen_content.py:108,143`) — no fuzzy or
+  partial matching. If the Pi's chore is named `Brush teeth (AM)` or `Brush Your Teeth`, the
+  lookup fails even though the chore exists. **The fix is a one-word edit to the table at
+  `gen_content.py:72` to match the Pi's actual chore name** — not a debugging session. Check
+  the Pi's chore names against it first:
+  ```bash
+  python3 -c "import json;d=json.load(open('/tmp/pi-choreops-live.json'));x=d.get('data',d);print([c.get('name') for c in x['chores'].values()])"
+  ```
+- **Penalty signs confirmed correct in generator output:** rig shows `Missed Chore = -5.0`,
+  `Reminder Needed = -2.0`. The negative-storage requirement is satisfied by the generator;
+  still eyeball it on the Pi output, but this is not expected to be a problem.
+
 Verify before paste: **penalties stored NEGATIVE (−5 / −2)** — the JSON path bypasses the form's
 negation. Positive penalties would *add* points. And confirm `Streak Master`'s
 `associated_achievement` points at the real `7-Day Streak` id, not a dangling one.
