@@ -64,7 +64,6 @@ work is available, do that first — Phase 1 is what to do when it is *not*.
 
 ### Carry-forwards specific to `fort-knox`
 
-- **Unpushed branch** (above) — highest-priority housekeeping.
 - **Old Pi model unidentified.** Phase 2 §0. Photos confirmed a full-size Pi (not a USB
   dongle, which was the initial misread), inferred 3B/3B+, **not confirmed.** Boot it and
   read `/proc/cpuinfo` rather than reading silkscreen through the case.
