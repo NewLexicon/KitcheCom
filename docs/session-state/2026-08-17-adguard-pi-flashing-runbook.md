@@ -8,6 +8,11 @@
 > working.** Design §13 sequences this behind the calendar + chore chart promise.
 > Phase 2 touches no household DNS, but it consumes an evening, and the evening
 > before the deadline is not the one to spend on it.
+>
+> **👉 If you came here wanting to make progress on Fort Knox now, go to
+> `docs/session-state/2026-08-17-phase1-device-controls-runbook.md` instead.** Phase 1 is
+> ungated ("Anytime" per design §13), needs no hardware, and delivers the
+> download-approval capability that was the original ask.
 
 **Scope of this runbook:** Phase 2 only — get AdGuard Home running on the old Pi and
 test it against one volunteer device. **It does not change household DNS.** That is
@@ -27,7 +32,8 @@ model name is silkscreened on the top. Inference from the visible evidence is
 **Pi 3 Model B or 3 B+**, which satisfies design §11 (Pi 3B+ or newer, wired Ethernet).
 A Pi 2 Model B is visually near-identical from below and would also work for plain DNS.
 
-**Do not flash until identified.** Cheapest path — boot it and ask:
+**Do not flash until identified.** Cheapest path — boot it and ask (this is design §11
+pre-flight #1, the gate on this whole phase):
 
 ```bash
 cat /proc/cpuinfo | grep -E 'Model|Revision'
@@ -35,9 +41,10 @@ cat /sys/firmware/devicetree/base/model; echo
 ```
 
 Reading the running system beats reading silkscreen through a case. If it turns out to
-be a **Pi Zero W**, stop and re-read design §11 pre-flight #1 — the Zero is explicitly
-not recommended as the household's primary resolver (2.4GHz-only Wi-Fi, no Ethernet),
-and the plan changes.
+be a **Pi Zero / Zero 2 W**, stop and re-read design §11 pre-flight #1 — the Zero 2 W is
+explicitly *not recommended* as the household's primary resolver (2.4GHz-only Wi-Fi, no
+Ethernet make link reliability the dominant risk, regardless of adequate CPU), and the
+plan changes.
 
 **A note on the original description:** this was described as "an old USB mini plug,"
 which initially read as a USB dongle — a real concern, since a Zigbee ZBDongle-P (also
