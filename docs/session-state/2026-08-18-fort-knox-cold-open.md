@@ -1,5 +1,35 @@
 # Fort Knox — cold-open (branch `fort-knox`)
 
+> # 🟢 LATEST — 2026-08-17 evening: the AdGuard Pi IS BUILT AND CONFIGURED
+>
+> **Read `docs/session-state/2026-08-17-adguard-pi-build-handoff.md` first.** It supersedes
+> §5 and §7 of this document, both of which describe blockers that are now resolved.
+>
+> **The old Pi is a working AdGuard box.** `Raspberry Pi 3 Model B Rev 1.2` · Raspberry Pi
+> OS Lite 32-bit (trixie), fully updated, kernel `6.18.39` · Docker 29.7.2 · **AdGuard
+> `v0.107.78` running and resolving DNS** · `ssh adguard` (passwordless, ed25519) ·
+> admin UI `http://192.168.1.113:3000` · API creds in `~/.adguard-netrc` on the Pi.
+>
+> **The YouTube schedule is applied to 6 kid devices** — Sun–Thu 12:00–20:00, Fri–Sat
+> 12:00–23:59, `America/New_York`. **HARD rule, every day of the year, no exceptions**
+> (an override helper was written and deleted at Garrett's direction — do not re-introduce).
+>
+> ⚠️ **NOTHING IS BLOCKED YET.** Those devices still use the gateway for DNS. The schedule
+> activates only at the Phase 3 cutover, which is still gated (below).
+>
+> **Blockers resolved since this doc was written:** home-network ✅ · microSD reader ✅ ·
+> board identified ✅ · flashing ✅. **§5's blocker table is stale — ignore it.**
+>
+> **Still gating Phase 3:** printed rollback card (design §12) · **filtered** secondary
+> resolver · **fresh A2 card** (this Pi runs the ~6-year-old drawer-aged SanDisk) ·
+> **2.5A PSU** (currently a 5V **2.0A** Samsung — under spec for a 3B).
+>
+> **Open question that may reshape the plan:** the gateway may support per-device
+> scheduling via the **AT&T Smart Home Manager app** (not the local web UI, which is what
+> was probed). If so, design line 33 is wrong. See build-handoff §4e. Blocked on an AT&T
+> password as of this session.
+
+
 **Written:** 2026-08-17 evening, for the next session.
 **Worktree:** `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox`
 
