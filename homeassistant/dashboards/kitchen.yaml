@@ -36,9 +36,16 @@ views:
               # so the old placeholder resolved on its own. Read AND write verified
               # (calendar.create_event succeeded against the live calendar).
               - calendar.family
-          - type: todo-list
-            title: Chores
-            entity: todo.chores     # local_todo (wired 2026-06-15)
+          # Supersedes the todo.chores local_todo card (wired 2026-06-15).
+          # ChoreOps owns chores now; its generated dashboard lives at /cod-chores
+          # (Task 8). The orphaned todo.chores entity is deleted in Task 10.
+          - type: button
+            name: Chores
+            icon: mdi:broom
+            tap_action:
+              action: navigate
+              navigation_path: /cod-chores
+            show_state: false
 # Screensaver: the custom card (custom:screensaver-card) is now instantiated in
 # the hero grid section above. It renders nothing unless idle, driven by the
 # kitchen_idle automation (packages/screensaver.yaml, Task 4). Its JS resource
