@@ -16,8 +16,9 @@ commit. A concurrent session parks other branches in the primary checkout
 ## 1. Where is HEAD
 
 - **Last substantive commit:** `87f1238` — `adguard-rule-schedule.py`. Anything after it
-  is cold-open bookkeeping.
-- **Whole branch:** 14 commits ahead of `origin/main`, all pushed. 7 files, +2168 lines.
+  is cold-open bookkeeping (this doc + its fix-up). Cited this way deliberately: a commit
+  cannot name its own SHA, and chasing the exact count just spawns another fix-up.
+- **Whole branch:** 15+ commits ahead of `origin/main`, all pushed. 8 files, ~2400 lines.
 - **Content:** design + runbooks + two tested Python helpers. **No app code, no test
   suite, no build.** The test tables in the main cold-open do not apply here.
 
