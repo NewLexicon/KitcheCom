@@ -16,6 +16,12 @@ trusting a single number in it:
 git branch --show-current
 ```
 
+> 👉 **On `fort-knox`? Read the dedicated cold-open instead — it supersedes this banner:**
+> `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/session-state/2026-08-18-fort-knox-cold-open.md`
+>
+> It carries the full branch state, all four verified AdGuard traps, the household rule as
+> designed, and the literal next move. The summary below is kept for orientation only.
+
 ### If you are on `fort-knox`
 
 - **Worktree:** `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox`
