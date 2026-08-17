@@ -5,6 +5,10 @@
 
 homeassistant:
   packages: !include_dir_named packages
+  # Set 2026-08-17: internal_url was unset, which makes the iOS companion app
+  # flaky about reconnecting on the home LAN. Parents approve ChoreOps claims
+  # from their phones, so app reliability is load-bearing now.
+  internal_url: "http://192.168.1.234:8123"
 
 frontend:
   themes: !include_dir_merge_named themes
