@@ -5,6 +5,15 @@
 
 homeassistant:
   packages: !include_dir_named packages
+  # 2026-08-17: the screensaver card browses media_source, whose DEFAULT root is
+  # the container's /media -- which is EMPTY (only /config is bind-mounted). The
+  # 26 photos live in /config/media, so media_source never saw them and the card
+  # rendered black for a month. Map source_dir_id "local" at the photo directory.
+  # The card builds media-source://media_source/local/<media_path> and coerces an
+  # empty media_path back to "media" (screensaver-card.ts:43), so the photos must
+  # live in a media/ SUBFOLDER: /config/media/media/*.jpg.
+  media_dirs:
+    local: /config/media
   # Set 2026-08-17: internal_url was unset, which makes the iOS companion app
   # flaky about reconnecting on the home LAN. Parents approve ChoreOps claims
   # from their phones, so app reliability is load-bearing now.
