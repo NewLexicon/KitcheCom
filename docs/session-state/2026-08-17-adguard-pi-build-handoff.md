@@ -140,31 +140,115 @@ instead.
 Adding `Host adguard` to `~/.ssh/config` gave `Host key verification failed` because the
 key was known under the IP, not the alias. Fix: `ssh-keyscan -t ed25519 adguard >> ~/.ssh/known_hosts`.
 
+## 4b. AdGuard is INSTALLED AND RESOLVING
+
+| | |
+|---|---|
+| **Version** | `v0.107.78` (pinned, per design §4.1) |
+| **Container** | `adguardhome`, `restart: unless-stopped`, `network_mode: host` |
+| **Compose** | `/opt/adguard/docker-compose.yml` (source of truth: `deploy/adguard/docker-compose.yml`) |
+| **Config** | `/opt/adguard/conf/AdGuardHome.yaml` (root, 0600) |
+| **Admin UI** | `http://192.168.1.113:3000` |
+| **DNS** | `*:53` UDP + TCP — **verified by resolving example.com and wikipedia.org** |
+| **Docker** | 29.7.2, Compose v5.5.0, service `enabled` at boot |
+
+**API credentials** live in `~/.adguard-netrc` on the Pi (mode 0600). Drive the API with
+`curl --netrc-file ~/.adguard-netrc http://127.0.0.1:3000/control/...`. AdGuard is
+basicAuth-only (design §9.3), so this password is reused in HA secrets later.
+
+### 🔴 The setup wizard puts the admin UI on port 80, not 3000
+
+Completing the wizard wrote `address: 0.0.0.0:80` (line 12 of `AdGuardHome.yaml`) — **not**
+the `:3000` the wizard's own first screen shows. Symptom: every API call to `:3000` returns
+**`HTTP 000` (connection refused)**, which looks like an auth or service failure and is
+neither. Diagnose with `ss -tlnp`, not by re-checking credentials.
+
+Corrected on this box back to `:3000`:
+```bash
+sudo cp /opt/adguard/conf/AdGuardHome.yaml /opt/adguard/conf/AdGuardHome.yaml.bak-port80
+sudo sed -i '12s|address: 0.0.0.0:80|address: 0.0.0.0:3000|' /opt/adguard/conf/AdGuardHome.yaml
+cd /opt/adguard && sudo docker compose restart
+```
+DNS kept resolving across the restart. A backup of the port-80 config is at
+`AdGuardHome.yaml.bak-port80`.
+
+### ✅ Trap §4.4 (SafeSearch master switch) reproduced on this live instance
+
+`GET /control/safesearch/status` on the freshly-configured box returned **exactly** the
+shape cold-open §4.4 predicted:
+
+```json
+{"enabled": false, "bing": true, "duckduckgo": true, "ecosia": true,
+ "google": true, "pixabay": true, "yandex": true, "youtube": true}
+```
+
+**Every engine reads `true` while SafeSearch is OFF.** Reading the engine list in the UI
+would have concluded it was working. **Set `enabled` explicitly and re-read the status.**
+
+### Baseline before any blocking (so "after" is meaningful)
+
+Captured 2026-08-17 with AdGuard running and nothing blocked:
+
+| Domain | Resolved to |
+|---|---|
+| `youtube.com` | `172.217.215.190` |
+| `googlevideo.com` | `108.177.122.147` |
+| `youtubei.googleapis.com` | `172.217.118.4` |
+
+**7 clients auto-detected, 0 configured.** No blocked services, no per-client rules yet.
+
+### ⚠️ Password exposure — 2026-08-17
+
+The first AdGuard admin password was **printed into the session transcript** by an `awk`
+that dumped field 2 of the netrc file (field 2 of the `password` line is the password).
+Garrett rotated it via the UI the same session. **When inspecting `~/.adguard-netrc`, print
+field 1 only, or just `ls -l` it.**
+
 ## 5. Where the build stopped
 
-**Done:** flashed, booted, identified, SSH + passwordless sudo, `apt update`,
-`apt upgrade` (85 packages) run.
+**Done:** flashed · booted · identified · SSH + passwordless sudo · OS fully updated
+(0 upgradable) · kernel `6.18.39+rpt-rpi-v7` + clean reboot · Docker 29.7.2 + Compose
+v5.5.0 · **AdGuard `v0.107.78` running and resolving DNS** · admin UI moved back to `:3000`
+· API credentials in `~/.adguard-netrc`.
 
-**Not started — the whole AdGuard stack:**
+**Runbook §1–§6 are complete** except per-client configuration.
 
-1. **Docker is NOT installed.** The runbook §5 assumes it. `curl -sSL https://get.docker.com | sh`,
-   then add the user to the `docker` group.
-2. **AdGuard container** — runbook §5. Pin **`adguard/adguardhome:v0.107.78`**, never
-   `:latest`, never v0.108.x (beta). Image ships `arm/v7`, so this board is covered.
-   `network_mode: host` is **required** — under bridge networking every query appears to
-   come from the Docker gateway, destroying the per-client identification that per-client
-   rules depend on (design §9.4).
-3. **Initial config** — runbook §6, admin UI on `:3000`.
-4. **Disable wlan0** (§1 above) **before** reserving the IP at the gateway (runbook §3).
-5. **The four traps in cold-open §4 all still apply** to every AdGuard API call made from
-   here on. Test by **resolving a domain**, never by reading the API's HTTP response.
+**Not yet done — the actual parental controls:**
+
+1. **SafeSearch** — set `enabled: true` (the master switch, trap §4.4) and **re-read
+   `/control/safesearch/status` to confirm**, don't trust the write.
+2. **YouTube blocking** — the built-in `youtube` service id (176 rules; bundles
+   `googlevideo.com` so YouTube Music breaks — accepted per design §8).
+3. **Per-client rules + allowance schedule** — ⚠️ the window is the hours the service is
+   **AVAILABLE**, not blocked, and wrapping ranges (21:00→07:00) are rejected with HTTP 400.
+   Cold-open §6 has the tested shape.
+4. **Roku Live TV** needs a custom `$client` rule + cron (`adguard-rule-schedule.py`),
+   because `time=` is accepted and silently ignored (trap §4.3).
+5. **Never hand-write a client update** — `/clients/update` zeroes omitted fields while
+   returning HTTP 200 (trap §4.1). Use `docs/reference/adguard-rmw.py`.
+6. **Disable wlan0 before reserving the IP** at the gateway (runbook §3), or the wrong
+   address gets reserved.
+7. **Home Assistant integration** — the Pi 5 (`ssh kitchencom`, `192.168.1.234`) runs HA in
+   Docker, `network_mode: host`. AdGuard is basicAuth-only, so the password goes in
+   `secrets.yaml`.
 
 ## 6. Next session's literal first move
 
+Everything through runbook §6 is done. Start at per-client configuration:
+
 ```bash
-ssh adguard 'curl -sSL https://get.docker.com | sh'
+# SafeSearch master switch (trap §4.4) — then VERIFY by re-reading, not by the write
+ssh adguard 'curl -s --netrc-file ~/.adguard-netrc http://127.0.0.1:3000/control/safesearch/status'
 ```
-then follow **runbook §5** verbatim. Everything before §5 is now done.
+
+⚠️ **Verify every change by RESOLVING A DOMAIN**, never by the API's response. All four
+cold-open §4 traps return success. Baseline to compare against is in §4b above.
+
+**The household is NOT cut over** and must not be until: a **printed** rollback card at the
+gateway (design §12), a **filtered** secondary resolver (cold-open §8 — an unfiltered
+secondary converts enforcement into a suggestion), and a **fresh A2 card** (this Pi runs the
+~6-year-old drawer-aged SanDisk — fine for testing, not for the box the house depends on).
+Also replace the **under-spec PSU** (§3) first.
 
 **Still open, unchanged:** the household is **not** cut over (design Phase 3), and must not
 be until there is a **printed** rollback card at the gateway, a filtered secondary
