@@ -254,6 +254,33 @@ Then configure per the design:
 - **Clients** → add one entry per device by IP or MAC. There is **no first-class "group"
   object** (design §9.4) — per-kid grouping is our naming convention, not a feature.
 
+### The household layout — scheduled for kids, always-open for parents
+
+Verified working 2026-08-17 (lab findings §4b). **Requires no cron** — the schedule is a
+per-client field, so this is pure config:
+
+| Client | `blocked_services` | `blocked_services_schedule` |
+|---|---|---|
+| each kid device | `["youtube"]` | allow **07:00–21:00** (Sat/Sun later if wanted) |
+| each parent device | `[]` | none needed — nothing to pause |
+
+> 🔴 **The window is an ALLOWANCE window, not a blocking window.** Enter the hours YouTube
+> should be **available**. Verified by resolution: inside the window YouTube resolves,
+> outside it returns `0.0.0.0`. Entering `21:00–07:00` to mean "block overnight" inverts
+> the rule — blocked all day, allowed all night.
+>
+> 🔴 **Overnight ranges are rejected** — `21:00→07:00` returns
+> `HTTP 400 ... start 21h0m0s is greater or equal to end 7h0m0s`. Not a workaround
+> problem: the same-day allowance `07:00–21:00` already means "blocked overnight."
+
+In the API the times are **milliseconds since local midnight** (`07:00` = `25200000`,
+`21:00` = `75600000`) with a per-client `time_zone`. In the UI they are ordinary time
+pickers. Set them in the UI unless scripting.
+
+**Parent devices need reserved IPs too** (§3) — a client entry keys on address, so a
+parent laptop that changes IP silently loses its exemption and starts getting the
+kid ruleset.
+
 ### The scheduling limitation — read before assuming
 
 Design §9.2: AdGuard's built-in per-client schedule is a **"Pause service blocking"**

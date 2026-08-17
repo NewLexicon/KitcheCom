@@ -246,6 +246,21 @@ Practically:
   right mechanism and works within the built-in schedule.
 - **Anything requiring time-scheduled custom rules needs cron hitting the REST API.**
 
+✅ **Verified against a live v0.107.78 on 2026-08-17** — both points hold, and the
+household's stated rule (YouTube scheduled off for kids, always available on parent
+devices) sits **entirely inside the built-in scheduler with no cron**. Two empirical
+additions:
+
+- **The inversion is real and was confirmed by resolution**, not just by reading: inside
+  the window YouTube resolves; outside it returns `0.0.0.0`. Enter the hours YouTube
+  should be *available*.
+- **Wrapping/overnight ranges are rejected outright** — `21:00→07:00` returns `HTTP 400
+  ... start 21h0m0s is greater or equal to end 7h0m0s`. Harmless given the inversion (the
+  same-day allowance already implies blocked overnight), but it will look like a bug at
+  the console if unexpected.
+
+Detail: `docs/session-state/2026-08-17-adguard-api-lab-findings.md` §4b.
+
 ### 9.3 REST API notes
 
 Documented OpenAPI 3.0.3. Relevant endpoints: `GET /clients`, `POST /clients/add`,

@@ -152,7 +152,79 @@ Design §9.1's engine list is correct and complete.
 every engine reading `true`.** Setting engines without setting `enabled` does nothing.
 Easy to misread in the UI and in the API.
 
-## 5. ✅ Scheduling — §9.2 exactly right
+## 4b. 🔑 Per-client scheduling is NATIVE — no cron needed for the household's actual rule
+
+**Added 2026-08-17 after Garrett asked whether specific devices can be scheduled while
+the parents' devices stay open.** Answer: yes, and it needs **no cron at all** — which
+materially simplifies the plan.
+
+### Per-client blocking, proven
+
+Two clients on one instance, queried at the same moment:
+
+```
+kid-ipad   (registered IP)   youtube.com -> 0.0.0.0            BLOCKED
+other IP   (not kid-ipad)    youtube.com -> 142.251.107.190    normal
+github.com (kid-ipad)        -> 140.82.112.4                   normal
+```
+
+Clients are identified by IP/MAC and each carries its own `blocked_services`. Parent
+devices get `blocked_services: []` and are never blocked, at any hour.
+
+### The schedule is a per-client field, not a global one
+
+`blocked_services_schedule` lives **on the client object**, with its own `time_zone`:
+
+```json
+"blocked_services_schedule": {
+  "time_zone": "America/New_York",
+  "mon": {"start": 25200000, "end": 75600000}
+}
+```
+
+**Times are milliseconds since local midnight.** `25200000` = 07:00, `75600000` = 21:00.
+Per-day-of-week keys (`mon`…`sun`), so weekends can differ.
+
+**This means the household's stated rule — YouTube off on a schedule for the kids, always
+available for the parents — is pure config.** No cron job, and therefore §3's
+`/clients/update` trap is **off the critical path** for it. The trap only re-enters if
+something later scripts changes (e.g. the ChoreOps points→minutes bridge, design §14).
+
+### ⚠️ The window is INVERTED — it is an ALLOWANCE window
+
+Verified in both directions against a live instance:
+
+| Condition | Result |
+|---|---|
+| now **inside** the window | YouTube **resolves** (allowed) |
+| now **outside** the window | YouTube **blocked** (`::` / `0.0.0.0`) |
+
+So a "block at bedtime" rule is entered as the **daytime allowance**: `07:00–21:00`.
+Entering `21:00–07:00` intending "block overnight" would block all day and allow all night
+— the exact inversion §9.2 warned about, now confirmed by resolution rather than by
+reading docs.
+
+### ⚠️ Overnight windows are REJECTED outright
+
+```
+mon 21:00 -> 07:00
+HTTP 400: failed to process request body: weekday Monday:
+          bad day range: start 21h0m0s is greater or equal to end 7h0m0s
+```
+
+Not a quirk to work around — the API refuses a wrapping range. Because the window is an
+*allowance*, this does not block the use case: the legal same-day window `07:00–21:00`
+already implies "blocked overnight." Recorded so nobody fights the 400.
+
+Also accepted: `00:00–24:00` (`end` may be `86400000`), but **not** `86399000`.
+
+## 5. ✅ Scheduling — §9.2 exactly right (with a correction)
+
+⚠️ **§9.2 says the built-in schedule applies "only to the blocked-services list." That is
+correct — but do not read it as "so bedtime needs cron."** For a rule expressed entirely
+in blocked-services (which YouTube is), the built-in per-client scheduler is sufficient.
+See §4b. Cron is required only for time-scheduled **custom rules / blocklists**, which
+this household's stated requirements do not need.
 
 - `/control/blocked_services/get` returns keys `['schedule', 'ids']` — the schedule
   belongs to the blocked-services object.
