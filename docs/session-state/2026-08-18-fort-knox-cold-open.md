@@ -28,6 +28,10 @@
 > scheduling via the **AT&T Smart Home Manager app** (not the local web UI, which is what
 > was probed). If so, design line 33 is wrong. See build-handoff §4e. Blocked on an AT&T
 > password as of this session.
+>
+> **HEAD at session close:** `6742904` · branch **27 ahead** of `origin/main` · 0 unpushed
+> · working tree clean. Verify with:
+> `git log --oneline -1 && git rev-list --count origin/main..HEAD && git rev-list --count origin/fort-knox..HEAD`
 
 
 **Written:** 2026-08-17 evening, for the next session.
