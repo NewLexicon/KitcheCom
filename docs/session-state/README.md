@@ -23,9 +23,11 @@ git branch --show-current
   that set this line.** Last *substantive* commit is `0be81e3` (Phase 1 runbook).
 - **Ahead of `origin/main`:** **5** — arc is `1bf1bfd` (design) → `1af56db` (Phase 2
   runbook) → `0be81e3` (Phase 1 runbook) → `6a22845` (this banner) → fix-up
-- ⚠️ **UNPUSHED.** `origin/fort-knox` does not exist. All three commits live only on this
-  laptop. This is the exact hazard memory `concurrent-sessions-branch-hazard` warns about
-  — **push it.**
+- ✅ **PUSHED 2026-08-17.** `origin/fort-knox` exists and this branch tracks it. (It was
+  laptop-only for three commits — the hazard memory `concurrent-sessions-branch-hazard`
+  warns about. Resolved.) Verify with `git rev-list --count origin/fort-knox..HEAD`;
+  expect **0** — but note this line is itself in a later commit, so expect **1** until
+  that commit is pushed too.
 - **Content is 100% docs.** No code, no tests, no build. §2's test tables below do not
   apply to anything on this branch.
 
