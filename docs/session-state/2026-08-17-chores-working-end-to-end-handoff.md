@@ -28,17 +28,18 @@ renamed from "Kitchen (snapshot)". Both landed after the section below was first
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `c0aec3d` — `feat: chores work end to end — kiosk approval hole closed, cold-open`,
-  plus the small fix-up commit that corrected this line's SHA and count.
+- **HEAD:** `d6823d8` — `docs: cold-open — screensaver fixed, dashboard renamed, layout carry-forwards`,
+  plus the fix-up commit that corrected this line's SHA and count.
 - **Branch:** `feat/choreops-chores`, in the **primary checkout** `/Users/jdehart1/___Code_DEV/KitchenCOM`
-- **Ahead of `origin/main`:** **43** (42 at `c0aec3d`, +1 for the fix-up)
+- **Ahead of `origin/main`:** **47** (46 at `d6823d8`, +1 for the fix-up)
 - **Unpushed: 0**
-- This session's arc: `4a18cdf` (runbook §4 corrections) → `c0aec3d` (end-to-end + cold-open) → fix-up.
+- This session's arc: `4a18cdf` (runbook §4) → `c0aec3d` (end-to-end + cold-open) → `0470b70`
+  (fix-up) → `4b1b7a8` (dashboard rename) → `2931ba8` (screensaver fix) → `d6823d8` (this) → fix-up.
 
 ```bash
 cd /Users/jdehart1/___Code_DEV/KitchenCOM
 git branch --show-current                      # feat/choreops-chores
-git rev-list --count origin/main..HEAD         # 43
+git rev-list --count origin/main..HEAD         # 47
 git log --oneline origin/feat/choreops-chores..HEAD | wc -l   # 0
 ```
 
