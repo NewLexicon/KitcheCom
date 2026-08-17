@@ -1,0 +1,14 @@
+# Fort Knox — Roku Live TV schedule (The Roku Channel has NO built-in AdGuard
+# service, and custom rules cannot self-schedule: the time= modifier is accepted
+# and silently ignored. So cron adds/removes the rule instead.)
+#
+# Allowed:  Sun-Thu 12:00-20:00   |   Fri-Sat 12:00-23:59   (America/New_York)
+# The script is idempotent, so the daily midnight block is harmless on weeknights
+# (already blocked since 20:00) and is what closes the Fri/Sat late window.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CRON_TZ=America/New_York
+
+0 12 * * *          root . /root/.adguard-env; export ADGUARD_URL ADGUARD_USER ADGUARD_PASS; /opt/adguard/adguard-rule-schedule.py allow roku-live >>/var/log/kc-sched.log 2>&1
+0 20 * * 0,1,2,3,4  root . /root/.adguard-env; export ADGUARD_URL ADGUARD_USER ADGUARD_PASS; /opt/adguard/adguard-rule-schedule.py block roku-live >>/var/log/kc-sched.log 2>&1
+0  0 * * *          root . /root/.adguard-env; export ADGUARD_URL ADGUARD_USER ADGUARD_PASS; /opt/adguard/adguard-rule-schedule.py block roku-live >>/var/log/kc-sched.log 2>&1

@@ -77,12 +77,16 @@ TAG = "! kc-sched:"
 # Rule groups this script manages. Add entries here, not in cron.
 # Each rule is scoped with $client so it only affects the named devices.
 GROUPS = {
+    # Roku Live TV / The Roku Channel. No built-in service exists for it, which
+    # is the whole reason this script exists. Scoped to the three Roku TVs by
+    # their AdGuard client NAMES (not IPs) -- $client matches the client name,
+    # so this survives an IP change as long as the client entry is updated.
     "roku-live": [
-        "||therokuchannel.roku.com^$client='kid-roku'",
+        "||therokuchannel.roku.com^$client='Roku-65-livingrm'|'Roku-55-S425'|'Roku-55-R625'",
     ],
     # Example -- a site with no built-in service, blocked on both kid devices:
     # "misc-contraband": [
-    #     "||example-site.com^$client='kid-roku'|'kid-laptop'",
+    #     "||example-site.com^$client='Roku-65-livingrm'|'PS5'",
     # ],
 }
 
