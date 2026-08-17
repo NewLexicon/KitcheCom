@@ -4,15 +4,26 @@
 **Design:** `docs/superpowers/specs/2026-08-16-parental-controls-design.md`
 **Written:** 2026-08-17, before the hardware was identified conclusively.
 
-> **GATE — do not start this before the Tuesday 2026-08-18 deliverable is verified
-> working.** Design §13 sequences this behind the calendar + chore chart promise.
-> Phase 2 touches no household DNS, but it consumes an evening, and the evening
-> before the deadline is not the one to spend on it.
+> **GATE LIFTED 2026-08-17** by Garrett — the Tuesday deliverable is being handled in a
+> separate session, so it no longer blocks this work. The original gate (design §13) was
+> about not spending the pre-deadline evening here; that reasoning no longer applies.
 >
-> **👉 If you came here wanting to make progress on Fort Knox now, go to
-> `docs/session-state/2026-08-17-phase1-device-controls-runbook.md` instead.** Phase 1 is
-> ungated ("Anytime" per design §13), needs no hardware, and delivers the
-> download-approval capability that was the original ask.
+> **Two physical blockers remain, and they are the real constraint:**
+> 1. **No microSD reader attached** (§0 called this the most likely thing to stall the
+>    evening — it did).
+> 2. **Must be flashed at home.** §1 bakes the Wi-Fi SSID into the card *before first
+>    boot*; flashing from the work network burns in the wrong SSID.
+>
+> **Already done for you (2026-08-17), so flashing night is shorter:** every software
+> claim in §5–§6 was verified against a live v0.107.78 container on the Mac — image
+> version + architectures, the `youtube` service contents, SafeSearch's engine list and
+> its master-switch gotcha, the scheduling limitation, and the client-update trap (with a
+> tested helper now in `docs/reference/adguard-rmw.py`). See
+> `docs/session-state/2026-08-17-adguard-api-lab-findings.md`.
+>
+> **👉 If you cannot flash tonight, `docs/session-state/2026-08-17-phase1-device-controls-runbook.md`
+> needs no hardware at all** and delivers the download-approval capability that was the
+> original ask.
 
 **Scope of this runbook:** Phase 2 only — get AdGuard Home running on the old Pi and
 test it against one volunteer device. **It does not change household DNS.** That is
@@ -170,6 +181,13 @@ docker run --rm hello-world     # verifies the daemon
 Pin the version. Design §4.1 specifies **v0.107.78** — the current stable. **Do not use
 `:latest`**, and do not use v0.108.x, which is still beta.
 
+✅ **Re-verified against the live registry 2026-08-17:** v0.107.78 is still the newest
+stable (newer tags are `v0.108.0-b.90` / `beta` / `edge`), pushed 2026-07-13.
+
+🔑 **The image ships `arm64`, `arm/v7`, and `arm/v6`, so it runs on this board either
+way.** The §0 model question does **not** gate the container — it only decides the 32- vs
+64-bit **OS** choice in §1 step 3. One less thing to discover at flashing time.
+
 ```bash
 sudo mkdir -p /opt/adguard/{work,conf}
 ```
@@ -218,7 +236,15 @@ is **basicAuth only, no tokens**, so this password ends up in HA secrets.
 Then configure per the design:
 
 - **§9.1 Safe search** → enable for Google, Bing, DuckDuckGo, YouTube. Native feature,
-  cannot be disabled client-side.
+  cannot be disabled client-side. Engine list verified against a live v0.107.78 on
+  2026-08-17 (also supports Yandex, Ecosia, Pixabay).
+  - ⚠️ **`enabled` is a SEPARATE master switch from the per-engine flags.** A stock
+    instance reports `enabled: false` while every engine already reads `true` — so the
+    engines look on and SafeSearch is off. Setting engines without setting `enabled` does
+    nothing. Confirm with:
+    ```bash
+    curl -s --netrc-file ~/.adguard-netrc http://<pi-ip>:3000/control/safesearch/status
+    ```
 - **§8 Blocked services** → use the **built-in "YouTube" service entry**, not a
   hand-written domain list. It already bundles `youtubei.googleapis.com`,
   `googlevideo.com` (wildcard), etc.
@@ -237,9 +263,27 @@ list**. It does **not** schedule custom rules or blocklists.
 Bedtime cutoffs and YouTube windows go through blocked-services, so they work within the
 built-in scheduler. Anything needing time-scheduled *custom rules* requires cron against
 the REST API — and `/clients/update` takes the **whole client object**, so
-**read-modify-write is mandatory**. A naive write silently drops omitted fields. This is
-the same silent-corruption shape as the ChoreOps penalty-sign bug; treat it with equal
-suspicion.
+**read-modify-write is mandatory**.
+
+> 🔴 **PROVEN 2026-08-17, and worse than "drops omitted fields."** A partial write to
+> `/clients/update` returned **HTTP 200** while silently turning OFF `filtering_enabled`,
+> `safebrowsing_enabled`, `parental_enabled`, **and** SafeSearch on that client — every
+> protection, with a success response. A cron job written the obvious way disables a kid's
+> filtering *while appearing to work*; the only symptom is that the internet quietly
+> starts working. Same shape as the ChoreOps penalty-sign bug.
+>
+> **Do not hand-write client updates. Use the tested helper:**
+> `docs/reference/adguard-rmw.py` (GET → mutate one key → POST the whole object, then
+> verify and exit non-zero if anything is off).
+> ```bash
+> export ADGUARD_URL=http://<pi-ip>:3000 ADGUARD_USER=admin ADGUARD_PASS=...
+> docs/reference/adguard-rmw.py set kid-laptop '{"blocked_services":["youtube"]}'
+> ```
+> Full evidence: `docs/session-state/2026-08-17-adguard-api-lab-findings.md` §3.
+
+⚠️ **Avoid `!` in the admin password.** In a `curl -u` string it triggers shell history
+expansion and produces silent 401s that look like wrong credentials. Cost a cycle in the
+lab. Either pick a password without it, or use `--netrc-file`.
 
 ---
 

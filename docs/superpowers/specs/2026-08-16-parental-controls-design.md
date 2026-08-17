@@ -198,7 +198,12 @@ Blocking both keeps the rule consistent and requires no per-kid exceptions.
 
 - **Use AdGuard's built-in "YouTube" blocked-service entry**, not a hand-written domain
   list. It already bundles `youtube.com`, `youtu.be`, `youtube-nocookie.com`,
-  `youtubei.googleapis.com`, `googlevideo.com` (wildcard), `yt3.ggpht.com`, and others.
+  `youtubei.googleapis.com`, `googlevideo.com` (wildcard), `ggpht.com`, and others —
+  **176 rules total**, enumerated from a live v0.107.78 on 2026-08-17.
+  ⚠️ *Corrected 2026-08-17:* this list previously said `yt3.ggpht.com`. The real rule is
+  the parent domain `||ggpht.com^` (plus `||ggpht.cn^`) — **broader** than documented, so
+  all Google user-content CDN traffic is blocked, not just YouTube avatars. Verified in
+  `docs/session-state/2026-08-17-adguard-api-lab-findings.md` §1.
 - **Known collateral damage, accepted:** blocking `googlevideo.com` also disables
   **YouTube Music** and can affect other Google media sharing that CDN.
 - **Not affected:** Google Search, Gmail, and Workspace are on separate domains and
