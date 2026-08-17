@@ -19,8 +19,8 @@ git branch --show-current
 ### If you are on `fort-knox`
 
 - **Worktree:** `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox`
-- **Last substantive commit:** `0be81e3` — Phase 1 runbook. **Everything after it is
-  cold-open bookkeeping** (banner + SHA fix-ups), so HEAD will be a few commits past it.
+- **Last substantive commit:** `4025488` — AdGuard API lab (design claims verified against
+  a live v0.107.78, `adguard-rmw.py` added). Anything after it is cold-open bookkeeping.
   Cited this way on purpose: a fix-up commit cannot name its own SHA, and chasing the
   exact count just spawns another fix-up. Get live values from:
 
@@ -29,15 +29,14 @@ git branch --show-current
   ```
 
 - **Substantive arc:** `1bf1bfd` (design) → `1af56db` (Phase 2 runbook) → `0be81e3`
-  (Phase 1 runbook). Three docs commits; that is the whole branch.
+  (Phase 1 runbook) → `4025488` (API lab + verified helper).
+- **Content:** docs, plus one tested Python helper (`docs/reference/adguard-rmw.py`).
+  No app code, no test suite, no build. §2's test tables below do not apply here.
 - ✅ **PUSHED 2026-08-17.** `origin/fort-knox` exists and this branch tracks it. (It was
   laptop-only for three commits — the hazard memory `concurrent-sessions-branch-hazard`
   warns about. Resolved.) Verify with `git rev-list --count origin/fort-knox..HEAD` —
   **0** means nothing is stranded on this laptop.
-- **Content is 100% docs.** No code, no tests, no build. §2's test tables below do not
-  apply to anything on this branch.
-
-**The three artifacts, in reading order:**
+**The artifacts, in reading order:**
 
 1. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/superpowers/specs/2026-08-16-parental-controls-design.md`
    — the design. §13 has the phase/gate table; **Appendix A lists 8 corrections that are
@@ -45,22 +44,35 @@ git branch --show-current
 2. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/session-state/2026-08-17-phase1-device-controls-runbook.md`
    — **Phase 1, UNGATED, the actual next move.**
 3. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/session-state/2026-08-17-adguard-pi-flashing-runbook.md`
-   — Phase 2, **gated behind Tuesday 2026-08-18**, and additionally blocked on hardware.
+   — Phase 2. **Tuesday gate LIFTED 2026-08-17**; now blocked only on hardware/location.
+4. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/session-state/2026-08-17-adguard-api-lab-findings.md`
+   — **every software claim in the design, verified against a live v0.107.78.** Read
+   before touching AdGuard; it found one design error and two under-stated traps.
+5. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/reference/adguard-rmw.py`
+   — the **only** safe way to change an AdGuard client. Tested end-to-end.
 
 ### 🎯 The literal next move on Fort Knox
 
-**Execute the Phase 1 runbook (artifact 2).** Design §13 marks it **"Anytime"** — zero
-network risk, no Pi, no hardware purchase — and sequences it *first* because it delivers
-the download-approval capability that was the original ask. It is the only Fort Knox
-phase that can legitimately run before Tuesday.
+**Two tracks, both open. Pick by what hardware is in reach.**
 
-Phase 2 is **double-blocked** and should not be started: the Tuesday gate, plus §0's
-open hardware question (the old Pi's model is still unidentified; a microSD reader is
-the most likely thing to stall that evening).
+**If you are at home with a microSD reader → Phase 2 (artifact 3).** The Tuesday gate is
+gone. Two blockers remain and neither is negotiable:
+- **No SD reader was attached** as of 2026-08-17 (`diskutil list external physical` was
+  empty). §0 called it the likeliest stall; it was.
+- **Flash at home, not at work.** §1 bakes the Wi-Fi SSID in *before first boot*. On
+  2026-08-17 this machine was on `10.250.4.64` behind gateway `10.48.73.1` — the work
+  network. Flashing there burns in the wrong SSID.
 
-**Tuesday still outranks all of this.** The wife-returns deliverable is the calendar +
-chore chart, and per memory `S2514` the remaining ChoreOps work needs the Pi. If Tuesday
-work is available, do that first — Phase 1 is what to do when it is *not*.
+  Software risk is already retired (artifact 4), so §5–§6 are now transcription, not
+  discovery. The board's model no longer gates the container (the image ships
+  arm64/armv7/armv6) — only the 32- vs 64-bit OS choice in §1 step 3.
+
+**Otherwise → Phase 1 (artifact 2).** Needs no hardware, no network changes, no Pi.
+Delivers the download-approval capability that was the original ask.
+
+**Tuesday is being handled in a separate session** and no longer blocks this branch.
+Don't re-impose the gate — but also don't assume Tuesday is done; confirm before
+reordering anything else around it.
 
 ### Carry-forwards specific to `fort-knox`
 
@@ -73,8 +85,19 @@ work is available, do that first — Phase 1 is what to do when it is *not*.
 - **Phase 3 requires the printed rollback card** (design §12 / Phase 2 §8) physically
   posted near the gateway *before* cutover. Printed, not just in the repo — the failure
   it addresses is one where looking things up is itself impaired.
-- **`/clients/update` needs read-modify-write** (design §9.3). A naive write silently
-  drops omitted fields. **Same silent-corruption shape as the ChoreOps penalty-sign bug**
+- 🔴 **`/clients/update` returns HTTP 200 while destroying protections.** PROVEN
+  2026-08-17: a partial write turned off `filtering_enabled`, `safebrowsing_enabled`,
+  `parental_enabled` **and** SafeSearch, and reported success. **Never hand-write a client
+  update — use `docs/reference/adguard-rmw.py`.** A cron job written the obvious way
+  disables a kid's filtering while appearing to work.
+- ⚠️ **SafeSearch `enabled` is a separate master switch** from the per-engine flags. Stock
+  is `enabled:false` with every engine `true` — reads as on, is off.
+- ⚠️ **No `!` in the AdGuard admin password** — shell history expansion in `curl -u`
+  produces silent 401s that look like bad credentials.
+- **Design §8's `yt3.ggpht.com` was wrong** and is corrected in place (real rule is the
+  parent `||ggpht.com^`). Do not "fix" it back.
+- *(original design note, now evidenced)* **read-modify-write is mandatory** (design
+  §9.3). **Same silent-corruption shape as the ChoreOps penalty-sign bug**
   (memory `choreops-content-is-generated-json`) — treat with equal suspicion.
 
 ---
