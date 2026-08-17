@@ -18,6 +18,14 @@ lovelace:
   dashboards:
     kitchen-snapshot:
       mode: yaml
-      title: Kitchen (snapshot)
+      # 2026-08-17: renamed from "Kitchen (snapshot)". Despite the old name this is
+      # NOT a backup copy — there is no storage-mode default dashboard (no
+      # .storage/lovelace.lovelace) and the kiosk loads /kitchen-snapshot directly.
+      # It is the live dashboard.
+      # url_path stays kitchen-snapshot so start-kiosk-wayland.sh keeps working.
+      # Sidebar ORDER is a per-user frontend setting (drag it in sidebar edit mode),
+      # NOT a config key — `sidebar_order:` here fails check_config.
+      title: Kitchen
+      icon: mdi:home-heart
       filename: dashboards/kitchen.yaml
       show_in_sidebar: true
