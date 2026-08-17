@@ -19,10 +19,12 @@ git branch --show-current
 ### If you are on `fort-knox`
 
 - **Worktree:** `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox`
-- **HEAD:** `6a22845` — `docs: cold-open banner for fort-knox`, **plus the fix-up commit
-  that set this line.** Last *substantive* commit is `0be81e3` (Phase 1 runbook).
-- **Ahead of `origin/main`:** **5** — arc is `1bf1bfd` (design) → `1af56db` (Phase 2
-  runbook) → `0be81e3` (Phase 1 runbook) → `6a22845` (this banner) → fix-up
+- **HEAD:** `a2afbd2` — `docs: mark fort-knox as pushed in the cold-open banner`, **plus
+  any fix-up commit after it.** Last *substantive* commit is `0be81e3` (Phase 1 runbook);
+  everything after it is cold-open bookkeeping.
+- **Ahead of `origin/main`:** **6** — arc is `1bf1bfd` (design) → `1af56db` (Phase 2
+  runbook) → `0be81e3` (Phase 1 runbook) → `6a22845`/`020e7a3`/`a2afbd2` (cold-open
+  banner + fix-ups)
 - ✅ **PUSHED 2026-08-17.** `origin/fort-knox` exists and this branch tracks it. (It was
   laptop-only for three commits — the hazard memory `concurrent-sessions-branch-hazard`
   warns about. Resolved.) Verify with `git rev-list --count origin/fort-knox..HEAD`;
