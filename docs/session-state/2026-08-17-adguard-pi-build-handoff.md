@@ -104,7 +104,38 @@ will not be allocated because stdin is not a terminal."* The `!` prefix also doe
 keep a typed password out of the transcript; it routes through the harness. Use a real
 terminal for anything that prompts for a secret.
 
-### 4.3 `ssh-keyscan` needed for the new alias
+### 4.3 🔴 apt reports success while fetching nothing — IPv6 timeouts
+
+**Same shape as cold-open §4's four AdGuard traps: reported success, did nothing.**
+
+The first `apt-get upgrade` ended with `E: Unable to fetch some archives`, **five failed
+packages, and all 85 still pending** — while the shell pipeline still reported `EXIT:0`.
+The failures were IPv6:
+
+```
+Unable to connect to raspbian.raspberrypi.com:http: [IP: 2a00:1098:0:80:1000:75:0:3 80]
+Could not connect to ... (93.93.128.193), connection timed out
+```
+
+The mirror's IPv6 address is tried first and times out. **Fix applied to this box:**
+
+```bash
+echo 'Acquire::ForceIPv4 "true";' | sudo tee /etc/apt/apt.conf.d/99force-ipv4
+```
+After that the same upgrade took 85 → 8 remaining (the 8 being kernel packages held back
+for new dependencies, resolved with `full-upgrade`).
+
+⚠️ **Expect this again for `get.docker.com` and any other external fetch on this box.** If
+a download stalls, suspect IPv6 before suspecting the network.
+
+**→ Verify apt by STATE, never by exit code:** `apt list --upgradable | grep -vc "^Listing"`
+should reach 0. An exit code from a pipeline reflects the last command in it, not apt.
+
+⚠️ **`/var/run/reboot-required` is unreliable on Raspberry Pi OS.** It read `no` immediately
+after a new kernel + initramfs were installed. Compare `uname -r` against `ls /boot/vmlinuz-*`
+instead.
+
+### 4.4 `ssh-keyscan` needed for the new alias
 
 Adding `Host adguard` to `~/.ssh/config` gave `Host key verification failed` because the
 key was known under the IP, not the alias. Fix: `ssh-keyscan -t ed25519 adguard >> ~/.ssh/known_hosts`.

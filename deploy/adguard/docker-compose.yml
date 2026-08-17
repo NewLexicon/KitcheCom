@@ -1,0 +1,29 @@
+# AdGuard Home — Fort Knox Layer 1 (DNS)
+#
+# Target: the old Pi, hostname `adguard` (Pi 3 Model B Rev 1.2, Raspberry Pi OS Lite
+# 32-bit trixie, armv7l). Deployed to /opt/adguard/docker-compose.yml on that box.
+#
+# Version is PINNED per design §4.1. Do NOT use :latest, and do NOT move to v0.108.x —
+# that line is still beta. v0.107.78 re-verified as newest stable 2026-08-17 (pushed
+# 2026-07-13). The image ships arm64 + arm/v7 + arm/v6, so this armv7l board is covered.
+#
+# network_mode: host is REQUIRED, not a convenience. Under bridge networking every query
+# appears to come from the Docker gateway address, which destroys per-client
+# identification — and per-client rules are the entire point of this deployment
+# (design §9.4). Host mode is also what lets AdGuard bind :53 directly.
+#
+# Port 53 was verified free on this box and systemd-resolved is not installed at all,
+# so the flashing runbook's §5 port-53 contingency does not apply here.
+
+services:
+  adguardhome:
+    image: adguard/adguardhome:v0.107.78
+    container_name: adguardhome
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      # Bind mounts, not named volumes: config must be readable and backupable from the
+      # host, and must survive a container recreate. conf/AdGuardHome.yaml is the file to
+      # back up before any change.
+      - /opt/adguard/work:/opt/adguardhome/work
+      - /opt/adguard/conf:/opt/adguardhome/conf
