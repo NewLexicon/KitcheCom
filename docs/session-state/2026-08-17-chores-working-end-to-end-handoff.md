@@ -16,11 +16,13 @@ Runbook §1–§5 are **done**. What remains is optional cleanup and the next fe
 **The next action is a choice, not a queue:**
 - **§8 Google Calendar OAuth on the Pi** — the last runbook item.
   Follow `docs/session-state/2026-08-14-google-calendar-oauth-setup.md` §3 and §3b exactly.
-- **Task 10 (optional)** — delete the orphaned `local_todo` "Chores" entry. Backed up already;
-  see §6 below. Purely cosmetic; the nav button points at ChoreOps and the orphan is invisible.
+- **ChoreOps dashboard layout** — improved but not finished; see §6. Garrett wants to revisit.
 - **Voice slice / compliment-insult app** — design docs exist, no implementation.
 
 **Runbook:** `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-17-monday-pi-runbook.md`
+
+**Also working now:** the **screensaver** (photos cycling on the panel) and the Kitchen dashboard
+renamed from "Kitchen (snapshot)". Both landed after the section below was first written — see §4a.
 
 ---
 
@@ -148,6 +150,31 @@ for u in d[\"data\"][\"users\"]:
 
 ---
 
+## 4a. Later-evening work (screensaver + dashboard rename)
+
+1. **Screensaver FIXED — it had never once shown an image.** Two stacked causes:
+   - `media_source`'s default root is the **container's** `/media`, which is **empty** (only
+     `/config` is bind-mounted). The 26 photos sat in `/config/media`, invisible to media_source.
+   - The card coerces an empty `media_path` back to `"media"`
+     (`custom_cards/screensaver-card/src/screensaver-card.ts:43`), so it always browses
+     `local/media`.
+
+   Fix (`2931ba8`): `media_dirs: {local: /config/media}` + photos moved to `/config/media/media/`.
+   **A third, simpler cause of "no screensaver on the panel":** the kiosk had been navigated to
+   `/cod-chores`, where the card does not exist. `pkill chromium` returns it to Kitchen.
+
+2. **Kitchen dashboard renamed** (`4b1b7a8`) — "Kitchen (snapshot)" → "Kitchen". Despite the old
+   name it is **not** a backup: there is no storage-mode default dashboard and the kiosk loads it.
+   `url_path` stays `kitchen-snapshot` because `start-kiosk-wayland.sh` hardcodes it.
+
+3. **Task 10 done** (by Garrett) — the orphaned `local_todo` "Chores" entry is deleted; Groceries
+   remains.
+
+4. **ChoreOps layout partly improved** via the dashboard's own **gear panel** (`row_variant`
+   `standard` → `kids`). Still not ideal on 1920x1080 — see §6 carry-forwards.
+
+---
+
 ## 5. Traps and corrections
 
 ### 🟡 The dashboard file uses an UNDERSCORE
@@ -213,12 +240,38 @@ Kiosk mode bypasses the assignee check, so ChoreOps has no identity to record. T
 
 ## 6. Carry-forwards
 
-- **Task 10 (optional):** delete the orphaned `local_todo` "Chores" entry
+- ~~**Task 10:** delete the orphaned `local_todo` "Chores" entry~~ **DONE 2026-08-17.** Was:
   (`config_entry 01KV69CAFQ`) at `/config/integrations/integration/local_todo`.
   **Delete only "Chores" — leave "Groceries".** Backed up two places:
   `deploy/backups/local_todo.chores.ics.bak-20260817` and on the Pi at
   `.storage/local_todo.chores.ics.bak-predelete-20260817-1723`. Contents are June wiring-test
   items only. Purely cosmetic.
+- 🔴 **`custom_cards/screensaver-card/dist/screensaver-card.js` in the repo is STALE AND BROKEN.**
+  It is ~14 KB dated 2026-06-15 and contains a bare `lit` import; the Pi runs a good bundled
+  ~32 KB build dated 2026-07-14. **Deploying the repo's `dist/` would kill the working
+  screensaver.** Rebuild (bundled) or delete it so it cannot be used by mistake. See
+  `cards-must-be-bundled` in the memory dir.
+- **ChoreOps dashboard layout is improved but not finished.** The panel is **1920x1080 landscape**;
+  `user-gamification-premier-v1` is authored at `max_columns: 2` for a portrait tablet, hence the
+  side whitespace and vertical overflow. Improved by switching `row_variant` `standard` → `kids`
+  in the dashboard's own **gear panel** (per-user, reversible, no regeneration). Not yet tried:
+  raising `pref_column_count_*` / `pref_settings_column_count_wide`, or regenerating on
+  `user-chores-lite-v1` / `-essential-v1` (both `max_columns: 4`). **Trade-off if you switch
+  templates:** lite/essential drop most gamification display — premier has 423 badge / 139
+  achievement refs, lite has none. The content survives either way; only the display changes.
+  A pre-layout backup of the working dashboard is at
+  `deploy/backups/lovelace.cod_chores.bak-20260817-prelayout.json` (785,446 B) and on the Pi.
+- **"Not my turn" rows are rotation working, not a bug.** 7 of 11 chores are `completion_criteria:
+  rotation_smart` shared between both kids, and all 7 currently show **Wystan**'s turn — so Rowan's
+  view is mostly blocked rows. Three options: the gear panel's **blocked** toggle (hides
+  `not_my_turn` + `completed_by_other` + `missed` together, per-user, instant), regenerate with
+  `pref_exclude_states: ['not_my_turn']` for finer control, or switch those chores to
+  `independent` so either kid can claim anything. **The last one is a parenting call, not a
+  technical one** — with rotation, Rowan cannot take out the trash for points even if willing.
+- **Rewards as its own page** — Garrett raised it; deferred, not designed.
+- **Per-kid summary cards on the Kitchen dashboard** — Garrett asked for a simplified at-a-glance
+  view per kid on the Kitchen panel. **Not started.** `kitchen.yaml` is version-controlled and
+  never overwritten by the generator, so it is the right home for it.
 - **§8 Google Calendar OAuth on the Pi** — not started. Dev-rig OAuth does not carry over.
 - **`Wystan` has `points=None`** while Rowan has a number. Benign — the field initializes on first
   award (proven by Rowan going `None → 4.0`). It will resolve the first time Wystan is approved.
