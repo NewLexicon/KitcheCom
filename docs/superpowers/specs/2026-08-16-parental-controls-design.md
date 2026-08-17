@@ -120,6 +120,16 @@ enforcement boundary.** Three bypasses exist and are not obscure:
    stops a hardcoded DoH client**, which connects to an IP over 443 and never queries
    our resolver. AppLocker (§7.1) is the real mitigation, by preventing unapproved
    browsers from running at all.
+
+   ✅ **The HaGeZi list is now identified and verified (2026-08-17):** *HaGeZi's Encrypted
+   DNS/VPN/TOR/Proxy Bypass*, Hostlists Registry **id 52**
+   (`https://adguardteam.github.io/HostlistsRegistry/assets/filter_52.txt`), **16,585
+   rules**, auto-updating every 24h. Confirmed by resolution to block `dns.google`,
+   `cloudflare-dns.com`, `nordvpn.com`, and `protonvpn.com` while leaving normal traffic
+   alone. **Add it in Phase 3.** It does not change the "not an enforcement boundary"
+   verdict — a hardcoded DoH client still wins — but it raises the bypass cost from
+   "install a browser" to "know what you are doing," which is the realistic threat model
+   for a 12-year-old. Detail: `docs/session-state/2026-08-17-adguard-api-lab-findings.md` §4c.
 3. **Cellular / hotspot** → not mitigable at the network layer. Out of scope.
 
 Consequently, **AppLocker and tamper alerting carry more weight than the DNS layer**
@@ -183,6 +193,22 @@ and avoids an adversarial cat-and-mouse dynamic with a 12-year-old.
 - Parental controls are **account-wide, not per-profile**. No per-kid profiles.
 - **Therefore:** remove the YouTube app, set a 4-digit PIN gating channel additions
   (which prevents re-adding it), and rely on DNS for everything else.
+
+**Roku Live TV / The Roku Channel via DNS (added 2026-08-17, verified):** there is **no
+built-in `roku` blocked-service** among the 136 available, so this needs a custom rule
+scoped to the device:
+
+```
+||therokuchannel.roku.com^$client='kid-roku'
+```
+
+Verified blocking on that client only, with other devices resolving normally.
+
+🔴 **This cannot be put on a schedule.** Custom rules are not covered by the per-client
+scheduler, and the `time=` modifier is **accepted and silently ignored** — the rule stores
+successfully and never fires (verified with a control rule proving the syntax is otherwise
+valid). **Custom-rule blocking is all-day or nothing** unless cron adds/removes the rule.
+Given §7.4's overall weakness, all-day is likely the right posture for the Roku anyway.
 
 ### 7.5 Alexa / Cosmo watch
 
@@ -430,6 +456,9 @@ sessions should not "fix" this document back toward the common but wrong claims:
 | AppLocker is Enterprise/Education only | **FALSE (outdated)** | Windows 11 Home and Pro both supported per KB 5024351. |
 | HA's AdGuard integration allows per-client control | **FALSE** | Global-only. Per-client requires direct REST calls. |
 | PS5 approves each purchase | **PARTIAL** | Monthly wallet cap, not per-item approval. |
+| Custom rules support a `time=` modifier | **FALSE (silently)** | Accepted and stored by the API, then **never enforced**. Verified 2026-08-17 with a control rule. Looks configured, does nothing. |
+| Roku Live TV can be blocked by a built-in service | **FALSE** | No `roku` service among the 136. Needs a custom `$client` rule — which cannot be scheduled. |
+| Blocked-services scheduling covers custom rules | **FALSE** | Only `blocked_services`. A client object has no custom-rule field at all. |
 
 ## Appendix B — Sources
 

@@ -218,6 +218,115 @@ already implies "blocked overnight." Recorded so nobody fights the 400.
 
 Also accepted: `00:00–24:00` (`end` may be `86400000`), but **not** `86399000`.
 
+## 4c. Contraband sites + Roku Live TV — TWO mechanisms, and only one is schedulable
+
+**Added 2026-08-17 after Garrett asked for TikTok/Instagram/Discord and Roku Live TV.**
+All verified against a live instance. **The split below is the load-bearing fact.**
+
+### The good news: most of the list is built-in
+
+Of 136 built-in services, these are already present with maintained rule sets:
+
+| Requested | Built-in id | Rules |
+|---|---|---|
+| TikTok | `tiktok` | 33 |
+| Instagram | `instagram` | 72 |
+| Discord | `discord` | 27 |
+| Snapchat | `snapchat` | 6 |
+| Twitch | `twitch` | 6 |
+| Reddit | `reddit` | 5 |
+| Facebook | `facebook` | 443 |
+| X / Twitter | `twitter` (name: "X (formerly Twitter)") | 23 |
+| Roblox, Steam, Netflix, Telegram, WhatsApp, Discord, OnlyFans, 4chan, Omegle-likes… | see full list | — |
+
+**Anything on this list inherits the per-client scheduler from §4b** — same allowance
+window as YouTube, same per-device exemption for parents. Prefer a built-in id over a
+hand-written rule *every time*: it is maintained upstream and it is schedulable.
+
+⚠️ **`x` is not an id — use `twitter`.** ⚠️ **There is no `roku` service.**
+
+### Roku Live TV needs a custom rule — and custom rules are NOT schedulable
+
+`$client` scoping works, verified by resolution:
+
+```
+from kid-roku:   therokuchannel.roku.com -> 0.0.0.0   BLOCKED
+from other IP:   therokuchannel.roku.com -> 13.32.179.80   normal
+```
+
+So a rule like `||therokuchannel.roku.com^$client='kid-roku'` blocks on one device only.
+**But a client object has no field for custom rules** — its only rule-bearing fields are
+`blocked_services` and `blocked_services_schedule`. Custom rules live globally in
+`user_rules` and are scoped by the `$client` modifier instead.
+
+### 🔴 The `time=` modifier is ACCEPTED AND SILENTLY IGNORED
+
+The obvious workaround — a time-limited custom rule — **does not work, and fails in the
+worst possible way.** Tested:
+
+| Rule | Window contains now? | Result |
+|---|---|---|
+| `\|\|plainrule.com^$client='kid-roku'` (control) | n/a | **blocked** ✅ |
+| `\|\|timetest.com^$client='kid-roku',time=09:59-11:59` | **yes** | **NOT blocked** ❌ |
+| `\|\|timetest.com^$client='kid-roku',time=13:59-15:59` | no | not blocked |
+
+`POST /control/filtering/set_rules` returns success and the rule is stored verbatim —
+it simply never fires. The control rule proves the syntax is otherwise fine.
+
+**This is the project's recurring shape again** (ChoreOps penalty sign, the Grocy test
+that locked in a bug, the helper that reported "protections intact"): *it looks
+configured, reports success, and does nothing.* A parent would reasonably believe Roku
+Live TV was on a bedtime schedule while it was never blocked at all.
+
+**Consequence:** custom-rule blocking is **all-day or nothing** unless a cron job adds and
+removes the rule — which is exactly the cron path design §9.2 described, and it must use
+read-modify-write (§3).
+
+### Practical recommendation
+
+| Want | Use | Schedulable? |
+|---|---|---|
+| TikTok / Instagram / Discord / etc. | **built-in blocked-services** | ✅ yes, per client |
+| Roku Live TV, and any site with no built-in service | custom rule + `$client` | ❌ all-day only |
+| A broad curated contraband list | **subscribed blocklist** (below) | ❌ all-day only |
+
+Since the kids' devices should arguably have TikTok/Discord blocked **all day** rather
+than only at bedtime, the non-schedulability of custom rules may not matter. Decide
+per-category rather than assuming everything needs a schedule.
+
+### Subscribed blocklists — better than a hand-maintained list
+
+AdGuard's Hostlists Registry has **64 curated, auto-updating lists** (default update
+interval **24h**). Verified by subscribing two on a live instance:
+
+| List | Registry id | Rules pulled |
+|---|---|---|
+| **HaGeZi's Encrypted DNS/VPN/TOR/Proxy Bypass** | 52 | **16,585** |
+| Perflyst/Dandelion Sprout Smart-TV Blocklist | 7 | 159 |
+
+URL shape: `https://adguardteam.github.io/HostlistsRegistry/assets/filter_<id>.txt`
+
+> 🔑 **List 52 closes the DoH bypass — the biggest hole in the whole design.**
+> Design §5 concedes DNS "is not an enforcement boundary" and §7.1 notes AppLocker is what
+> stops portable browsers. This list attacks the same problem from the network side.
+> Verified live:
+> ```
+> dns.google -> 0.0.0.0     cloudflare-dns.com -> ::
+> nordvpn.com -> ::         protonvpn.com -> 0.0.0.0
+> github.com -> 140.82.112.4  (normal)
+> ```
+> **Strongly recommended for Phase 3.** It does not make DNS an enforcement boundary, but
+> it raises the bypass cost from "install a browser" to "know what you are doing."
+
+Other relevant lists: **HaGeZi's Gambling** (47), **Anti-Piracy** (46), **URL Shortener**
+(68), **Game Console Adblock** (6), and the graded HaGeZi tiers Normal (34) / Pro (48) /
+Ultimate (49) / Pro++ (51). **Do not stack Ultimate/Pro++ blindly** — breakage rises with
+tier, and false positives on a household resolver surface as "the internet is broken."
+
+⚠️ **Blocklists are global, not per-client.** A subscribed list applies to everyone
+including the parents. To exempt parent devices, either keep contraband on per-client
+built-in services, or add allowlist rules scoped with `$client`.
+
 ## 5. ✅ Scheduling — §9.2 exactly right (with a correction)
 
 ⚠️ **§9.2 says the built-in schedule applies "only to the blocked-services list." That is

@@ -39,7 +39,7 @@ git branch --show-current
 **The artifacts, in reading order:**
 
 1. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/superpowers/specs/2026-08-16-parental-controls-design.md`
-   — the design. §13 has the phase/gate table; **Appendix A lists 8 corrections that are
+   — the design. §13 has the phase/gate table; **Appendix A lists 11 corrections that are
    contrary to popular online guidance — do not "fix" them back.**
 2. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/session-state/2026-08-17-phase1-device-controls-runbook.md`
    — **Phase 1, UNGATED, the actual next move.**
@@ -94,6 +94,13 @@ reordering anything else around it.
   is `enabled:false` with every engine `true` — reads as on, is off.
 - ⚠️ **No `!` in the AdGuard admin password** — shell history expansion in `curl -u`
   produces silent 401s that look like bad credentials.
+- 🔴 **Custom rules cannot be scheduled, and `time=` is accepted then silently ignored.**
+  Verified 2026-08-17. TikTok/Instagram/Discord/etc. **are** built-in services (136 total)
+  and therefore schedulable — always prefer a built-in id. Roku Live TV has none and needs
+  `||therokuchannel.roku.com^$client='...'`, which is **all-day or nothing**.
+- 🔑 **HaGeZi Encrypted DNS/VPN/Proxy Bypass (registry id 52)** closes the DoH bypass —
+  verified blocking `dns.google`, `nordvpn.com`, `protonvpn.com`. **Add in Phase 3.**
+  ⚠️ Blocklists are **global** — they hit the parents too.
 - **Design §8's `yt3.ggpht.com` was wrong** and is corrected in place (real rule is the
   parent `||ggpht.com^`). Do not "fix" it back.
 - *(original design note, now evidenced)* **read-modify-write is mandatory** (design

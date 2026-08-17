@@ -281,6 +281,64 @@ pickers. Set them in the UI unless scripting.
 parent laptop that changes IP silently loses its exemption and starts getting the
 kid ruleset.
 
+### Contraband sites — prefer built-in services over hand-written rules
+
+All verified present on v0.107.78 (lab findings §4c). Add these to each kid client's
+`blocked_services` alongside `youtube`:
+
+```
+tiktok  instagram  discord  snapchat  twitch  reddit  facebook  twitter
+```
+
+⚠️ **The X/Twitter id is `twitter`, not `x`.** Others available if wanted: `roblox`,
+`steam`, `netflix`, `telegram`, `whatsapp`, `onlyfans`, `4chan`, `9gag`, `omegle`-likes,
+`tinder`, `plenty_of_fish`, `bigo_live`, `kik`, `clubhouse`. **136 services total** — check
+the list before hand-writing a rule.
+
+**Why built-ins beat custom rules:** they are maintained upstream (Instagram alone is 72
+rules, Facebook 443), and **they are the only thing the per-client scheduler can pause.**
+
+### Roku Live TV and anything with no built-in service
+
+There is **no `roku` service**. Use a custom rule scoped to the device, in
+**Filters → Custom filtering rules**:
+
+```
+||therokuchannel.roku.com^$client='kid-roku'
+```
+
+Verified: blocks on that client only; other devices resolve it normally.
+
+> 🔴 **Custom rules CANNOT be scheduled. The `time=` modifier is accepted and silently
+> ignored.** A rule like `||x.com^$client='kid',time=21:00-07:00` is stored, reports
+> success, and **never fires** — verified against a live instance, including a control
+> rule proving the syntax is otherwise valid. It looks configured and does nothing.
+>
+> **So custom rules are all-day or nothing.** If a site genuinely needs a bedtime window
+> and has no built-in service, that needs cron adding/removing the rule — and per §6's
+> warning, via read-modify-write.
+
+### Subscribed blocklists — Filters → DNS blocklists → Add blocklist
+
+Auto-update every 24h. URL shape:
+`https://adguardteam.github.io/HostlistsRegistry/assets/filter_<id>.txt`
+
+| List | id | Why |
+|---|---|---|
+| **HaGeZi Encrypted DNS/VPN/TOR/Proxy Bypass** | **52** | 🔑 **closes the DoH/VPN bypass** — verified blocking `dns.google`, `cloudflare-dns.com`, `nordvpn.com`, `protonvpn.com` (16,585 rules) |
+| HaGeZi Gambling | 47 | |
+| HaGeZi Anti-Piracy | 46 | |
+| Smart-TV Blocklist | 7 | Roku/TV telemetry |
+| Game Console Adblock | 6 | PS5 |
+
+⚠️ **Blocklists are GLOBAL — they apply to the parents too.** Keep per-kid contraband in
+`blocked_services` (per-client) and reserve blocklists for things the whole house should
+block. To exempt a parent device from a list, add an allowlist rule with `$client`.
+
+⚠️ **Do not stack HaGeZi Ultimate/Pro++ blindly.** Breakage rises with tier, and a false
+positive on the household resolver reads as "the internet is broken." Start at Normal (34)
+or the targeted lists above.
+
 ### The scheduling limitation — read before assuming
 
 Design §9.2: AdGuard's built-in per-client schedule is a **"Pause service blocking"**
