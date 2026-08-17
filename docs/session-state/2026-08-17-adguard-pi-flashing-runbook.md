@@ -78,6 +78,37 @@ Phase 3, gated separately, and it requires the posted rollback card (§8 below).
 > `ping -b en0` (wifi). During identification the same address was momentarily misread as
 > a consumer router; the interface-scoped ping is what disambiguated it.
 >
+> ### 🔴 It will hijack your laptop's DNS over the *direct cable* too — observed 2026-08-17
+>
+> The "never put it on the home LAN" warning above **also applies to a laptop-to-Pi
+> cable.** Observed live: with the cable attached, the Pi's DHCP won and macOS took
+> `192.168.1.1` as **resolver #1**. It answers nothing, so **all name resolution on the
+> laptop died** while the wifi link was still perfectly healthy.
+>
+> The symptom is disguised. `git push` failed with:
+>
+> ```
+> ssh: Could not resolve hostname github.com: nodename nor servname provided
+> fatal: Could not read from remote repository.
+> Please make sure you have the correct access rights
+> ```
+>
+> **That reads as an SSH-key or permissions problem and is neither** — the key is fine, DNS
+> is gone. Do not go debugging SSH.
+>
+> **Diagnose:**
+> ```bash
+> scutil --dns | grep 'nameserver\[0\]'                 # is it 192.168.1.1?
+> dig +short @192.168.1.1 github.com                    # the Pi: expect NOTHING
+> dig +short @192.168.1.254 github.com                  # real gateway: expect an answer
+> ```
+> **Fix: unplug the cable.** Identification takes two minutes; do not leave it attached.
+>
+> **This is Phase 3's failure mode in miniature** — a rogue DHCP/DNS server wins a race and
+> resolution dies silently. Exactly why design §12 wants the rollback card **printed**:
+> when DNS is down, looking up the fix is itself impaired. Same family as memory
+> `second-pi-hijacks-route.md`.
+>
 > **Related, already in memory:** `second-pi-hijacks-route.md` — a second Pi on the laptop
 > steals an address and the symptom looks like a wifi drop. Same family of confusion.
 
