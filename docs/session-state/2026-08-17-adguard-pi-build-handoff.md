@@ -328,6 +328,70 @@ The gateway is a **HUMAX** at `192.168.1.254` (responds HTTP 302). Client entrie
 (cold-open §8) — an unreserved device that changes address **silently loses its ruleset**,
 and a parent device that changes address **silently picks up the kid ruleset**.
 
+## 4e. 🔴 OPEN QUESTION — the gateway may support per-device scheduling after all
+
+**This challenges a load-bearing claim in the design and must be settled before more DNS
+scheduling work is built.**
+
+Design line 33 states scheduling *"is the capability the AT&T gateway lacks and the reason a
+DNS layer exists at all."* Design §11 pre-flight #4 asks for that to be re-probed.
+
+**Probe run 2026-08-17 (local web UI only):**
+
+| Path | Result |
+|---|---|
+| `/` | 302 → `/cgi-bin/index.ha` |
+| `/cgi-bin/devices.ha` | **200** |
+| `/cgi-bin/parentalcontrols.ha` | 400 |
+| `/cgi-bin/schedule.ha` | 400 |
+| `/cgi-bin/allowblocklist.ha` | 400 |
+
+I concluded from this that the capability is absent. **That conclusion does not follow.**
+
+**Garrett's correction, same session:** on AT&T HUMAX gateways (BGW320-500/505, BGW210),
+per-device scheduling is **not in the local web admin at `192.168.1.254` at all** — it lives
+in the free **AT&T Smart Home Manager app**: create a Profile, assign devices, set a
+**Downtime Schedule** (days + start/end), plus a one-tap **Pause** per profile/device.
+
+⚠️ **A local-UI probe cannot detect an app/cloud-managed feature.** The 400s above are
+exactly what you would see whether the feature exists or not. **The absence measured was not
+evidence of absence** — the same "verify, don't infer" discipline the design invokes for the
+BGW320-500 correction applies to the probe method itself.
+
+### Why this matters more than a documentation fix
+
+For **"cut a device's internet on a schedule"**, gateway-level beats DNS on every axis:
+
+| | Smart Home Manager | AdGuard DNS |
+|---|---|---|
+| What it stops | **actual internet traffic** | only name resolution |
+| Video already playing | **cut** | **keeps playing** (cold-open §6) |
+| DoH / VPN bypass | **immune** | bypassable |
+| Custom-rule scheduling | native | needs cron (trap §4.3) |
+| Instant pause | **yes, one tap** | no |
+| Hotspot bypass | no | no |
+
+**DNS remains the right tool for *selective* blocking** — YouTube off on a Roku while the
+rest of the TV works — which the gateway cannot do. The two layers are complementary, and
+the design's *architecture* survives; only its claim about scheduling needs revisiting.
+
+### ❓ Unverified — settle before rewriting the design
+
+1. **Is this a direct AT&T account?** Garrett's own note: on a **reseller** (e.g. Sonic over
+   AT&T lines) Smart Home Manager is unavailable, and per-device scheduling then requires an
+   external router via IP Passthrough. **This is the deciding factor.**
+2. **Does the app see this specific gateway?** The unit is a HUMAX (`cc:ab:2c:cf:b9:41`);
+   model not yet confirmed as a BGW320/BGW210.
+3. **Does Downtime cover the devices we care about** — PS5, Rokus, Oculus, iPads?
+
+**→ Next action: install AT&T Smart Home Manager, sign in, and check for Profiles +
+Downtime Schedule.** If present, **design line 33 is wrong and §13's phase rationale needs
+revisiting**; "full internet on a schedule" should move to the gateway and AdGuard keeps
+selective service blocking. If absent (reseller), the design stands as written.
+
+**Nothing was built on either assumption this session** — the 6 client entries remain inert
+with `blocked_services: []`.
+
 ## 5. Where the build stopped
 
 **Done:** flashed · booted · identified · SSH + passwordless sudo · OS fully updated
