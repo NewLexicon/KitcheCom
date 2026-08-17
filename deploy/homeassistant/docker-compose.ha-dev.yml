@@ -8,8 +8,15 @@
 # Everything else (Grocy's payloads, the card's parsing/rendering) is already
 # verified by curl and the demo harness.
 #
-# This is NOT the Pi deployment. The Pi runs HA OS; this container exists only to
-# close that verification gap on a laptop. Do not add it to the kiosk stack.
+# This is NOT the Pi deployment. This container exists only to close that
+# verification gap on a laptop. Do not add it to the kiosk stack.
+#
+# (Corrected 2026-08-17: an earlier version of this comment said "the Pi runs
+# HA OS." It does not. Per 2026-06-07-kitchencom-ha-hub-design.md:17 the install
+# target was amended to Pi OS + HA *Container*, so Chromium --kiosk could run
+# natively on the same Pi. Consequence worth remembering: no Add-on Store, so
+# voice services (Whisper/Piper/openWakeWord) must run as Wyoming Docker
+# containers, not add-ons. Most HA voice tutorials assume add-ons and don't apply.)
 #
 # The config dir is ./dev-config/, ASSEMBLED by dev-setup.sh — not the repo's
 # homeassistant/ tree. That tree's configuration.yaml is a merge fragment with no
