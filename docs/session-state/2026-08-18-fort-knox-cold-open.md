@@ -191,6 +191,19 @@ until the next app launch.
 
 ## 7. 🎯 The literal next move
 
+> **Updated 2026-08-17 evening, verified on the home LAN.** The two §5 blockers resolved
+> **differently**, so re-check before following the tracks below:
+>
+> | §5 blocker | Now | Evidence |
+> |---|---|---|
+> | Not on home network | ✅ **cleared** | `192.168.1.180`, gw `192.168.1.254` |
+> | No microSD reader | ❌ **still blocking** | `diskutil list external` → only a 247.6 GB NTFS disk; `system_profiler SPUSBDataType` shows no reader |
+>
+> Also confirmed: **Pi 5 up at `192.168.1.234`** (`ssh kitchencom`, passwordless), **no old
+> Pi on the LAN yet**, **Raspberry Pi Imager installed**. Net: **Track B (Phase 1) is the
+> live track** — but see §8, Phase 1 is now device-by-device because the hardware is
+> scattered. Phase 1 §1 (Family Link) needs no device at all and is the standing first move.
+
 **Two tracks. Pick by what hardware is in reach.**
 
 **A — at home with an SD reader → Phase 2** (artifact 3). Gate is gone, software risk is
@@ -207,6 +220,29 @@ one where looking things up is itself impaired.
 
 ## 8. Carry-forwards
 
+- 🔴 **Devices are scattered — Phase 1 is device-by-device, not one sitting.** As of
+  2026-08-17: the **Windows laptop is at work being rebuilt, back in ~1 week**
+  (2026-08-24-ish); **one iPad is at work**; **the second iPad returns Wednesday
+  2026-08-20**. Garrett is shuttling hardware and cannot hold them all at once.
+  **Do each device's runbook section the moment that device is in hand** — do not wait for
+  a session where everything is present. That session may not happen.
+- **The laptop rebuild is an opportunity, not just a delay.** Runbook §2 (Standard
+  accounts + AppLocker) is far easier on a fresh install: Standard from the start, admin
+  password at setup, AppLocker before anything reaches `Downloads`, and a clean decision on
+  whether Chrome ships at all. **Do §2 as part of the rebuild rather than retrofitting.**
+  Cost of the delay: §2.2 AppLocker is what closes the **DoH bypass** (portable browser +
+  DNS-over-HTTPS walks around Layers 1 *and* the whole Phase 2/3 DNS layer) — **that hole
+  is open until the laptop is back and §2 is done.**
+- 🔑 **Second-Google-account hole — asked and answered 2026-08-17.** Family Link supervises
+  the *account*, not the device, so a kid signing in with a **different** Google account is
+  outside supervision entirely and Family Link cannot see it. **iPad is the only platform
+  in the house that closes this at device level:** Screen Time → Content & Privacy →
+  Allow Changes → **Account Changes → Don't Allow** (new runbook §3 step 4). ⚠️ That locks
+  *Settings*, not apps — Chrome/Gmail/YouTube keep in-app account switchers, so **Chrome is
+  the live exposure**; removing it is the clean close. Still open afterwards and not
+  fixable this way: a *signed-out* browser and a web login at `google.com` — both are
+  content-filtering problems, i.e. Phase 2/3 DNS. On **Roku** the hole stays open and DNS
+  carries it; on **Windows** it stays open — decide at rebuild time.
 - **Old Pi model still unidentified** (runbook §0). Photos confirmed a full-size Pi, not a
   USB dongle; inferred 3B/3B+, unconfirmed. Boot it and read `/proc/cpuinfo` rather than
   reading silkscreen through the case. Less urgent now (arch is covered).

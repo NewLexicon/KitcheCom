@@ -191,8 +191,59 @@ Design §7.2. **The one platform where remote approval genuinely works as imagin
 > converting the strongest DNS platform into the weakest. This one toggle is what makes
 > the §3 inventory claim true.
 
+4. **🔑 Lock account changes — closes the second-Google-account hole.**
+
+   ```
+   Settings → Screen Time → Content & Privacy Restrictions
+     → Allow Changes → Account Changes → Don't Allow
+   ```
+
+   The Accounts section of Settings goes fully greyed out: no adding a Google account,
+   no removing one, no editing existing ones. Reversing it needs the Screen Time passcode.
+
+> **Why this exists (asked 2026-08-17):** Family Link supervision governs the *Google
+> account*, not the device (§1, design §8.1). A kid who signs in with a **different**
+> Google account is simply outside supervision — Family Link cannot see it or stop it.
+> **This step is the only device-level answer to that**, and iPad is the only platform in
+> the house where it fully works.
+>
+> ⚠️ **Account Changes locks Settings, not apps.** Chrome, Gmail, and YouTube carry their
+> own in-app account switchers that never touch iOS Settings, so step 4 alone does not
+> stop a second sign-in *inside* those apps. Close it by **removing Chrome and using
+> Safari** (Safari has no Google-account switcher), plus removing Gmail/YouTube or capping
+> them with App Limits. YouTube is additionally DNS-blocked in Phase 2, so it is covered
+> twice; **Chrome is the live exposure.**
+>
+> **Still open after step 4, state it honestly:** a *signed-out* browser needs no Google
+> account at all, and a web login at `google.com` is not an "account change" in iOS's
+> sense. Neither is closed here — both are content-filtering problems, i.e. Phase 2/3 DNS.
+> This is part of why DNS still matters even on a fully locked iPad.
+
 Verify: as the child, attempt a free App Store install → expect the parent phone to buzz.
-Then attempt to change DNS in Wi-Fi settings → expect it to be blocked.
+Then attempt to change DNS in Wi-Fi settings → expect it to be blocked. Then open
+**Settings → Accounts** → expect it greyed out, and try adding a Google account in any
+remaining Google app → note whether the in-app switcher is still reachable.
+
+> ### 📌 iPad rebuild note — both iPads, when each is in hand
+>
+> **Status 2026-08-17:** neither iPad is available. One is at work; the other is expected
+> back **Wednesday 2026-08-20**. Devices are being shuttled back and forth, so **do steps
+> 1–4 on each iPad the moment it is physically in hand** rather than deferring to a single
+> session when both are present — that session may not happen.
+>
+> On a **rebuilt/reset** iPad, do them in this order, because a reset wipes all of it:
+>
+> 1. Sign in to the child's Apple Account, join Family Sharing
+> 2. **Ask to Buy** on (step 1)
+> 3. Screen Time on, **set the passcode** — a passcode the kid knows voids steps 3 and 4
+> 4. **DNS/VPN/profile restrictions** (step 3)
+> 5. **Account Changes → Don't Allow** (step 4)
+> 6. **Decide whether Chrome gets installed at all** — easiest close for the in-app
+>    switcher is for Chrome never to be on the device
+>
+> Steps 3–5 are the ones a rebuild silently drops. Re-verify them per device; do not
+> assume the other iPad's settings carried over — **Screen Time restrictions are
+> per-device, not per-Apple-Account.**
 
 ---
 
@@ -247,6 +298,10 @@ Phase 1.** The PIN is a speed bump on re-adding; the actual block is DNS.
 - [ ] Ordinary installed apps still launch for the kid account
 - [ ] Ask to Buy on for both iPads — parent phone buzzes on a test install
 - [ ] **Screen Time restricts DNS/VPN/profile changes on both iPads**
+- [ ] **Account Changes → Don't Allow on both iPads** — Settings → Accounts greyed out
+- [ ] **Screen Time passcode set and not known to the kids** — voids the two above if it is
+- [ ] Chrome removed (or a decision recorded to keep it) on both iPads — in-app Google
+      account switcher is the remaining second-account path
 - [ ] iPad Downtime + PS5 play-time limits set to the intended bedtime
 - [ ] PS5 age level set; wallet cap **zero**
 - [ ] YouTube removed from each Roku; 4-digit channel-add PIN set
@@ -282,3 +337,13 @@ PS5 exceptions documented above rather than glossed.
 6. **Verify, don't infer** — the same discipline that caught the BGW320-500's missing
    "Device Access Schedules". Every claim above is testable from a kid account; test it
    from a kid account, not from admin.
+7. **Supervision is per-account; a second Google account is invisible to it.** Family Link
+   cannot see or stop a sign-in with a different Google account. Only the iPad closes this
+   at device level (§3 step 4). On Windows and Roku it stays open — on Roku, DNS carries
+   it; on Windows, note it at rebuild time.
+8. **Locking Settings does not lock apps.** iPad Account Changes greys out Settings →
+   Accounts, but Chrome/Gmail/YouTube keep their own in-app account switchers. A checklist
+   that ticks "Account Changes" and leaves Chrome installed has not closed the hole.
+9. **A reset iPad silently loses every Screen Time restriction**, and they are
+   **per-device, not per-Apple-Account** — configuring one iPad does nothing for the other.
+   Re-run §3 steps 1–4 on each device after any rebuild and re-verify rather than assuming.
