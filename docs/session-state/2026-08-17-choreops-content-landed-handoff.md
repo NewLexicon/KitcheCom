@@ -21,14 +21,15 @@ broken (see §5 below); §3b is the direct-write procedure that actually works.
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `3609de8` — `docs: §3 paste flow is broken — add §3b direct write; retract the mis-pick claim`
+- **HEAD:** the fix-up commit that set this line, on top of `4c1eae4` (this cold-open).
+  Last **substantive** commit is `3609de8` — `docs: §3 paste flow is broken — add §3b direct write`.
 - **Branch:** `feat/choreops-chores`, in the **primary checkout**
   `/Users/jdehart1/___Code_DEV/KitchenCOM`
-- **Ahead of `origin/main`:** **38**
+- **Ahead of `origin/main`:** **40**
 - **Unpushed: 0** — everything is on GitHub.
 - This session's arc: `136b62a` (Task 9 kitchen.yaml nav button) → `c748110` (stop-warning
   precision) → `98da50a` (paste-menu warning — **partially retracted**) → `3609de8`
-  (paste flow broken + §3b direct write).
+  (paste flow broken + §3b direct write) → `4c1eae4` (this cold-open) → fix-up.
 
 ```bash
 cd /Users/jdehart1/___Code_DEV/KitchenCOM
