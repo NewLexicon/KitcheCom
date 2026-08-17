@@ -258,6 +258,76 @@ on and nothing else configured.
 `discord`, `snapchat`, `twitter`, `reddit`, `twitch` — matching the prior lab findings.
 ⚠️ The X id is **`twitter`**, not `x`.
 
+## 4d. Household device inventory — identified 2026-08-17
+
+Identified by MAC OUI lookup plus **Roku's own ECP API** (`http://<ip>:8060/query/device-info`),
+which returns exact model names — far better than guessing from a vendor string.
+
+| IP | MAC | Device | Role |
+|---|---|---|---|
+| `.82` | `50:b0:3b:38:80:58` | **PlayStation 5** (Sony Interactive) | kid |
+| `.216` | `d4:be:dc:6d:57:3d` | **65" Roku TV** `65R4CX` | kid |
+| `.228` | `c4:98:5c:ab:21:a2` | **55" TCL Roku TV** `55S425` | kid |
+| `.230` | `d4:ab:cd:c0:d9:c2` | **55" TCL Roku TV** `55R625` | kid |
+| `.238` | `2c:26:17:96:a2:77` | **Oculus/Meta VR headset** | kid? |
+| `.180` | `26:d2:55:8f:35:8b` | **Garrett's Mac** (confirmed on-screen) | **parent** |
+| `.215` | `76:ad:62:22:77:c4` | Apple device, randomized MAC | ❓ **unidentified** |
+| `.250` | `b2:c7:43:f8:33:20` | Apple device, randomized MAC | ❓ **unidentified** |
+| `.107` | `fc:65:de:6d:af:ee` | Amazon (Fire TV / Echo) | ? |
+| `.85` | `ec:74:d7:88:45:0e` | Grandstream VoIP phone | infra |
+| `.227` | `44:61:32:f8:0c:c2` | ecobee thermostat | infra |
+| `.248` | `40:45:da:26:0d:c1` | Spreadtrum (budget tablet/phone?) | ? |
+| `.113` | `b8:27:eb:ae:2a:5c` | **AdGuard Pi** (eth0) | infra |
+| `.234` | `2c:cf:67:e2:f2:67` | **Pi 5 / Home Assistant** | infra |
+| `.254` | `cc:ab:2c:cf:b9:41` | **HUMAX gateway** (not AT&T-branded) | infra |
+
+⚠️ **All three Roku TVs stay network-connected in standby.** Powering one on produced **zero**
+new ARP entries — a wake-and-diff identification strategy does not work on them. The ECP
+query does.
+
+⚠️ **`.215` and `.250` are still unidentified Apple devices.** One is likely the iPad. **Do
+not create kid rules for either until confirmed** — blocking the wrong one hits a parent.
+
+### 🔑 Apple "Private Wi-Fi Address" — Fixed is enough, Off is not required
+
+Correction to earlier guidance in this session: the setting has **three** states, and the
+distinction matters for DHCP reservations.
+
+| Setting | Behaviour | Reservation holds? |
+|---|---|---|
+| **Off** | real hardware MAC | ✅ |
+| **Fixed** | one private MAC, **stable per network** | ✅ **this is sufficient** |
+| **Rotating** | MAC changes periodically | ❌ **silently breaks** |
+
+Garrett's Mac is on **Fixed** (verified on-screen: `26:d2:55:8f:35:8b`, matching ARP).
+**On each kid's iPad, confirm Fixed or Off** — Settings → Wi-Fi → ⓘ → Private Wi-Fi Address.
+On Rotating, the device silently drops its reservation and its ruleset, becoming unfiltered.
+
+### Client entries created — deliberately INERT
+
+6 clients created, then **read back to verify** (trap §4.1): every one has
+`filtering_enabled`, `safebrowsing_enabled`, and `safe_search.enabled` all `true`, with
+**`blocked_services: []`**.
+
+```
+Oculus-VR · PARENT-mac-garrett · PS5 · Roku-55-R625 · Roku-55-S425 · Roku-65-livingrm
+```
+
+**Nothing is blocked.** Confirmed by resolution after creation — `youtube.com` and
+`tiktok.com` both resolve normally. These are labelled containers with protections on;
+adding a service id to one turns blocking on for that device only.
+
+⚠️ **`curl -w` ate a `%-22s` from the surrounding printf** during creation, producing
+garbled output that showed both `HTTP 000` and `HTTP 200` per client. **The write was
+fine** — proven by reading the client list back. Another case where the output of the write
+was not the evidence; the re-read was.
+
+### Next: reserve these IPs at the gateway BEFORE relying on the rules
+
+The gateway is a **HUMAX** at `192.168.1.254` (responds HTTP 302). Client entries key on IP
+(cold-open §8) — an unreserved device that changes address **silently loses its ruleset**,
+and a parent device that changes address **silently picks up the kid ruleset**.
+
 ## 5. Where the build stopped
 
 **Done:** flashed · booted · identified · SSH + passwordless sudo · OS fully updated
