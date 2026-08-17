@@ -19,9 +19,10 @@ git branch --show-current
 ### If you are on `fort-knox`
 
 - **Worktree:** `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox`
-- **HEAD:** `0be81e3` — `docs: Phase 1 device/OS controls runbook — the ungated Fort Knox layer`
-- **Ahead of `origin/main`:** **3** — arc is `1bf1bfd` (design) → `1af56db` (Phase 2
-  runbook) → `0be81e3` (Phase 1 runbook)
+- **HEAD:** `6a22845` — `docs: cold-open banner for fort-knox`, **plus the fix-up commit
+  that set this line.** Last *substantive* commit is `0be81e3` (Phase 1 runbook).
+- **Ahead of `origin/main`:** **5** — arc is `1bf1bfd` (design) → `1af56db` (Phase 2
+  runbook) → `0be81e3` (Phase 1 runbook) → `6a22845` (this banner) → fix-up
 - ⚠️ **UNPUSHED.** `origin/fort-knox` does not exist. All three commits live only on this
   laptop. This is the exact hazard memory `concurrent-sessions-branch-hazard` warns about
   — **push it.**
