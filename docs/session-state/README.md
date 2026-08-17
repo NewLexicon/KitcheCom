@@ -19,17 +19,21 @@ git branch --show-current
 ### If you are on `fort-knox`
 
 - **Worktree:** `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox`
-- **HEAD:** `a2afbd2` — `docs: mark fort-knox as pushed in the cold-open banner`, **plus
-  any fix-up commit after it.** Last *substantive* commit is `0be81e3` (Phase 1 runbook);
-  everything after it is cold-open bookkeeping.
-- **Ahead of `origin/main`:** **6** — arc is `1bf1bfd` (design) → `1af56db` (Phase 2
-  runbook) → `0be81e3` (Phase 1 runbook) → `6a22845`/`020e7a3`/`a2afbd2` (cold-open
-  banner + fix-ups)
+- **Last substantive commit:** `0be81e3` — Phase 1 runbook. **Everything after it is
+  cold-open bookkeeping** (banner + SHA fix-ups), so HEAD will be a few commits past it.
+  Cited this way on purpose: a fix-up commit cannot name its own SHA, and chasing the
+  exact count just spawns another fix-up. Get live values from:
+
+  ```bash
+  git log --oneline -1 && git rev-list --count origin/main..HEAD
+  ```
+
+- **Substantive arc:** `1bf1bfd` (design) → `1af56db` (Phase 2 runbook) → `0be81e3`
+  (Phase 1 runbook). Three docs commits; that is the whole branch.
 - ✅ **PUSHED 2026-08-17.** `origin/fort-knox` exists and this branch tracks it. (It was
   laptop-only for three commits — the hazard memory `concurrent-sessions-branch-hazard`
-  warns about. Resolved.) Verify with `git rev-list --count origin/fort-knox..HEAD`;
-  expect **0** — but note this line is itself in a later commit, so expect **1** until
-  that commit is pushed too.
+  warns about. Resolved.) Verify with `git rev-list --count origin/fort-knox..HEAD` —
+  **0** means nothing is stranded on this laptop.
 - **Content is 100% docs.** No code, no tests, no build. §2's test tables below do not
   apply to anything on this branch.
 
