@@ -314,9 +314,31 @@ Verified: blocks on that client only; other devices resolve it normally.
 > success, and **never fires** — verified against a live instance, including a control
 > rule proving the syntax is otherwise valid. It looks configured and does nothing.
 >
-> **So custom rules are all-day or nothing.** If a site genuinely needs a bedtime window
-> and has no built-in service, that needs cron adding/removing the rule — and per §6's
-> warning, via read-modify-write.
+> **So custom rules are all-day or nothing** *from AdGuard's own scheduler.* To put one on
+> a schedule, cron must add and remove the rule.
+
+**To schedule Roku Live TV (or any custom rule) — built and tested 2026-08-17:**
+
+Copy `docs/reference/adguard-rule-schedule.py` to the Pi (e.g. `/opt/adguard/`) and add
+to `crontab -e`. Cron has no environment, so set the vars in the crontab itself:
+
+```cron
+ADGUARD_URL=http://127.0.0.1:3000
+ADGUARD_USER=admin
+ADGUARD_PASS=...
+0 12 * * * /opt/adguard/adguard-rule-schedule.py allow roku-live >>/var/log/kc-sched.log 2>&1
+0  0 * * * /opt/adguard/adguard-rule-schedule.py block roku-live >>/var/log/kc-sched.log 2>&1
+```
+
+Verified: blocks/unblocks by actual DNS resolution, idempotent, survives a reboot
+mid-block, preserves hand-written rules, exits non-zero on failure so cron can alert.
+Check state any time with `adguard-rule-schedule.py status`.
+
+> 🔴 **Never append a comment to a rule.** AdGuard does not strip inline trailing
+> comments, so `||site.com^$client='x'   ! my note` **stores fine, reports success, and
+> never blocks.** Verified side-by-side against the identical rule without the comment.
+> Put comments on their own line above the rule. This bit the script above during
+> development and is easy to repeat by hand in the UI.
 
 ### Subscribed blocklists — Filters → DNS blocklists → Add blocklist
 

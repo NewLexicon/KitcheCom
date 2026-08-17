@@ -327,6 +327,66 @@ tier, and false positives on a household resolver surface as "the internet is br
 including the parents. To exempt parent devices, either keep contraband on per-client
 built-in services, or add allowlist rules scoped with `$client`.
 
+## 4d. Scheduling a custom rule with cron — built and tested
+
+**Added 2026-08-17: Garrett asked directly whether the block can be removed at noon and
+re-added at midnight.** Yes. `docs/reference/adguard-rule-schedule.py` does it, tested
+end-to-end against a live instance.
+
+```
+MIDNIGHT: ./adguard-rule-schedule.py block roku-live
+          -> therokuchannel.roku.com resolves to ::        BLOCKED
+NOON:     ./adguard-rule-schedule.py allow roku-live
+          -> therokuchannel.roku.com resolves to 13.32.179.37   ALLOWED
+```
+
+Cron on the Pi:
+
+```cron
+ADGUARD_URL=http://127.0.0.1:3000
+ADGUARD_USER=admin
+ADGUARD_PASS=...
+0 12 * * * /opt/adguard/adguard-rule-schedule.py allow roku-live >>/var/log/kc-sched.log 2>&1
+0  0 * * * /opt/adguard/adguard-rule-schedule.py block roku-live >>/var/log/kc-sched.log 2>&1
+```
+
+Verified properties:
+
+- **Idempotent** — a second `block` prints "already block (no change)". Safe if cron
+  double-fires or the Pi reboots and re-runs.
+- **Survives a reboot** — restarted AdGuard mid-block; rule and marker persisted, DNS
+  still `::`.
+- **Preserves hand-written rules** — `set_rules` replaces the *entire* list, so the
+  script does read-modify-write and only touches its own marked block. Verified with two
+  hand-written rules present across a full block→allow cycle.
+- **Exit 0/1** for cron alerting; verifies after writing rather than trusting HTTP 200.
+
+### 🔴 The trap this script hit while being written: inline comments break rules
+
+The first version marked its rules with a **trailing** comment so it could find them:
+
+```
+||therokuchannel.roku.com^$client='kid-roku'   ! kc-sched:roku-live
+```
+
+**AdGuard stores this happily, reports success, and the rule never blocks.** It does not
+strip inline trailing comments, so the whole line fails to parse. Proven side by side:
+
+```
+||therokuchannel.roku.com^$client='kid-roku'   ! kc-sched:roku-live   -> 13.32.179.80  NOT blocked
+||therokuchannel.roku.com^$client='kid-roku'                          -> ::            blocked
+```
+
+**The marker must be its own line, above the rule.** The script now does that, and
+additionally fails with exit 1 if it ever finds a marker appended inline.
+
+> **Fourth firing of this project's signature failure shape** — after the ChoreOps penalty
+> sign, the Grocy test that locked in a bug, the `time=` modifier, and the helper that
+> reported "protections intact." *Stored successfully, reported success, did nothing.*
+> Note it was caught only because the test asserted on **actual DNS resolution** rather
+> than on the API's 200 or on the rule list's contents. Checking the write would have
+> passed; checking the effect failed.
+
 ## 5. ✅ Scheduling — §9.2 exactly right (with a correction)
 
 ⚠️ **§9.2 says the built-in schedule applies "only to the blocked-services list." That is
