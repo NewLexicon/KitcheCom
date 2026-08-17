@@ -6,6 +6,71 @@ Read this first. Everything below is verified, with the command that verifies it
 
 ---
 
+## 🔶 YOU MAY BE ON `fort-knox` — READ THIS BANNER FIRST
+
+**Everything below §"THE REAL DEADLINE" is written from `main`'s perspective as of
+2026-08-14 and does NOT describe the `fort-knox` branch.** Check where you are before
+trusting a single number in it:
+
+```bash
+git branch --show-current
+```
+
+### If you are on `fort-knox`
+
+- **Worktree:** `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox`
+- **HEAD:** `0be81e3` — `docs: Phase 1 device/OS controls runbook — the ungated Fort Knox layer`
+- **Ahead of `origin/main`:** **3** — arc is `1bf1bfd` (design) → `1af56db` (Phase 2
+  runbook) → `0be81e3` (Phase 1 runbook)
+- ⚠️ **UNPUSHED.** `origin/fort-knox` does not exist. All three commits live only on this
+  laptop. This is the exact hazard memory `concurrent-sessions-branch-hazard` warns about
+  — **push it.**
+- **Content is 100% docs.** No code, no tests, no build. §2's test tables below do not
+  apply to anything on this branch.
+
+**The three artifacts, in reading order:**
+
+1. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/superpowers/specs/2026-08-16-parental-controls-design.md`
+   — the design. §13 has the phase/gate table; **Appendix A lists 8 corrections that are
+   contrary to popular online guidance — do not "fix" them back.**
+2. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/session-state/2026-08-17-phase1-device-controls-runbook.md`
+   — **Phase 1, UNGATED, the actual next move.**
+3. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/session-state/2026-08-17-adguard-pi-flashing-runbook.md`
+   — Phase 2, **gated behind Tuesday 2026-08-18**, and additionally blocked on hardware.
+
+### 🎯 The literal next move on Fort Knox
+
+**Execute the Phase 1 runbook (artifact 2).** Design §13 marks it **"Anytime"** — zero
+network risk, no Pi, no hardware purchase — and sequences it *first* because it delivers
+the download-approval capability that was the original ask. It is the only Fort Knox
+phase that can legitimately run before Tuesday.
+
+Phase 2 is **double-blocked** and should not be started: the Tuesday gate, plus §0's
+open hardware question (the old Pi's model is still unidentified; a microSD reader is
+the most likely thing to stall that evening).
+
+**Tuesday still outranks all of this.** The wife-returns deliverable is the calendar +
+chore chart, and per memory `S2514` the remaining ChoreOps work needs the Pi. If Tuesday
+work is available, do that first — Phase 1 is what to do when it is *not*.
+
+### Carry-forwards specific to `fort-knox`
+
+- **Unpushed branch** (above) — highest-priority housekeeping.
+- **Old Pi model unidentified.** Phase 2 §0. Photos confirmed a full-size Pi (not a USB
+  dongle, which was the initial misread), inferred 3B/3B+, **not confirmed.** Boot it and
+  read `/proc/cpuinfo` rather than reading silkscreen through the case.
+- **The old SanDisk 32GB card is ~6yr old.** Fine for Phase 2 testing; **do not carry it
+  into Phase 3** — household DNS on a drawer-aged card is how you get silent corruption
+  weeks later.
+- **Phase 3 requires the printed rollback card** (design §12 / Phase 2 §8) physically
+  posted near the gateway *before* cutover. Printed, not just in the repo — the failure
+  it addresses is one where looking things up is itself impaired.
+- **`/clients/update` needs read-modify-write** (design §9.3). A naive write silently
+  drops omitted fields. **Same silent-corruption shape as the ChoreOps penalty-sign bug**
+  (memory `choreops-content-is-generated-json`) — treat with equal suspicion.
+
+---
+
 ## ⏰ THE REAL DEADLINE — **Tuesday 2026-08-18**
 
 Garrett promised his wife the **calendar and chore chart** would be **up and working** when she
