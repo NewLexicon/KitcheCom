@@ -143,11 +143,30 @@ Paste lives in the **CONFIG flow, not options** — it only runs when *adding* t
    | last | **Paste JSON** (`paste_json`) | ✅ **THIS ONE** |
 
    **§1's own backup ADDS one of those 📄 rows**, pushing Paste JSON further down. Scroll
-   to the bottom. **This went wrong on 2026-08-17** — a restore option was selected, the
-   flow reported success, and the counts came back `rewards:2 bonuses:1 penalties:1
-   achievements:1 badges:1` (the pre-existing `Treat`/`Cash`/`Cheerful`/`Demerit` set)
-   instead of the generated 16/4/2/3/6. **No error is logged** — a wrong pick here fails
-   silently and looks like success.
+   to the bottom.
+
+   ### ⛔ THE PASTE FLOW DID NOT WORK — 2026-08-17. USE THE DIRECT WRITE (§3b).
+
+   **Two attempts, both failed identically.** Valid JSON pasted, form **submitted cleanly
+   with no error**, flow reported success — and the storage file still held the
+   pre-existing `Treat`/`Cash`/`Cheerful`/`Demerit`/`Perfect Week`/`Week Winner` set
+   (`rewards:2 bonuses:1 penalties:1 achievements:1 badges:1`) instead of the generated
+   16/4/2/3/6.
+
+   **Correction to an earlier version of this section:** it claimed the cause was picking
+   a restore option instead of Paste JSON. **That explanation is unsupported.** Two
+   identical failures make a repeated mis-pick unlikely, the operator reported no form
+   error (a truncated/invalid paste would have raised one), and the generated JSON was
+   verified to PASS ChoreOps's own `validate_backup_json` (Store format, `version == 1`,
+   all eight entity keys present as dicts). The menu ordering above is still real and
+   still worth knowing — but it is **not** the established cause.
+
+   **Why we can't say more precisely:** HA rotates `home-assistant.log` on restart, and
+   the session restarted HA to check results *before* reading the log — which discarded
+   the only record of what the paste flow actually did. Debug logging was then enabled
+   (`logger: custom_components.choreops: debug`) but only after the fact, so it captured
+   nothing about the failed attempts. It has since been reverted. **If you ever retry the
+   UI paste: enable choreops debug logging FIRST, and read the log BEFORE restarting.**
 4. Paste the regenerated JSON → submit
 
    Our generated JSON takes the **"Store format"** branch (`config_flow.py:508-512`,
@@ -155,6 +174,74 @@ Paste lives in the **CONFIG flow, not options** — it only runs when *adding* t
    validator requires **`version` to be exactly 1** — anything else is rejected outright.
    Verified passing 2026-08-17.
 5. Restart HA
+
+---
+
+## 3b. DIRECT WRITE — the path that actually worked (2026-08-17)
+
+The paste step's own implementation (`config_flow.py:539-553`) just wraps the data and
+writes it to the storage file, then creates the config entry. So do exactly that, minus
+the UI. **This landed successfully and survived restart.**
+
+**Do NOT write while HA is running** — it holds state in memory and rewrites the file on
+shutdown/save, which will silently clobber the write. Stop it first.
+
+```bash
+# 1. Find the LIVE storage key (it changes every time the integration is re-added)
+ssh kitchencom-eth 'sudo ls /home/garrettdehart/homeassistant/.storage/choreops/ | grep -vE "recovery|\.bak|removal"'
+# -> e.g. choreops_data_01KXV33Q540SYEF1KFM54DCEDJ
+KEY=choreops_data_01KXV33Q540SYEF1KFM54DCEDJ   # <-- set from the output above
+
+# 2. Build the payload with that EXACT key. The `key` field inside the JSON must be
+#    "choreops/<filename>" or HA ignores the file.
+python3 -c "
+import json
+src=json.load(open('/tmp/pi-choreops-generated.json'))
+K='choreops/$KEY'
+json.dump({'version':1,'minor_version':1,'key':K,'data':src['data']},
+          open('/tmp/pi-write-payload.json','w'), indent=2)
+print('key:', K)
+"
+
+# 3. Stop HA, back up, write, verify
+ssh kitchencom-eth "sudo docker stop homeassistant && \
+  sudo cp /home/garrettdehart/homeassistant/.storage/choreops/$KEY \
+          /home/garrettdehart/homeassistant/.storage/choreops/$KEY.bak-predirectwrite-\$(date +%H%M)"
+scp /tmp/pi-write-payload.json kitchencom-eth:/tmp/payload.json
+ssh kitchencom-eth "sudo cp /tmp/payload.json /home/garrettdehart/homeassistant/.storage/choreops/$KEY && \
+  sudo chown root:root /home/garrettdehart/homeassistant/.storage/choreops/$KEY && \
+  sudo chmod 644 /home/garrettdehart/homeassistant/.storage/choreops/$KEY"
+
+# 4. Start HA and confirm the content SURVIVED (this is the real gate)
+ssh kitchencom-eth 'sudo docker start homeassistant; for i in $(seq 1 45); do ss -tln | grep -q ":8123" && break; sleep 2; done'
+sleep 25
+ssh kitchencom-eth "sudo python3 -c \"
+import json
+d=json.load(open('/home/garrettdehart/homeassistant/.storage/choreops/$KEY'))
+x=d['data']
+print({k:len(x[k]) for k in ['users','chores','rewards','bonuses','penalties','achievements','badges']})
+\""
+```
+
+**Expect** `{'users': 4, 'chores': 11, 'rewards': 16, 'bonuses': 4, 'penalties': 2,
+'achievements': 3, 'badges': 6}`.
+
+**Then confirm HA actually built entities** — a correct file that HA ignored looks
+identical to a correct file it consumed:
+
+```bash
+ssh kitchencom-eth 'sudo python3 -c "
+import json
+from collections import Counter
+d=json.load(open(\"/home/garrettdehart/homeassistant/.storage/core.entity_registry\"))
+e=[x for x in d[\"data\"][\"entities\"] if x.get(\"platform\")==\"choreops\"]
+print(\"total:\", len(e))
+"'
+```
+
+Expect **~286 choreops entities** (144 reward, 107 chore, 10 achievement, 10 bonus,
+9 badge, 6 penalty). If the count is near 100 with 0-ish badge/reward entities, HA
+loaded the OLD content and the write didn't take.
 
 ```bash
 ssh kitchencom 'sudo docker restart homeassistant >/dev/null; \
