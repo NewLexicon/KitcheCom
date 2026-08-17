@@ -26,11 +26,12 @@ Runbook §1–§5 are **done**. What remains is optional cleanup and the next fe
 
 ## 1. Where is HEAD?
 
-- **HEAD:** the close-out commit that set this line, on top of `4a18cdf`
-  (`docs: §4 verified — underscore storage filename, kiosk-mode requirement, Pi is 1.0.7`).
+- **HEAD:** `c0aec3d` — `feat: chores work end to end — kiosk approval hole closed, cold-open`,
+  plus the small fix-up commit that corrected this line's SHA and count.
 - **Branch:** `feat/choreops-chores`, in the **primary checkout** `/Users/jdehart1/___Code_DEV/KitchenCOM`
-- **Ahead of `origin/main`:** **43** (41 before the two close-out commits)
+- **Ahead of `origin/main`:** **43** (42 at `c0aec3d`, +1 for the fix-up)
 - **Unpushed: 0**
+- This session's arc: `4a18cdf` (runbook §4 corrections) → `c0aec3d` (end-to-end + cold-open) → fix-up.
 
 ```bash
 cd /Users/jdehart1/___Code_DEV/KitchenCOM
