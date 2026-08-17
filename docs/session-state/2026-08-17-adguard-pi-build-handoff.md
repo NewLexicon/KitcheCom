@@ -392,6 +392,82 @@ selective service blocking. If absent (reseller), the design stands as written.
 **Nothing was built on either assumption this session** — the 6 client entries remain inert
 with `blocked_services: []`.
 
+## 4f. ✅ YouTube schedule APPLIED — the household rule
+
+**Garrett's rule, 2026-08-17. This is a HARD schedule — it holds every day of the year.
+No sick-day, holiday, or good-behaviour exceptions.** (An override helper was written and
+then deleted at his direction; do not re-introduce one.)
+
+| Days | YouTube **works** | Blocked |
+|---|---|---|
+| **Sun–Thu** | 12:00 – 20:00 | 20:00 → 12:00 |
+| **Fri–Sat** | 12:00 – 23:59 | 23:59 → 12:00 |
+
+Applied to **6 kid devices**: `Roku-65-livingrm` · `Roku-55-S425` · `Roku-55-R625` ·
+`PS5` · `Oculus-VR` · `iPad-kid-250`.
+**Untouched:** `PARENT-mac-garrett` (.180), `PARENT-device-215` (.215).
+
+Reproducible via `deploy/adguard/apply-youtube-schedule.py` (run on the Pi).
+
+### 🔴 The schedule API takes MILLISECONDS, not minutes
+
+Passing minutes fails loudly — and the error text is misleading:
+
+```
+failed to process request body: weekday Sunday: bad day range:
+start 720ms isn't rounded to minutes
+```
+
+`720` (minutes past midnight = 12:00) was read as **720 milliseconds**. Values must be
+whole minutes expressed in ms: `12*60*60*1000`. **This one fails safe** — it rejects rather
+than storing something wrong, unlike the §4 traps.
+
+### 🔴 Schedule timezone defaults to UTC — a silent 4-hour error
+
+A fresh instance reports `"time_zone": "UTC"` while the Pi itself is `America/New_York`.
+**Left alone, a 20:00 cutoff fires at 16:00 EDT** — working perfectly, at the wrong time.
+Set explicitly and **re-read to confirm**:
+
+```bash
+curl -s --netrc-file ~/.adguard-netrc http://127.0.0.1:3000/control/blocked_services/get
+```
+
+⚠️ **EDT is -0400 but EST is -0500.** `America/New_York` handles the DST shift; a fixed
+offset would drift by an hour in November.
+
+### Verified by behaviour, not by the write
+
+- Schedule read back on all six: correct hours, `tz=America/New_York`.
+- **Protections survived** (trap §4.1): `filtering_enabled`, `safebrowsing_enabled`,
+  `safe_search.enabled` all still `true` on every client after the update.
+- **Blocking proven to engage:** a temporary window of 09:00–13:00 was applied to the Mac
+  at 19:12 (outside it) → `youtube.com` → **`0.0.0.0`**, control domain resolved normally.
+  Rule removed afterward and the Mac re-verified unblocked.
+
+### ⚠️ What the 20:00 cutoff actually does — set expectations honestly
+
+**It stops YouTube being *startable*, not instantly unusable.** Asked directly by Garrett:
+*"will it play its final video at 7:59 and nothing else?"* — not quite:
+
+| At 20:00 | Result |
+|---|---|
+| Video already playing | **finishes** |
+| Next video, same app session | **often still works** — the app cached the DNS answer |
+| App closed and reopened | **blocked** |
+| TV powered off/on | **blocked** |
+
+Expect a kid mid-session to get **another ~10–30 min**. Power-cycling the device ends it
+immediately. `blocked_response_ttl` is 10s once lookups resume.
+
+**A hard cutoff is not achievable via DNS.** The gateway's Smart Home Manager (§4e) cuts
+actual traffic and would kill video mid-frame — that is the tool for a true curfew.
+
+### Not live yet
+
+The schedule only takes effect once those devices **use the Pi for DNS**. They are still on
+the gateway, so **nothing is blocked today**. That is the Phase 3 cutover, still gated on
+the printed rollback card, a filtered secondary resolver, a fresh A2 card, and a 2.5A PSU.
+
 ## 5. Where the build stopped
 
 **Done:** flashed · booted · identified · SSH + passwordless sudo · OS fully updated
