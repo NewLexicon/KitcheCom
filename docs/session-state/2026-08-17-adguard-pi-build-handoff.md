@@ -204,6 +204,60 @@ that dumped field 2 of the netrc file (field 2 of the `password` line is the pas
 Garrett rotated it via the UI the same session. **When inspecting `~/.adguard-netrc`, print
 field 1 only, or just `ls -l` it.**
 
+## 4c. ✅ END-TO-END ACCEPTANCE TEST PASSED (runbook §7 shape)
+
+**YouTube blocking works, per-client, verified by resolution.** Run 2026-08-17 against a
+single volunteer device (the Mac at `192.168.1.180`), then rolled back.
+
+### SafeSearch
+
+Master switch set via `PUT /control/safesearch/settings` with `enabled` **and** all engines
+in one body, then **re-read** — `enabled: true` confirmed, and persisted to
+`AdGuardHome.yaml:148`.
+
+⚠️ **Testing gotcha:** bare `google.com` does **not** show SafeSearch. The rewrite targets
+**`www.google.com`** (what browsers actually request). A first test on `google.com` returned
+a normal-looking address and briefly read as a failure. **The query log is the authority:**
+
+```
+www.google.com   FilteredSafeSearch   ['forcesafesearch.google.com.']
+```
+
+### YouTube blocking, per-client
+
+Client added with `blocked_services: ["youtube"]`, `use_global_blocked_services: false`.
+**Re-read after the write** (trap §4.1) — `filtering_enabled`, `safebrowsing_enabled`, and
+`safe_search.enabled` all still `true`, i.e. nothing was silently zeroed.
+
+| Domain | Baseline (before) | Blocked client | Query-log reason |
+|---|---|---|---|
+| `youtube.com` | `172.217.215.190` | **`0.0.0.0`** | `FilteredBlockedService` |
+| `www.youtube.com` | — | **`0.0.0.0`** | `FilteredBlockedService` |
+| `googlevideo.com` | `108.177.122.147` | **`0.0.0.0`** | `FilteredBlockedService` |
+| `youtubei.googleapis.com` | `172.217.118.4` | **`0.0.0.0`** | `FilteredBlockedService` |
+| `example.com` (control) | resolves | **still resolves** | `NotFilteredNotFound` |
+
+### 🔑 Per-client targeting proven — the mechanism the whole design rests on
+
+Same domain, same resolver, two source IPs, at the same moment:
+
+| Source | `youtube.com` → |
+|---|---|
+| `192.168.1.180` (configured client) | **`0.0.0.0`** blocked |
+| `192.168.1.234` (Pi 5, not configured) | `2607:f8b0:4002:c00::5b` normal |
+
+**Kids restricted, parents untouched — empirically confirmed on this box**, not inferred.
+
+### Rolled back
+
+Test client deleted (`configured clients: 0`), and `youtube.com` verified resolving normally
+again from the Mac. **No client entries remain.** The box is running with global SafeSearch
+on and nothing else configured.
+
+**136 built-in services** confirmed present, including `youtube`, `tiktok`, `instagram`,
+`discord`, `snapchat`, `twitter`, `reddit`, `twitch` — matching the prior lab findings.
+⚠️ The X id is **`twitter`**, not `x`.
+
 ## 5. Where the build stopped
 
 **Done:** flashed · booted · identified · SSH + passwordless sudo · OS fully updated
