@@ -130,9 +130,31 @@ negation. Positive penalties would *add* points. And confirm `Streak Master`'s
 Paste lives in the **CONFIG flow, not options** — it only runs when *adding* the integration.
 
 1. Settings → Devices & Services → **ChoreOps → ⋮ → Delete** (backup from §1 is your safety net)
-2. **+ Add Integration → ChoreOps** → choose the paste option
-3. Paste the regenerated JSON → submit
-4. Restart HA
+2. **+ Add Integration → ChoreOps**
+3. ⚠️ **A DATA RECOVERY MENU APPEARS FIRST. "Paste JSON" is the LAST option.**
+   Verified against `reference/ChoreOps-main/custom_components/choreops/config_flow.py:174-217`,
+   which builds the menu in this order:
+   | # | Option | What it does |
+   |---|---|---|
+   | 1 | *Use current data file* (`current_active`) | **WRONG** — reloads pre-paste content |
+   | 2 | *Migrate from KidsChores* | not applicable |
+   | 3 | *Start fresh* | **WRONG** — wipes everything |
+   | 4… | **📄 dated backup entries**, e.g. `📄 2026-08-17 12:04 • Bak Premonday • Current Entry` | **WRONG** — restores the backup |
+   | last | **Paste JSON** (`paste_json`) | ✅ **THIS ONE** |
+
+   **§1's own backup ADDS one of those 📄 rows**, pushing Paste JSON further down. Scroll
+   to the bottom. **This went wrong on 2026-08-17** — a restore option was selected, the
+   flow reported success, and the counts came back `rewards:2 bonuses:1 penalties:1
+   achievements:1 badges:1` (the pre-existing `Treat`/`Cash`/`Cheerful`/`Demerit` set)
+   instead of the generated 16/4/2/3/6. **No error is logged** — a wrong pick here fails
+   silently and looks like success.
+4. Paste the regenerated JSON → submit
+
+   Our generated JSON takes the **"Store format"** branch (`config_flow.py:508-512`,
+   `helpers/backup_helpers.py:616-628`): it has `version: 1` + a `data` wrapper, and the
+   validator requires **`version` to be exactly 1** — anything else is rejected outright.
+   Verified passing 2026-08-17.
+5. Restart HA
 
 ```bash
 ssh kitchencom 'sudo docker restart homeassistant >/dev/null; \
