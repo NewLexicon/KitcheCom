@@ -275,11 +275,42 @@ Two similar strings exist in the source; this is the right one.
 
 ⚠️ Field *labels* were written against 1.0.7 and the vendored source is 1.0.8 — wording may differ
 slightly in the dropdowns. Match on meaning, not exact text.
+**CONFIRMED 2026-08-17: the Pi's integration page reports Version 1.0.7**, so the labels matched
+as originally written. The 1.0.8 vendored source is *ahead* of the Pi, not behind it.
+
+### 🔴 Storage filename uses an UNDERSCORE — the URL uses a hyphen
+
+`url_path` is `cod-chores` (hyphen) but the storage file is **`lovelace.cod_chores`** (underscore).
+Checking the hyphen filename reports MISSING on a dashboard that exists — a false alarm that sends
+you chasing nothing. Verify the registry, not just the filename:
+
+```bash
+ssh kitchencom 'sudo python3 -c "
+import json
+d=json.load(open(\"/home/garrettdehart/homeassistant/.storage/lovelace_dashboards\"))
+print([(x.get(\"url_path\"), x.get(\"title\")) for x in d[\"data\"][\"items\"]])
+"'
+```
+
+### ⚠️ The access-control warning at Submit is REAL — enable kiosk mode
+
+Generating with Rowan/Wystan selected raises *"Kiosk mode is disabled and these selected users do
+not have linked Home Assistant users."* **Believe it.** The Pi has exactly one HA user
+(`KitchenCom`, owner); Rowan and Wystan have empty `ha_user_id`, and Garrett/Rebecca both map to
+that same owner id. Per `button.py:623,1078`, kiosk mode **skips the assignee auth check** for
+chore-claim and reward-redeem; with it off (`:642,:1097`) the check is **enforced** and the kids'
+buttons fail on the wall panel — which is exactly the §6 acceptance test.
+
+Acknowledging the warning is fine (the dashboard builds correctly), but then enable
+**"Enable Kiosk Mode for Assignee Claims"** in ChoreOps → Configure → General/System options.
+Security trade-off, stated in the source: *anyone with access to that device can submit assignee
+claims* — a kid can claim as their sibling. Parent approval still gates points, so the blast radius
+is a bogus claim awaiting approval, not free points.
 
 Verify:
 
 ```bash
-ssh kitchencom 'f=/home/garrettdehart/homeassistant/.storage/lovelace.cod-chores; \
+ssh kitchencom 'f=/home/garrettdehart/homeassistant/.storage/lovelace.cod_chores; \
   sudo test -f "$f" && echo FOUND || echo "MISSING — check: sudo ls .storage/lovelace.*"; \
   sudo python3 -c "import json;d=json.load(open(\"$f\"));v=d[\"data\"][\"config\"][\"views\"];print(\"views:\",len(v),[x.get(\"title\") for x in v])"'
 ssh kitchencom 'curl -s -o /dev/null -w "cod-chores HTTP %{http_code}\n" http://localhost:8123/cod-chores'
