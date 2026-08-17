@@ -243,9 +243,22 @@ one where looking things up is itself impaired.
   fixable this way: a *signed-out* browser and a web login at `google.com` — both are
   content-filtering problems, i.e. Phase 2/3 DNS. On **Roku** the hole stays open and DNS
   carries it; on **Windows** it stays open — decide at rebuild time.
-- **Old Pi model still unidentified** (runbook §0). Photos confirmed a full-size Pi, not a
-  USB dongle; inferred 3B/3B+, unconfirmed. Boot it and read `/proc/cpuinfo` rather than
-  reading silkscreen through the case. Less urgent now (arch is covered).
+- ✅ **Old Pi IDENTIFIED 2026-08-17 — `Raspberry Pi 3 Model B Rev 1`.** Design §11
+  pre-flight #1 is **closed**; runbook §0's 3B/3B+ inference was correct. Established by
+  booting it on a direct laptop-to-Pi Ethernet cable and reading LuCI, not from silkscreen.
+  Satisfies design §11. **Hardware verified working: it boots, Ethernet works, the card is
+  readable.**
+  - 🔴 **The card holds a working LEDE 17.01.4 / OpenWrt *router* build (~Oct 2017).**
+    **There is no in-place upgrade path** — runbook §5–§6 need Raspberry Pi OS + Docker and
+    LEDE gives neither. "Update the old Pi's software" is **a reflash**, not an upgrade.
+  - 🔴 **It runs a DHCP server and claims `192.168.1.1`.** Fine point-to-point with a
+    laptop; **never plug it into the home LAN with this card in it** — a second DHCP server
+    beside the AT&T gateway is precisely the "internet is broken" failure design §12 guards.
+  - Reaching it in this state: `ssh -o HostKeyAlgorithms=+ssh-rsa -o
+    PubkeyAcceptedKeyTypes=+ssh-rsa root@192.168.1.1` (dropbear offers only legacy
+    `ssh-rsa`), or `http://192.168.1.1/cgi-bin/luci`. ⚠️ That address overlaps a typical
+    home gateway — disambiguate with interface-scoped ping (`ping -b en22` vs `ping -b en0`)
+    before trusting any probe. Sibling confusion: memory `second-pi-hijacks-route.md`.
 - **The SanDisk 32GB card is ~6 years old.** Fine for Phase 2 testing; **do not carry it
   into Phase 3** — drawer-aged cards fail silently weeks later.
 - **Parent devices need reserved IPs too.** Client entries key on address; a parent laptop

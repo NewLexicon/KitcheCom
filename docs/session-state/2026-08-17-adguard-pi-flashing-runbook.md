@@ -31,7 +31,59 @@ Phase 3, gated separately, and it requires the posted rollback card (§8 below).
 
 ---
 
-## 0. Hardware identification — resolve before flashing
+## 0. Hardware identification — ✅ RESOLVED 2026-08-17
+
+> ## ✅ IDENTIFIED — do not re-litigate this section
+>
+> **The board is a `Raspberry Pi 3 Model B Rev 1`.** Read off the running system, not the
+> silkscreen — exactly as §0 advised. **Design §11 pre-flight #1 is CLOSED.**
+>
+> | Fact | Value | How it was established |
+> |---|---|---|
+> | Model | **Pi 3 Model B Rev 1** | LuCI status page, direct-cable HTTP |
+> | MAC / OUI | `b8:27:eb:ae:2a:5c` | Pi Foundation OUI (Pi 1/2/3 era) |
+> | **Existing OS** | **LEDE 17.01.4 r3560-79f57** (OpenWrt predecessor, ~Oct 2017) | LuCI banner |
+> | Card | **alive, boots fine** | it booted and served LuCI |
+> | Ethernet | **works** | it DHCP'd the laptop to `192.168.1.163` |
+>
+> **Satisfies design §11** (Pi 3B+ or newer, wired Ethernet). A 3B is 1GB RAM /
+> 100 Mbit Ethernet — ample for DNS. AdGuard's image ships armv7, so the arch is covered.
+>
+> ### 🔴 The card holds a working OpenWrt/LEDE **router** build
+>
+> This resolves "its contents are unknown" below. It is a **router OS**, and that has two
+> consequences:
+>
+> 1. **There is no in-place upgrade path to what this phase needs.** Do not try to
+>    "just update it." Going from LEDE 17.01 (2017) to a Docker-capable host is not an
+>    upgrade, it is a reflash. Runbook §5–§6 assume Raspberry Pi OS + Docker; LEDE gives
+>    you neither. **The card gets reflashed. Plan accordingly.**
+> 2. 🔴 **It runs a DHCP server and claims `192.168.1.1`.** Harmless point-to-point with a
+>    laptop. **Do NOT plug this Pi into the home LAN while it still has this card in it** —
+>    a second DHCP server handing out addresses alongside the AT&T gateway produces exactly
+>    the "the internet is broken" failure mode design §12 exists to prevent.
+>
+> ### How to reach it in this state (direct cable, no reader needed)
+>
+> It comes up at **`192.168.1.1`** on the direct link and DHCPs the laptop. Its dropbear
+> SSH only offers legacy `ssh-rsa`, so modern OpenSSH refuses by default:
+>
+> ```bash
+> ssh -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa root@192.168.1.1
+> curl -s http://192.168.1.1/cgi-bin/luci   # LuCI web UI
+> ```
+>
+> ⚠️ **`192.168.1.1` collides with a typical home gateway range.** Verify which interface
+> you are actually talking to before trusting a result — `ping -b en22` (direct cable) vs
+> `ping -b en0` (wifi). During identification the same address was momentarily misread as
+> a consumer router; the interface-scoped ping is what disambiguated it.
+>
+> **Related, already in memory:** `second-pi-hijacks-route.md` — a second Pi on the laptop
+> steals an address and the symptom looks like a wifi drop. Same family of confusion.
+
+### Original §0 (kept for provenance — superseded by the box above)
+
+## 0-orig. Hardware identification — resolve before flashing
 
 Two photos were taken 2026-08-17 (`IMG_3269`, `IMG_3270`, in `~/Downloads`). They
 confirm a **full-size Raspberry Pi** — bare PCB, 40-pin GPIO header, microSD slot
@@ -66,8 +118,10 @@ The photos ruled that out. Recorded so the ambiguity isn't re-litigated.
 
 `IMG_3270` shows a **SanDisk Ultra 32GB** card seated in the slot.
 
-1. **Its contents are unknown.** Assume it holds an old project. **Flashing erases it.**
-   If anything on it matters, image it first: `sudo dd if=/dev/diskN of=~/pi-old.img bs=1m`
+1. ~~**Its contents are unknown.**~~ ✅ **RESOLVED 2026-08-17 — it is a LEDE 17.01.4
+   (OpenWrt) router build from ~Oct 2017.** See the box in §0. **Flashing erases it.**
+   Decide deliberately whether that old router config is worth keeping; if so, image it
+   first: `sudo dd if=/dev/diskN of=~/pi-old-lede.img bs=1m`
 2. **It is ~6+ years old and was in a drawer.** Old cards fail silently — they write
    fine, then corrupt weeks later. For the box the whole house depends on for name
    resolution, **use a fresh A2 card** (~$8–10). The old card is fine for Phase 2
