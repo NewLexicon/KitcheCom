@@ -20,9 +20,16 @@
 > **Blockers resolved since this doc was written:** home-network ✅ · microSD reader ✅ ·
 > board identified ✅ · flashing ✅. **§5's blocker table is stale — ignore it.**
 >
-> **Still gating Phase 3:** printed rollback card (design §12) · **filtered** secondary
-> resolver · **fresh A2 card** (this Pi runs the ~6-year-old drawer-aged SanDisk) ·
-> **2.5A PSU** (currently a 5V **2.0A** Samsung — under spec for a 3B).
+> **Phase 3 gates — updated 2026-08-17 close:**
+> | Gate | Status |
+> |---|---|
+> | Printed rollback card (design §12) | ✅ **written + verified** — `docs/reference/rollback-card.html`, print and post it |
+> | Config backup for the card swap | ✅ `deploy/adguard/backup/` with restore steps |
+> | PSU | ✅ **Apple 12W iPad brick (5.2V 2.4A)** replaces the under-spec 5V 2.0A Samsung |
+> | **Fresh A2 microSD** | ❌ **still open** — this Pi runs the ~6-year-old drawer-aged SanDisk |
+> | **Filtered secondary resolver** | ❌ deferred by design (expensive gate; one filtered resolver is normal for a home) |
+>
+> Garrett chose "close the cheap gates first" over cutting over immediately.
 >
 > **Open question that may reshape the plan:** the gateway may support per-device
 > scheduling via the **AT&T Smart Home Manager app** (not the local web UI, which is what
