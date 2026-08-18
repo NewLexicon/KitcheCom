@@ -27,20 +27,12 @@ def test_conversion_preserved_non_ascii_characters():
     assert any(ord(ch) > 127 for ch in raw), "no non-ascii survived — conversion likely lossy"
 
 
-from pick_quote import normalise_zenquotes, normalise_affirmation, normalise_local
+from pick_quote import normalise_zenquotes, normalise_local
 
 
 def test_normalise_zenquotes():
     raw = [{"q": "Stay hungry.", "a": "Steve Jobs", "h": "<blockquote>ignored</blockquote>"}]
     assert normalise_zenquotes(raw) == {"text": "Stay hungry.", "author": "Steve Jobs"}
-
-
-def test_normalise_affirmation_has_no_author():
-    raw = {"affirmation": "It is a marathon, not a sprint"}
-    assert normalise_affirmation(raw) == {
-        "text": "It is a marathon, not a sprint",
-        "author": "",
-    }
 
 
 def test_normalise_local():
@@ -61,7 +53,6 @@ def test_normalisers_reject_an_empty_payload():
     """A 200 response with an empty body must not yield an empty quote on the wall."""
     for fn, empty in (
         (normalise_zenquotes, []),
-        (normalise_affirmation, {}),
         (normalise_local, {}),
     ):
         assert fn(empty) is None
@@ -184,6 +175,24 @@ def test_choose_source_can_return_local(monkeypatch):
     5,421-quote dataset would only ever appear when the network was down."""
     monkeypatch.setattr(random, "choice", lambda seq: "local")
     assert pick_quote._choose_source() == "local"
+
+
+def test_choose_source_only_ever_returns_local_or_zenquotes():
+    """Affirmations.dev is gone; nothing else should leak into the weighted pool."""
+    assert set(pick_quote.CHOICES) == {"local", "zenquotes"}
+
+
+def test_choose_source_favours_local_over_many_draws():
+    """Pins the 65/35 local/zenquotes weighting without asserting an exact count,
+    so the test isn't flaky. random is seeded for a deterministic sample."""
+    random.seed(12345)
+    draws = [pick_quote._choose_source() for _ in range(2000)]
+    local_count = draws.count("local")
+    zenquotes_count = draws.count("zenquotes")
+    assert local_count + zenquotes_count == len(draws)
+    # local should be a clear majority (~65%), well above an even 50/50 split.
+    assert local_count > zenquotes_count
+    assert local_count > len(draws) * 0.55
 
 
 def test_main_prints_one_line_of_valid_json(capsys):

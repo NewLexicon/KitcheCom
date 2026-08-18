@@ -48,16 +48,6 @@ def normalise_zenquotes(raw: Any) -> Optional[Dict[str, str]]:
     return {"text": text, "author": _clean(first.get("a"))}
 
 
-def normalise_affirmation(raw: Any) -> Optional[Dict[str, str]]:
-    """Affirmations.dev returns {"affirmation": ...} and has NO author field."""
-    if not raw or not isinstance(raw, dict):
-        return None
-    text = _clean(raw.get("affirmation"))
-    if not text:
-        return None
-    return {"text": text, "author": ""}
-
-
 def normalise_local(raw: Any) -> Optional[Dict[str, str]]:
     """The local dataset uses {"quoteText": ..., "quoteAuthor": ...}.
 
@@ -92,7 +82,6 @@ def load_local_quote() -> Optional[Dict[str, str]]:
 # unmaintained service. See the spec, section 2.
 SOURCES = {
     "zenquotes": ("https://zenquotes.io/api/random", normalise_zenquotes),
-    "affirmations": ("https://www.affirmations.dev", normalise_affirmation),
 }
 
 
@@ -129,7 +118,14 @@ def fetch_api(name: str) -> Optional[Dict[str, str]]:
 
 # "local" is a first-class source, not merely the fallback: without it the 5,421-quote
 # dataset would only ever surface when the network was down.
-CHOICES = ["zenquotes", "affirmations", "local"]
+#
+# Weighted 65% local / 35% zenquotes: the 5,421-quote local dataset is deep enough
+# to carry most of the rotation, while ZenQuotes adds daily freshness on top. This
+# replaces a prior uniform three-way split that also included affirmations.dev,
+# which was dropped after an empirical check found only 17 unique affirmations
+# across 25 consecutive fetches (several repeating 2-3 times) — a shallow pool that
+# was getting 1/3 of the rotation while the much deeper local dataset was underused.
+CHOICES = ["local"] * 65 + ["zenquotes"] * 35
 
 
 def _choose_source() -> str:
