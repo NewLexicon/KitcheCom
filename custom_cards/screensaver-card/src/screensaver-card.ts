@@ -51,6 +51,9 @@ export type MediaItem = {
   kind: "image" | "video";
   url?: string;
   resolvedAt?: number;
+  /** Set lazily the first time the image decodes; undefined until then.
+   *  Videos are never paired, so this stays undefined for them. */
+  orientation?: Orientation;
 };
 
 type BrowseChild = {
@@ -96,6 +99,70 @@ export function nextMediaIndex(current: number, count: number): number {
   if (count <= 0) return 0;
   if (current < 0 || current >= count) return 0;
   return (current + 1) % count;
+}
+
+// ── Portrait pairing (2026-08-17) ────────────────────────────────────────────
+// WHY: the frame is a 1920x1080 LANDSCAPE panel. `object-fit: cover` fills it by
+// clipping the overflow, which on a portrait photo means the top and bottom --
+// usually where the subject is. Two portraits side by side fill the same frame
+// with no cropping at all, so pairing is preferred over letterboxing whenever a
+// partner is available.
+
+export type Orientation = "portrait" | "landscape" | "unknown";
+
+/** How a slot's images should be fitted to the frame.
+ *  `cover` fills and may crop (safe for landscape, which matches the frame).
+ *  `contain-blur` shows the whole image with a blurred copy of itself behind it,
+ *  used for a portrait with no partner so it is never cut. */
+export type SlotFit = "cover" | "contain-blur";
+
+export type Oriented = { contentId: string; orientation: Orientation };
+
+export type Slot = {
+  /** One contentId (solo) or two (a portrait pair). */
+  items: string[];
+  fit: SlotFit;
+  /** Index to plan from on the next tick; wraps to 0 at the end. */
+  nextIndex: number;
+};
+
+/** Classify by aspect ratio. Square counts as landscape: it fills the frame
+ *  without meaningful loss, and pairing squares would waste half the screen.
+ *  Non-finite or non-positive dimensions mean the image never decoded, which is
+ *  reported as `unknown` and never paired. Pure. */
+export function classifyOrientation(width: number, height: number): Orientation {
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return "unknown";
+  if (width <= 0 || height <= 0) return "unknown";
+  return height > width ? "portrait" : "landscape";
+}
+
+/** Decide what occupies the screen for one display tick.
+ *
+ *  A portrait pairs ONLY with an immediately-following portrait. It is never
+ *  paired with a landscape (wildly mismatched scale) nor with an `unknown`
+ *  (an undecodable image would leave half the frame blank). A portrait with no
+ *  partner falls back to `contain-blur` so it is shown whole.
+ *
+ *  Pure: no DOM, no clock, no network -- the whole policy is testable. */
+export function planSlot(items: Oriented[], index: number): Slot {
+  const n = items.length;
+  if (n === 0) return { items: [], fit: "cover", nextIndex: 0 };
+  // An out-of-range index must not freeze the loop: recover to the start.
+  const i = index >= 0 && index < n ? index : 0;
+
+  const here = items[i];
+  const wrap = (k: number) => (k >= n ? 0 : k);
+
+  if (here.orientation === "portrait") {
+    const partner = i + 1 < n ? items[i + 1] : undefined;
+    if (partner?.orientation === "portrait") {
+      return { items: [here.contentId, partner.contentId], fit: "cover", nextIndex: wrap(i + 2) };
+    }
+    return { items: [here.contentId], fit: "contain-blur", nextIndex: wrap(i + 1) };
+  }
+
+  // Landscape and unknown both display solo, filling the frame.
+  return { items: [here.contentId], fit: "cover", nextIndex: wrap(i + 1) };
 }
 
 export type ScreensaverConfig = {
@@ -224,6 +291,9 @@ export class ScreensaverCard extends LitElement {
   private _items: MediaItem[] = [];
   private _index = 0;
   private _currentUrl = "";
+  // One url for a solo image/video, two for a portrait pair.
+  private _currentUrls: string[] = [];
+  private _currentFit: SlotFit = "cover";
   private _currentKind: "image" | "video" = "image";
   private _now = "";
   private _timer?: ReturnType<typeof setTimeout>;
@@ -371,12 +441,68 @@ export class ScreensaverCard extends LitElement {
     // so this item stays permanently skipped on future passes (shouldReResolve→false,
     // url still undefined). Intentional — a broken item must not freeze the loop (spec 4c).
     if (!item.url) return this._skip();
-    this._currentUrl = item.url;
-    this._currentKind = item.kind;
-    if (item.kind === "image") {
-      this._timer = setTimeout(() => this._advance(), this._cfg.photoDuration * 1000);
+
+    // Videos never pair: show solo, advance on 'ended'.
+    if (item.kind !== "image") {
+      this._currentUrls = [item.url];
+      this._currentFit = "cover";
+      this._currentKind = item.kind;
+      this._currentUrl = item.url;
+      return;
     }
-    // video advances on its 'ended' event (see render)
+
+    // Orientation is needed BEFORE deciding the slot, and it is only knowable by
+    // decoding the image. Resolve this one and, so a pair can be planned, the
+    // next one too. Failures degrade to "unknown", which displays solo.
+    await this._ensureOrientation(item, gen);
+    if (gen !== this._gen) return;
+    const peekIdx = this._index + 1 < this._items.length ? this._index + 1 : -1;
+    if (peekIdx >= 0 && this._items[peekIdx].kind === "image") {
+      await this._ensureOrientation(this._items[peekIdx], gen);
+      if (gen !== this._gen) return;
+    }
+
+    const oriented: Oriented[] = this._items.map((it) => ({
+      contentId: it.contentId,
+      orientation: it.kind === "image" ? (it.orientation ?? "unknown") : "landscape",
+    }));
+    const slot = planSlot(oriented, this._index);
+
+    // Map planned contentIds back to resolved urls. A partner that failed to
+    // resolve drops out rather than rendering an empty half-frame.
+    const urls: string[] = [];
+    for (const cid of slot.items) {
+      const found = this._items.find((it) => it.contentId === cid);
+      if (found?.url) urls.push(found.url);
+    }
+    if (urls.length === 0) return this._skip();
+
+    this._currentUrls = urls;
+    this._currentFit = urls.length === 1 ? slot.fit : "cover";
+    this._currentKind = "image";
+    this._currentUrl = urls[0];
+    // Consume the whole slot: a pair advances past both.
+    this._index = slot.items.length > 1 ? this._index + 1 : this._index;
+    this._timer = setTimeout(() => this._advance(), this._cfg.photoDuration * 1000);
+  }
+
+  /** Decode just enough of an image to learn its aspect ratio, then cache it on
+   *  the item. Never throws: a decode failure records "unknown", which the slot
+   *  planner shows solo rather than pairing. */
+  private async _ensureOrientation(item: MediaItem, gen: number): Promise<void> {
+    if (item.orientation !== undefined) return;
+    if (!item.url) { item.orientation = "unknown"; return; }
+    const url = item.url;
+    const o = await new Promise<Orientation>((resolve) => {
+      const probe = new Image();
+      // Do not let one unreachable file stall the slideshow forever.
+      const to = setTimeout(() => resolve("unknown"), 5000);
+      probe.onload = () => { clearTimeout(to); resolve(classifyOrientation(probe.naturalWidth, probe.naturalHeight)); };
+      probe.onerror = () => { clearTimeout(to); resolve("unknown"); };
+      probe.src = url;
+    });
+    if (gen !== this._gen) return;
+    item.orientation = o;
   }
 
   private _skip(): void {
@@ -390,6 +516,7 @@ export class ScreensaverCard extends LitElement {
     if (this._clock) clearInterval(this._clock);
     this._timer = this._clock = undefined;
     this._currentUrl = "";
+    this._currentUrls = [];
   }
 
   private _tickClock(): void {
@@ -416,10 +543,25 @@ export class ScreensaverCard extends LitElement {
     if (!this._active) return nothing;
     return html`
       <div class="overlay" style=${styleMap({ "--kb-intensity": String(this._cfg.kenBurnsIntensity) })}>
-        ${this._mode === "media" && this._currentUrl
+        ${this._mode === "media" && this._currentUrls.length
           ? this._currentKind === "image"
-            ? html`<img class="media kenburns" src=${this._currentUrl} @error=${this._skip} />`
-            : html`<video class="media" src=${this._currentUrl} autoplay muted
+            ? this._currentUrls.length > 1
+              // Two portraits share the frame: each takes half, cover-fitted.
+              // No Ken Burns here -- panning two images at once reads as jitter.
+              ? html`<div class="pair">
+                  ${this._currentUrls.map(
+                    (u) => html`<img class="half" src=${u} @error=${this._skip} />`,
+                  )}
+                </div>`
+              : this._currentFit === "contain-blur"
+                // A portrait with no partner: shown whole, with a blurred zoomed
+                // copy of itself filling the bars so the frame is never empty.
+                ? html`<div class="solo">
+                    <img class="backdrop" src=${this._currentUrls[0]} aria-hidden="true" />
+                    <img class="contained" src=${this._currentUrls[0]} @error=${this._skip} />
+                  </div>`
+                : html`<img class="media kenburns" src=${this._currentUrls[0]} @error=${this._skip} />`
+            : html`<video class="media" src=${this._currentUrls[0]} autoplay muted
                 @ended=${this._advance} @error=${this._skip}></video>`
           : html`<div class="fallback"></div>`}
         ${this._cfg.showClock ? html`<div class="clock">${this._now}</div>` : nothing}
@@ -431,6 +573,16 @@ export class ScreensaverCard extends LitElement {
     .overlay { position: fixed; inset: 0; background: #000; z-index: 9999;
       animation: fadein 0.8s ease; overflow: hidden; }
     .media { width: 100%; height: 100%; object-fit: cover; }
+    /* Two portraits side by side. A hairline gap keeps them from reading as one
+       mis-stitched panorama. */
+    .pair { display: flex; width: 100%; height: 100%; gap: 2px; }
+    .pair .half { flex: 1 1 0; min-width: 0; height: 100%; object-fit: cover; }
+    /* Lone portrait: whole image over a blurred, zoomed copy of itself. */
+    .solo { position: relative; width: 100%; height: 100%; overflow: hidden; }
+    .solo .backdrop { position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; filter: blur(28px) brightness(0.55); transform: scale(1.15); }
+    .solo .contained { position: relative; width: 100%; height: 100%;
+      object-fit: contain; }
     .kenburns { animation: kb 14s ease-in-out infinite alternate; }
     .fallback { width: 100%; height: 100%;
       background: linear-gradient(120deg,#0f1115,#1b2130,#243657,#1b2130);
