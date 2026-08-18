@@ -84,3 +84,43 @@ def load_local_quote() -> Optional[Dict[str, str]]:
     if not data:
         return None
     return normalise_local(random.choice(data))
+
+
+# Quotable (api.quotable.io) is deliberately ABSENT: its TLS certificate has
+# expired, so it works only over plain HTTP, which usually signals an
+# unmaintained service. See the spec, section 2.
+SOURCES = {
+    "zenquotes": ("https://zenquotes.io/api/random", normalise_zenquotes),
+    "affirmations": ("https://www.affirmations.dev", normalise_affirmation),
+}
+
+
+def _http_get(url):
+    """Isolated so tests can replace it without patching requests itself.
+
+    requests is imported lazily: it is present in the Pi's HA container but is not
+    guaranteed in the local test environment, and the unit tests must not need it.
+    """
+    import requests
+
+    return requests.get(url, timeout=TIMEOUT_SECONDS)
+
+
+def fetch_api(name: str) -> Optional[Dict[str, str]]:
+    """Fetch and normalise one API. Returns None on ANY failure.
+
+    Deliberately broad: every failure mode here has the same correct response —
+    fall back to a local quote. Distinguishing a timeout from a 503 would add no
+    value on a wall panel.
+    """
+    entry = SOURCES.get(name)
+    if entry is None:
+        return None
+    url, normalise = entry
+    try:
+        response = _http_get(url)
+        if getattr(response, "status_code", None) != 200:
+            return None
+        return normalise(response.json())
+    except Exception:
+        return None

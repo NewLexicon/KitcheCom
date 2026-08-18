@@ -95,3 +95,52 @@ def test_load_local_quote_survives_a_corrupt_file(tmp_path, monkeypatch):
     bad.write_text("{not json", encoding="utf-8")
     monkeypatch.setattr("pick_quote.DATASET", str(bad))
     assert load_local_quote() is None
+
+
+import pick_quote
+
+
+class _FakeResponse:
+    def __init__(self, status_code=200, payload=None, raises=None):
+        self.status_code = status_code
+        self._payload = payload
+        self._raises = raises
+
+    def json(self):
+        if self._raises:
+            raise self._raises
+        return self._payload
+
+
+def test_fetch_returns_a_normalised_quote_on_success(monkeypatch):
+    monkeypatch.setattr(
+        pick_quote, "_http_get",
+        lambda url: _FakeResponse(payload=[{"q": "Fetched.", "a": "Someone"}]),
+    )
+    assert pick_quote.fetch_api("zenquotes") == {"text": "Fetched.", "author": "Someone"}
+
+
+def test_fetch_returns_none_on_a_non_200(monkeypatch):
+    monkeypatch.setattr(pick_quote, "_http_get", lambda url: _FakeResponse(status_code=503))
+    assert pick_quote.fetch_api("zenquotes") is None
+
+
+def test_fetch_returns_none_on_malformed_json(monkeypatch):
+    monkeypatch.setattr(
+        pick_quote, "_http_get",
+        lambda url: _FakeResponse(raises=ValueError("no json")),
+    )
+    assert pick_quote.fetch_api("zenquotes") is None
+
+
+def test_fetch_returns_none_when_the_request_itself_raises(monkeypatch):
+    """Covers DNS failure, timeout, and connection refused. The Pi logs
+    intermittent DNS errors, so this path is routine, not exceptional."""
+    def boom(url):
+        raise IOError("dns failure")
+    monkeypatch.setattr(pick_quote, "_http_get", boom)
+    assert pick_quote.fetch_api("zenquotes") is None
+
+
+def test_fetch_rejects_an_unknown_source_name():
+    assert pick_quote.fetch_api("not-a-real-source") is None
