@@ -1,0 +1,34 @@
+# Daily quotes — spec: docs/superpowers/specs/2026-08-18-daily-quotes-design.md
+#
+# pick_quote.py chooses between the local 5,421-quote dataset (~65%) and
+# ZenQuotes (~35%), applies a whole-word content blocklist, and prints
+# {"text","author"} on one line. Any API failure falls back to the local file, so
+# this sensor has no visible failure mode on the wall panel — which matters
+# because the Pi logs intermittent DNS errors as a matter of course.
+#
+# command_line rather than a rest sensor: a rest sensor goes `unavailable` on
+# failure and would leak that state onto the panel. The script handles fallback
+# internally, so this sensor always has a value.
+#
+# VERIFIED against this HA version (2026.6.3): command_line's sensor schema accepts
+# EXACTLY command, command_timeout, json_attributes, json_attributes_path, name,
+# scan_interval, value_template. `unique_id` is NOT supported and fails check_config.
+command_line:
+  - sensor:
+      name: Daily Quote
+      command: "python3 /config/quotes/pick_quote.py"
+      # LOAD-BEARING, not cosmetic: command_line's DEFAULT scan_interval is 60
+      # SECONDS. Omitting this would run the script every minute — ~1,440
+      # ZenQuotes calls a day, past their free tier, for a quote nobody asked to
+      # change that often.
+      scan_interval: 3600
+      # The script's own network timeout is 5s; this is the outer bound on the
+      # whole subprocess, generous enough to cover a slow interpreter start.
+      command_timeout: 15
+      # State is capped at 255 chars by HA and the longest dataset quote is 208,
+      # so it fits — but the card reads the ATTRIBUTES, which is also where the
+      # author lives.
+      value_template: "{{ value_json.text }}"
+      json_attributes:
+        - text
+        - author

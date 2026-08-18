@@ -55,6 +55,31 @@ views:
               action: navigate
               navigation_path: /cod-chores
             show_state: false
+          # Perspective (spec: 2026-08-18-daily-quotes-design.md). A titled, movable
+          # card by design — it is meant to be dragged between columns and
+          # dashboards during a later layout pass, so it stays self-contained.
+          #
+          # Titled "Perspective", not "Daily Quote": the quote rotates hourly.
+          #
+          # Reads ATTRIBUTES, not the state: HA truncates state at 255 chars, and
+          # the author only exists as an attribute.
+          #
+          # The {% if a %} guard is load-bearing — 349 of the 5,421 local quotes
+          # have no author, and without it the card renders a dangling em dash.
+          # Pre-verified by rendering this template inside the HA container against
+          # all four real cases (2026-08-18).
+          - type: markdown
+            title: Perspective
+            content: >-
+              {% set q = state_attr('sensor.daily_quote', 'text') %}
+              {% set a = state_attr('sensor.daily_quote', 'author') %}
+              {% if q %}
+              *"{{ q }}"*{% if a %}
+
+              — **{{ a }}**{% endif %}
+              {% else %}
+              *Take a deep breath and start the day fresh.*
+              {% endif %}
 # Screensaver: the custom card (custom:screensaver-card) is now instantiated in
 # the hero grid section above. It renders nothing unless idle, driven by the
 # kitchen_idle automation (packages/screensaver.yaml, Task 4). Its JS resource
