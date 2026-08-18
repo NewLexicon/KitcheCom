@@ -1,0 +1,93 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Internet Rollback Card</title>
+<style>
+  @page { size: letter; margin: 0.5in; }
+  * { box-sizing: border-box; }
+  body { font: 11pt/1.45 -apple-system, "Helvetica Neue", Arial, sans-serif;
+         color: #000; background: #fff; max-width: 7.5in; margin: 0 auto; }
+  h1 { font-size: 19pt; margin: 0 0 2pt; letter-spacing: -0.3pt; }
+  .sub { font-size: 9.5pt; color: #444; margin: 0 0 12pt; }
+  h2 { font-size: 12.5pt; margin: 14pt 0 5pt; padding-bottom: 2pt;
+       border-bottom: 1.5pt solid #000; }
+  ol, ul { margin: 5pt 0 5pt 18pt; padding: 0; }
+  li { margin: 3pt 0; }
+  code, .ip { font-family: "SF Mono", Menlo, Consolas, monospace; font-weight: 700; }
+  .ip { font-size: 15pt; background: #000; color: #fff; padding: 3pt 8pt;
+        display: inline-block; letter-spacing: 0.5pt; }
+  .box { border: 1.5pt solid #000; padding: 8pt 10pt; margin: 8pt 0; }
+  .warn { border: 2.5pt solid #000; padding: 9pt 11pt; margin: 10pt 0; background: #f0f0f0; }
+  .try { border: 1.5pt dashed #000; padding: 8pt 10pt; margin: 10pt 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; margin-top: 4pt; }
+  td { border: 0.75pt solid #999; padding: 3pt 6pt; }
+  td:first-child { font-weight: 700; width: 33%; }
+  .foot { margin-top: 14pt; padding-top: 5pt; border-top: 0.75pt solid #999;
+          font-size: 8.5pt; color: #555; }
+  pre { background: #f0f0f0; border-left: 2.5pt solid #000; padding: 5pt 8pt;
+        font-family: "SF Mono", Menlo, monospace; font-size: 9.5pt; margin: 5pt 0; }
+  .big { font-size: 12pt; font-weight: 700; }
+</style>
+
+<h1>🛑 INTERNET NOT WORKING? START HERE</h1>
+<p class="sub">Post next to the gateway. Don't rely on a phone to find this — if this is the
+problem, looking things up is what stopped working.</p>
+
+<h2>Does this apply?</h2>
+<ul>
+  <li>Wi-Fi says <strong>connected, full bars</strong> — but nothing loads</li>
+  <li>Sites hang, then “can’t find the server” / “no internet connection”</li>
+  <li>Some apps keep working a few minutes, then stop</li>
+  <li><strong>Everyone in the house is affected at once</strong></li>
+</ul>
+<div class="box">If Wi-Fi itself is down, or the gateway lights are off or red, this is
+<strong>not</strong> it — that’s an ordinary outage. Call the provider.</div>
+
+<div class="try">
+<p class="big">⚡ TRY THIS FIRST — 30 seconds</p>
+<p style="margin:4pt 0">A small Raspberry Pi (clear/black box, network cable to the router)
+handles name lookups for the house.</p>
+<ol style="margin-bottom:0">
+  <li><strong>Is its power light on?</strong> If not — unplug power, wait 10 seconds, plug back in.</li>
+  <li>Wait <strong>90 seconds</strong> for it to start.</li>
+  <li>Try a website again. <strong>If this fixes it, you’re done.</strong></li>
+</ol>
+</div>
+
+<h2>THE FIX — under 60 seconds</h2>
+<ol>
+  <li><strong>Open a browser</strong> on any device still on the Wi-Fi and go to:<br>
+      <span class="ip">192.168.1.254</span><br>
+      <span style="font-size:9.5pt">(Password is on the sticker on the gateway, unless changed.)</span></li>
+  <li><strong>Find</strong> the page named <em>Home Network</em>, <em>LAN</em>, <em>DHCP</em>,
+      or <em>IP Allocation</em>.</li>
+  <li><strong>Find the DNS server fields.</strong> They currently show
+      <code>192.168.1.113</code>. Change to <strong>Automatic</strong> /
+      <em>Obtain from provider</em> / <em>Default</em>.
+      <div class="box" style="margin:5pt 0">No automatic option? Enter these instead:<br>
+      Primary <code>1.1.1.1</code> &nbsp;&nbsp; Secondary <code>8.8.8.8</code></div></li>
+  <li><strong>Save.</strong> Then turn each device’s Wi-Fi off and on (or restart it) so it
+      picks up the change. Internet should work within a minute.</li>
+</ol>
+
+<div class="warn">
+<p style="margin:0 0 4pt" class="big">⚠️ This turns OFF all parental controls</p>
+<p style="margin:0">YouTube limits, blocking, and safe search stop for every device.
+<strong>That’s fine</strong> — a working internet with no filtering beats a filtered
+internet that doesn’t work. Tell Garrett; it takes a minute to turn back on.</p>
+</div>
+
+<h2>For whoever fixes it properly</h2>
+<table>
+  <tr><td>The Pi</td><td><code>192.168.1.113</code> — hostname <code>adguard</code></td></tr>
+  <tr><td>Admin page</td><td><code>http://192.168.1.113:3000</code></td></tr>
+  <tr><td>SSH</td><td><code>ssh adguard</code> from Garrett’s laptop</td></tr>
+  <tr><td>Restart it</td><td><code>cd /opt/adguard &amp;&amp; sudo docker compose up -d</code></td></tr>
+  <tr><td>Gateway</td><td>HUMAX at <code>192.168.1.254</code></td></tr>
+  <tr><td>Re-enable filtering</td><td>set gateway DNS back to <code>192.168.1.113</code></td></tr>
+</table>
+<p style="margin:6pt 0 2pt;font-size:9.5pt">Is the Pi the problem? From a laptop terminal:</p>
+<pre>dig @192.168.1.113 example.com   # the Pi — silence/timeout means it's down
+dig @1.1.1.1 example.com         # the internet — this working means it's DNS</pre>
+
+<p class="foot">Fort Knox household DNS · generated 2026-08-17 ·
+repo <code>docs/reference/rollback-card.html</code> · every address on this card verified working when printed</p>
