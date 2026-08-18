@@ -831,6 +831,10 @@ command_line:
       json_attributes:
         - text
         - author
+      # LOAD-BEARING, not cosmetic: command_line's DEFAULT scan_interval is 60
+      # SECONDS (verified in the component source on the Pi). Omitting this would
+      # run the script every minute -- ~1,440 ZenQuotes calls a day, well past
+      # their free-tier limit, for a quote nobody asked to change that often.
       scan_interval: 3600
       command_timeout: 15
 ```
