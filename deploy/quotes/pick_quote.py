@@ -125,25 +125,33 @@ def fetch_api(name: str) -> Optional[Dict[str, str]]:
 # which was dropped after an empirical check found only 17 unique affirmations
 # across 25 consecutive fetches (several repeating 2-3 times) — a shallow pool that
 # was getting 1/3 of the rotation while the much deeper local dataset was underused.
-CHOICES = ["local"] * 65 + ["zenquotes"] * 35
+#
+# Weights are relative, not counts that must sum to anything in particular: adding
+# a third source is appending a name and a weight below, no renormalising the rest.
+SOURCE_NAMES = ["local", "zenquotes"]
+SOURCE_WEIGHTS = [65, 35]
 
 
 def _choose_source() -> str:
-    return random.choice(CHOICES)
+    return random.choices(SOURCE_NAMES, weights=SOURCE_WEIGHTS)[0]
 
 
 # Applied to EVERY source. Deliberately short: this is a wall panel in a family
 # kitchen, not a content-moderation system. Word-boundary matched, because a
 # substring rule would block "goddess" via "god" and far worse false positives.
+# Single words ONLY: the \b(...)\b alternation matches individual tokens, so a
+# multi-word phrase (e.g. "in god we trust") would silently never match.
 BLOCKED_WORDS = [
     "god", "jesus", "christ", "bible", "scripture", "holy", "prayer",
     "devil", "satan", "gita",
 ]
 _BLOCK_RE = re.compile(r"\b(" + "|".join(BLOCKED_WORDS) + r")\b", re.IGNORECASE)
 
-# How many times to re-roll before giving up and using the last resort. Bounded so
-# a pathological blocklist cannot spin forever on a sensor tick.
-MAX_REROLLS = 5
+# How many rounds to try before giving up and using the last resort. Each round
+# attempts at most one API fetch AND at most one local read, so N rounds means at
+# most N network calls and at most 2N quote attempts. Bounded so a pathological
+# blocklist cannot spin forever on a sensor tick.
+MAX_ATTEMPT_ROUNDS = 5
 
 
 def is_blocked(text: str) -> bool:
@@ -156,11 +164,12 @@ def is_blocked(text: str) -> bool:
 def pick() -> Dict[str, str]:
     """Return one quote. Never raises, always returns a usable dict.
 
-    A blocked result re-rolls rather than being returned, bounded by MAX_REROLLS
-    so a pathological blocklist cannot spin forever on a sensor tick.
+    A blocked result re-rolls rather than being returned, bounded by
+    MAX_ATTEMPT_ROUNDS so a pathological blocklist cannot spin forever on a
+    sensor tick.
     """
     try:
-        for _ in range(MAX_REROLLS):
+        for _ in range(MAX_ATTEMPT_ROUNDS):
             source = _choose_source()
             if source != "local":
                 result = fetch_api(source)

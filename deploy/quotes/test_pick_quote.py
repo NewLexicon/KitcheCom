@@ -173,13 +173,13 @@ def test_pick_never_raises_whatever_happens(monkeypatch):
 def test_choose_source_can_return_local(monkeypatch):
     """'local' must be a first-class source, not only a fallback — otherwise the
     5,421-quote dataset would only ever appear when the network was down."""
-    monkeypatch.setattr(random, "choice", lambda seq: "local")
+    monkeypatch.setattr(random, "choices", lambda population, weights: ["local"])
     assert pick_quote._choose_source() == "local"
 
 
 def test_choose_source_only_ever_returns_local_or_zenquotes():
     """Affirmations.dev is gone; nothing else should leak into the weighted pool."""
-    assert set(pick_quote.CHOICES) == {"local", "zenquotes"}
+    assert set(pick_quote.SOURCE_NAMES) == {"local", "zenquotes"}
 
 
 def test_choose_source_favours_local_over_many_draws():
