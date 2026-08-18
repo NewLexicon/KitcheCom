@@ -528,18 +528,40 @@ export class ScreensaverCard extends LitElement {
       orientation: it.kind === "image" ? (it.orientation ?? "unknown") : "landscape",
     }));
     const slot = planSlot(oriented, this._index, this._pairedShown);
+    // TEMP DIAGNOSTIC (2026-08-18): pairing has failed twice for reasons only
+    // visible in the browser. Remove once confirmed working.
+    console.log("[screensaver]", JSON.stringify({
+      idx: this._index,
+      here: oriented[this._index]?.orientation,
+      slot: slot.items.length,
+      fit: slot.fit,
+      counts: oriented.reduce((a, o) => { a[o.orientation] = (a[o.orientation] || 0) + 1; return a; }, {} as Record<string, number>),
+    }));
 
-    // Map planned contentIds back to resolved urls. A partner that failed to
-    // resolve drops out rather than rendering an empty half-frame.
+    // Map planned contentIds back to urls, RESOLVING the partner if needed.
+    // The partner was found by seeking ahead, so _advance() has never resolved
+    // it and its url is still undefined. Dropping it here silently collapsed
+    // every pair back to a single cover-fitted image -- i.e. the exact centre-
+    // crop this feature exists to prevent.
     const urls: string[] = [];
     for (const cid of slot.items) {
       const found = this._items.find((it) => it.contentId === cid);
-      if (found?.url) urls.push(found.url);
+      if (!found) continue;
+      if (!found.url) {
+        await this._resolveItem(found, gen);
+        if (gen !== this._gen) return;
+      }
+      if (found.url) urls.push(found.url);
     }
     if (urls.length === 0) return this._skip();
 
+    // A pair that lost its partner to a resolve failure must fall back to the
+    // uncropped presentation, not inherit the pair's "cover".
+    const solo = urls.length === 1;
     this._currentUrls = urls;
-    this._currentFit = urls.length === 1 ? slot.fit : "cover";
+    this._currentFit = solo
+      ? (oriented[this._index]?.orientation === "portrait" ? "contain-blur" : slot.fit)
+      : "cover";
     this._currentKind = "image";
     this._currentUrl = urls[0];
     // Remember any partner pulled forward out of sequence so the cursor skips it
@@ -550,6 +572,25 @@ export class ScreensaverCard extends LitElement {
     // between the two portraits -- they still get their own turn.
     this._index = slot.nextIndex > 0 ? slot.nextIndex - 1 : this._items.length - 1;
     this._timer = setTimeout(() => this._advance(), this._cfg.photoDuration * 1000);
+  }
+
+  /** Resolve a media item's playable url via HA, caching it on the item.
+   *  Extracted so a PARTNER found by seeking ahead can be resolved too -- the
+   *  main loop only ever resolved the item at the cursor. */
+  private async _resolveItem(item: MediaItem, gen: number): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
+    if (!shouldReResolve(item.resolvedAt, now)) return;
+    try {
+      const res = await this.hass?.callWS?.({
+        type: "media_source/resolve_media",
+        media_content_id: item.contentId,
+      });
+      if (gen !== this._gen) return;
+      item.url = res?.url;
+      item.resolvedAt = now;
+    } catch {
+      // Leave url undefined; the caller drops this item rather than failing.
+    }
   }
 
   /** Decode just enough of an image to learn its aspect ratio, then cache it on

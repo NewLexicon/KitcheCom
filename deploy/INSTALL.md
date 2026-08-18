@@ -69,6 +69,21 @@ native Grocy UI is never shown on the kitchen screen.
    > under `frontend.js.modern`, which is the fastest way to tell them apart:
    > `docker exec <ha> grep frontend.js /config/home-assistant.log | tail`
 
+
+   > **⚠️ Redeploying an EXISTING card: clear the service worker too.** HA registers a service
+   > worker whose CacheStorage sits in front of the HTTP cache and can serve the OLD file
+   > despite a bumped `?v=`, an HA restart, `pkill chromium`, and a cleared `Cache`/`Code Cache`.
+   > Four consecutive screensaver-card deploys were defeated this way on 2026-08-17/18.
+   > ```bash
+   > ssh kitchencom 'pkill chromium; sleep 3
+   > P=/home/garrettdehart/.config/chromium/Default
+   > sudo -u garrettdehart rm -rf "$P/Service Worker" "$P/Cache" "$P/Code Cache"
+   > sudo -u garrettdehart rm -rf /home/garrettdehart/.cache/chromium
+   > sleep 12; pgrep -c chromium'
+   > ```
+   > Keep `$P/Local Storage` — the HA login lives there. Then confirm the change in the BROWSER
+   > console, not just by md5 on the Pi: server-side checks cannot prove a browser-side outcome.
+
 6. **Add the cards** to a dashboard:
    ```yaml
    - type: custom:grocy-mealplan-card

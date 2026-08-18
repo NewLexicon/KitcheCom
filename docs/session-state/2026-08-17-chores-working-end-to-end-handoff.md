@@ -226,6 +226,37 @@ That's a distinct chore state, not a failed claim. Only `Feed Cats` was claimed 
 Kiosk mode bypasses the assignee check, so ChoreOps has no identity to record. The system knows
 *a* claim happened, not *who* tapped. Parent approval is the control. Trade-off accepted knowingly.
 
+### 🔴 A card deploy can look PERFECT server-side and never reach the panel
+
+**Clear the SERVICE WORKER, not just the HTTP cache.** HA registers a service worker whose
+CacheStorage sits *in front of* the HTTP cache, so it can serve stale card JS despite **all** of:
+a `?v=N` bump in `lovelace_resources`, an HA restart, `pkill chromium`, and deleting
+`Cache`/`Code Cache`. On 2026-08-17/18 four consecutive screensaver-card deploys verified clean
+server-side — matching md5 on disk AND on the served URL, bumped `?v=`, HA and kiosk restarted —
+while the panel kept running old behaviour. `Service Worker/` had never once been cleared.
+
+```bash
+ssh kitchencom 'pkill chromium; sleep 3
+P=/home/garrettdehart/.config/chromium/Default
+sudo -u garrettdehart rm -rf "$P/Service Worker"        # <- the one always missed
+sudo -u garrettdehart rm -rf "$P/Cache" "$P/Code Cache"
+sudo -u garrettdehart rm -rf /home/garrettdehart/.cache/chromium
+sleep 12; pgrep -c chromium'
+```
+**Keep `$P/Local Storage`** — the HA login lives there; deleting it forces a panel re-login.
+
+**Status is honestly "unconfirmed", not "fixed".** The service worker was definitively never
+cleared, so it is a real gap. Whether it *caused* the inert deploys was never verified, because
+the session ended without reading the browser console. Rule it out first; do not assume it.
+
+**The rule that follows: server-side verification cannot prove a browser-side outcome.** Four
+fixes were declared done on md5 matches plus 97 passing unit tests. The tests fed the pure
+planner pre-classified fixtures, so they covered the policy and never the wiring that feeds it —
+a broken integration stayed green throughout. **Get the browser console before shipping another
+card fix.** Cheapest route: open `http://192.168.1.234:8123/kitchen-snapshot` on a LAPTOP (not the
+Pi), DevTools → **Console** tab (not Network), filter on the card's log prefix. There is no
+remote-debugging port on the kiosk.
+
 ### Standing traps (unchanged, still true)
 
 - **A deployed file is not a running file.** The kiosk caches hard: `ssh kitchencom 'pkill chromium'`

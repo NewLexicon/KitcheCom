@@ -23,6 +23,11 @@ views:
             # confusing nested "media/media" on 2026-08-17.
             media_path: photos
             photo_duration: 10
+            # 2026-08-18: without shuffle the order is strictly alphabetical, and
+            # the first 41 photos are all landscape -- so the first portrait pair
+            # did not appear until ~6m50s in, and every kiosk restart reset the
+            # cursor to 0. Shuffling distributes the 34 portraits throughout.
+            shuffle: true
             # idle_entity defaults to input_boolean.kitchen_idle
       # Groceries
       - type: grid

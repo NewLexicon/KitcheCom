@@ -396,6 +396,29 @@ A laptop showing the working dashboard is a far better Tuesday than nothing.
 
 ## Traps — do not rediscover
 
+### 🔴 Redeploying a custom card: clear the SERVICE WORKER
+
+A card deploy can verify perfectly server-side and still not reach the panel. HA registers a
+service worker whose CacheStorage sits in front of the HTTP cache, so it can serve stale JS
+despite a `?v=N` bump, an HA restart, `pkill chromium`, and clearing `Cache`/`Code Cache`.
+Observed 2026-08-17/18: four screensaver-card deploys, matching md5 on disk and on the served
+URL each time, panel unchanged. `Service Worker/` had never been cleared.
+
+```bash
+ssh kitchencom 'pkill chromium; sleep 3
+P=/home/garrettdehart/.config/chromium/Default
+sudo -u garrettdehart rm -rf "$P/Service Worker"        # <- the one always missed
+sudo -u garrettdehart rm -rf "$P/Cache" "$P/Code Cache"
+sudo -u garrettdehart rm -rf /home/garrettdehart/.cache/chromium
+sleep 12; pgrep -c chromium'
+```
+Keep `$P/Local Storage` — the HA login lives there.
+
+**And get the browser console before shipping another card fix.** Server-side checks cannot
+prove a browser-side outcome. Laptop → `http://192.168.1.234:8123/kitchen-snapshot` → DevTools
+→ **Console** tab. There is no remote-debugging port on the kiosk.
+
+
 1. **`.storage/core.restore_state` is STALE** (~5 min behind). Never diagnose from it.
 2. **A deployed file is not a running file.** Chromium ran an 18-hour-old card after redeploy.
 3. **HA logs the browser's real error** under `frontend.js.modern`:
