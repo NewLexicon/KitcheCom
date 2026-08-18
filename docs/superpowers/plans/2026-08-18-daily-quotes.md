@@ -853,6 +853,19 @@ ssh kitchencom 'sudo cp /tmp/pick_quote.py /tmp/quotes.json /home/garrettdehart/
 > Also confirmed: the container runs scripts from a `/config` subdirectory, and `python3` is on
 > PATH at `/usr/local/bin/python3`.
 
+> **Already verified on the Pi 2026-08-18** — all four checks passed against the real container
+> (Python **3.14.5**, vs 3.9.6 locally, so a local pass alone proves nothing):
+> | Scenario | Result |
+> |---|---|
+> | Normal run ×4 | valid JSON, real quotes with authors |
+> | No network (proxy to a dead port) | falls back to the local dataset |
+> | No network AND no dataset | prints `LAST_RESORT`, does not crash |
+> | 3.9-compatible syntax on 3.14.5 | runs clean |
+>
+> Gotcha when re-testing: each `docker exec` is a SEPARATE shell, so an `mv` in one call does not
+> persist into the next. Chain them with `&&` inside a single `sh -c` or the test silently proves
+> nothing.
+
 - [ ] **Step 3: Verify the script runs INSIDE the container**
 
 The container is a different Python (3.14.5) from the laptop (3.9.6), so a local pass does not
