@@ -21,25 +21,29 @@ Runbook §1–§5 are **done**. What remains is optional cleanup and the next fe
 
 **Runbook:** `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-08-17-monday-pi-runbook.md`
 
-**Also working now:** the **screensaver** (photos cycling on the panel) and the Kitchen dashboard
-renamed from "Kitchen (snapshot)". Both landed after the section below was first written — see §4a.
+**Also working now:** the **screensaver** (photos cycling, and portrait photos **pairing side by
+side** rather than centre-cropping), the Kitchen dashboard renamed from "Kitchen (snapshot)", and
+a **Samba share** for drag-and-drop photo uploads. See §4a and §4b.
 
 ---
 
 ## 1. Where is HEAD?
 
-- **HEAD:** `d6823d8` — `docs: cold-open — screensaver fixed, dashboard renamed, layout carry-forwards`,
-  plus the fix-up commit that corrected this line's SHA and count.
+- **HEAD (tip):** deliberately NOT frozen here — run `git log --oneline -1`. A close-out commit
+  cannot stamp its own SHA, and stamping the tip is itself a commit, so the loop never converges.
+- **Stable prefix of this arc** (immutable, verifiable): `ee43ab3` (cold-open fix-up) → `b3cecbc`
+  (photos folder + Samba) → `0ac1eac` (portrait pairing) → `5a70e2d` (seek partner) → `a262e1d`
+  (probe ahead) → `ec32213` (service-worker docs) → `c46c746` (resolve-before-probe — **pairing
+  confirmed working on the panel**).
 - **Branch:** `feat/choreops-chores`, in the **primary checkout** `/Users/jdehart1/___Code_DEV/KitchenCOM`
-- **Ahead of `origin/main`:** **47** (46 at `d6823d8`, +1 for the fix-up)
-- **Unpushed: 0**
-- This session's arc: `4a18cdf` (runbook §4) → `c0aec3d` (end-to-end + cold-open) → `0470b70`
-  (fix-up) → `4b1b7a8` (dashboard rename) → `2931ba8` (screensaver fix) → `d6823d8` (this) → fix-up.
+- **Ahead of `origin/main`:** run `git rev-list --count origin/main..HEAD` — it was 53 at
+  `c46c746`. A number that counts the commits it lives inside cannot be frozen correctly.
+- **Unpushed:** run `git log --oneline origin/feat/choreops-chores..HEAD | wc -l`.
 
 ```bash
 cd /Users/jdehart1/___Code_DEV/KitchenCOM
 git branch --show-current                      # feat/choreops-chores
-git rev-list --count origin/main..HEAD         # 47
+git rev-list --count origin/main..HEAD         # authoritative; 53 at c46c746
 git log --oneline origin/feat/choreops-chores..HEAD | wc -l   # 0
 ```
 
@@ -176,6 +180,71 @@ for u in d[\"data\"][\"users\"]:
 
 ---
 
+## 4b. Screensaver portrait pairing — WORKING (2026-08-18)
+
+Portrait photos now pair two-up filling the 1920x1080 frame instead of being centre-cropped. A
+portrait with no partner within `PARTNER_SEEK_LIMIT` (40) renders contained over a blurred copy of
+itself. Landscape and video are unchanged: solo, full frame.
+
+**It took five fixes, and the reason is worth keeping.** Each was a real defect, but 97 unit tests
+stayed green throughout because they feed the pure planner (`planSlot`) pre-classified fixtures —
+they cover the POLICY and never the wiring that feeds it. The three wiring bugs, in order found:
+
+1. Pairing required two portraits to be ADJACENT in the list (`0ac1eac` → fixed `5a70e2d`).
+2. `_ensureOrientation` only probed item+1, so seek candidates stayed `"unknown"` (`a262e1d`).
+3. **The last and decisive one** (`c46c746`): the probe needs a resolved url, but only the item at
+   the cursor is passed through `resolve_media`. Seek candidates had `url === undefined`, so the
+   probe stamped `"unknown"` and returned — and `planSlot` refuses to pair with unknown. The stamp
+   was cached, so those photos stayed unpairable all session.
+
+**What located it:** Garrett reported the blurred SOLO portrait rendering correctly. contain-blur
+only renders after a successful decode AND a `"portrait"` classification, which proved detection
+and both render paths already worked and narrowed the fault to partner lookup alone. **One
+observation from the panel beat four rounds of server-side verification.**
+
+### Photo quality — the panel is 1920x1080, the photos are the limit
+
+`wlr-randr`: ViewSonic TD1655, **1920x1080 @ 60Hz, scale 1.0**, no upscaling. Pi headroom is not a
+constraint (5.9 GB RAM free, 101 GB disk).
+
+**32 of 122 photos are 960x720 or smaller** — Facebook downloads (filenames like
+`35265966_10155769...`), compressed before they ever reached the Pi. Upscaled 2x to fill the frame
+they look soft. Nothing on the Pi or panel causes this.
+
+| Use | Minimum | Ideal |
+|---|---|---|
+| Landscape (full frame) | 1920x1080 | **2560x1440** |
+| Portrait paired (half width) | 960x1080 | **1440x1620** |
+
+Do NOT downscale before uploading — phone photos are already plenty and the browser downscales
+well but cannot upscale detail. Past ~2560px wide there is no visible gain, only decode cost.
+
+### 🔴 macOS writes `._` junk to the SMB share and it sorts to the FRONT
+
+HA sorts media by title (`local_source.py:270`), and `._` sorts before letters and digits — so
+AppleDouble sidecars become **the first things the slideshow tries to display**. 39 of them were
+present on 2026-08-18 and the first real portrait sat at index 41; after deleting them it was at
+index 2.
+
+```bash
+ssh kitchencom 'D=/home/garrettdehart/homeassistant/media/photos
+sudo find "$D" -name "._*" -delete; sudo find "$D" -name ".DS_Store" -delete
+ls -A "$D" | wc -l'
+```
+Prevention is in two places: `veto files` + `delete veto files` in the `[photos]` share, and
+`defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true` on the Mac (set
+2026-08-18; **requires unmount/remount to take effect**).
+
+### Adding photos
+
+- **Samba (set up 2026-08-18):** Finder ⌘K → `smb://192.168.1.234/photos`, user `garrettdehart`,
+  password set via `smbpasswd` (interactive — needs a REAL terminal; the `!` prefix has no TTY and
+  fails with "Unable to get new password").
+- **HA media browser:** Media → My media → photos. No setup, works from a phone.
+- Photos must land in `/config/media/photos/` — see §4a for why the path is what it is.
+
+---
+
 ## 5. Traps and corrections
 
 ### 🟡 The dashboard file uses an UNDERSCORE
@@ -278,11 +347,10 @@ remote-debugging port on the kiosk.
   `deploy/backups/local_todo.chores.ics.bak-20260817` and on the Pi at
   `.storage/local_todo.chores.ics.bak-predelete-20260817-1723`. Contents are June wiring-test
   items only. Purely cosmetic.
-- 🔴 **`custom_cards/screensaver-card/dist/screensaver-card.js` in the repo is STALE AND BROKEN.**
-  It is ~14 KB dated 2026-06-15 and contains a bare `lit` import; the Pi runs a good bundled
-  ~32 KB build dated 2026-07-14. **Deploying the repo's `dist/` would kill the working
-  screensaver.** Rebuild (bundled) or delete it so it cannot be used by mistake. See
-  `cards-must-be-bundled` in the memory dir.
+- ✅ ~~stale/broken `dist/screensaver-card.js`~~ **RESOLVED 2026-08-18.** It was the pre-bundling
+  build with a bare `lit` import, and `test/dist-browser-loadable.test.ts` was FAILING on it.
+  Rebuilt with vite; dist is self-contained and the guard test passes. **`dist/` is gitignored in
+  the sibling grocy card but committed here — rebuild before deploying rather than trusting it.**
 - **ChoreOps dashboard layout is improved but not finished.** The panel is **1920x1080 landscape**;
   `user-gamification-premier-v1` is authored at `max_columns: 2` for a portrait tablet, hence the
   side whitespace and vertical overflow. Improved by switching `row_variant` `standard` → `kids`
@@ -304,6 +372,14 @@ remote-debugging port on the kiosk.
 - **Per-kid summary cards on the Kitchen dashboard** — Garrett asked for a simplified at-a-glance
   view per kid on the Kitchen panel. **Not started.** `kitchen.yaml` is version-controlled and
   never overwritten by the generator, so it is the right home for it.
+- **Shuffle is OFF** on the screensaver, so playback is strictly alphabetical and every kiosk
+  restart resets to index 0 — you see the same opening sequence each session. With the `._` junk
+  cleaned the first portrait is at index 2, so this is no longer a problem, but turning shuffle on
+  (`shuffle: true` on the card in `kitchen.yaml`) is a one-line change if the order gets stale.
+- **32 photos are low-resolution Facebook downloads** (960x720 or smaller) and look soft on the
+  1080p panel. Replacing them with originals is the single biggest available quality win. See §4b.
+- **Daily quotes — NOT STARTED.** Garrett raised it 2026-08-18 as the next feature. No design, no
+  spec, no decision on source (static list vs API), placement, or cadence yet.
 - **§8 Google Calendar OAuth on the Pi** — not started. Dev-rig OAuth does not carry over.
 - **`Wystan` has `points=None`** while Rowan has a number. Benign — the field initializes on first
   award (proven by Rowan going `None → 4.0`). It will resolve the first time Wystan is approved.
