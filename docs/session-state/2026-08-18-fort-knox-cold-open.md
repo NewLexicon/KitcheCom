@@ -1,52 +1,8 @@
 # Fort Knox — cold-open (branch `fort-knox`)
 
-> # 🟢 LATEST — 2026-08-17 evening: the AdGuard Pi IS BUILT AND CONFIGURED
->
-> **Read `docs/session-state/2026-08-17-adguard-pi-build-handoff.md` first.** It supersedes
-> §5 and §7 of this document, both of which describe blockers that are now resolved.
->
-> **The old Pi is a working AdGuard box.** `Raspberry Pi 3 Model B Rev 1.2` · Raspberry Pi
-> OS Lite 32-bit (trixie), fully updated, kernel `6.18.39` · Docker 29.7.2 · **AdGuard
-> `v0.107.78` running and resolving DNS** · `ssh adguard` (passwordless, ed25519) ·
-> admin UI `http://192.168.1.113:3000` · API creds in `~/.adguard-netrc` on the Pi.
->
-> **The YouTube schedule is applied to 6 kid devices** — Sun–Thu 12:00–20:00, Fri–Sat
-> 12:00–23:59, `America/New_York`. **HARD rule, every day of the year, no exceptions**
-> (an override helper was written and deleted at Garrett's direction — do not re-introduce).
->
-> ⚠️ **NOTHING IS BLOCKED YET.** Those devices still use the gateway for DNS. The schedule
-> activates only at the Phase 3 cutover, which is still gated (below).
->
-> **Blockers resolved since this doc was written:** home-network ✅ · microSD reader ✅ ·
-> board identified ✅ · flashing ✅. **§5's blocker table is stale — ignore it.**
->
-> **Phase 3 gates — updated 2026-08-17 close:**
-> | Gate | Status |
-> |---|---|
-> | Printed rollback card (design §12) | ✅ **written + verified** — `docs/reference/rollback-card.html`, print and post it |
-> | Config backup for the card swap | ✅ `deploy/adguard/backup/` with restore steps |
-> | PSU | ✅ **Apple 12W iPad brick (5.2V 2.4A)** replaces the under-spec 5V 2.0A Samsung |
-> | **Fresh A2 microSD** | ❌ **still open** — this Pi runs the ~6-year-old drawer-aged SanDisk |
-> | **Filtered secondary resolver** | ❌ deferred by design (expensive gate; one filtered resolver is normal for a home) |
->
-> Garrett chose "close the cheap gates first" over cutting over immediately.
->
-> **Open question that may reshape the plan:** the gateway may support per-device
-> scheduling via the **AT&T Smart Home Manager app** (not the local web UI, which is what
-> was probed). If so, design line 33 is wrong. See build-handoff §4e. Blocked on an AT&T
-> password as of this session.
->
-> **HEAD at session close:** `439e06b` · branch **32 ahead** of `origin/main` · 0 unpushed
-> · working tree clean. Verify with:
-> `git log --oneline -1 && git rev-list --count origin/main..HEAD && git rev-list --count origin/fort-knox..HEAD`
-
-
-**Written:** 2026-08-17 evening, for the next session.
-**Worktree:** `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox`
-
-Read this first if you are on `fort-knox`. Everything here is verified, with the command
-that verifies it. The project-wide cold-open (`docs/session-state/README.md`) is written
-from **main's** perspective and does not describe this branch.
+**Rewritten 2026-08-17, late evening.** Every claim below has the command that verifies it.
+The project-wide cold-open (`docs/session-state/README.md`) is written from **main's**
+perspective and does not describe this branch.
 
 ⚠️ **Multiple sessions share this checkout.** Run `git branch --show-current` before every
 commit. A concurrent session parks other branches in the primary checkout
@@ -56,301 +12,258 @@ commit. A concurrent session parks other branches in the primary checkout
 
 ## 1. Where is HEAD
 
-- **Last substantive commit:** `87f1238` — `adguard-rule-schedule.py`. Anything after it
-  is cold-open bookkeeping (this doc + its fix-up). Cited this way deliberately: a commit
-  cannot name its own SHA, and chasing the exact count just spawns another fix-up.
-- **Whole branch:** 15+ commits ahead of `origin/main`, all pushed. 8 files, ~2400 lines.
-- **Content:** design + runbooks + two tested Python helpers. **No app code, no test
-  suite, no build.** The test tables in the main cold-open do not apply here.
+- **Last substantive commit:** `439e06b` — Phase 3 gate table. Anything after it is
+  cold-open bookkeeping. Cited this way deliberately: a commit cannot name its own SHA.
+- **Branch:** ~33 commits ahead of `origin/main`, all pushed. 17 files, ~4,150 lines.
+- **Content:** design + runbooks + reference helpers + `deploy/adguard/`.
+  **No app code, no test suite, no build.** Test tables in the main cold-open do not apply.
 
 ```bash
 git log --oneline -1 && git rev-list --count origin/main..HEAD && git rev-list --count origin/fort-knox..HEAD
 ```
-Expect the last number to be **0** — nothing stranded locally.
+Expect the last number to be **0**.
 
-## 2. What this branch is
+## 2. 🟢 The state in one paragraph
 
-Household parental controls ("Fort Knox"), three layers:
+**The AdGuard Pi is built, configured, and running.** Phases 0–2 are done. A hard YouTube
+schedule and a cron-driven Roku Live TV schedule are live on the box and verified working.
+**But no household device uses the Pi for DNS yet**, so nothing is actually blocked. The
+one remaining cheap gate before the Phase 3 cutover is a **fresh A2 microSD card**.
 
-- **Layer 1 — DNS.** AdGuard Home on the old Pi (primary) + Pi 5 (secondary). Reaches
-  every device. Scheduling, SafeSearch, service blocking, query logs.
-- **Layer 2 — device/OS.** Windows Standard accounts + AppLocker, iPad Screen Time,
-  PS5 vendor controls, Roku PIN. **This is the layer that actually enforces.**
-- **Layer 3 — Home Assistant.** Visibility and overrides on the kitchen panel. Reads and
-  drives Layer 1; never authoritative.
+## 3. The box
 
-**Phases** (design §13): 0 pre-flight · 1 device/OS · 2 AdGuard on old Pi ·
-3 household DNS cutover · 4 HA panel · 5 ChoreOps hook (deferred).
-
-## 3. Artifacts, in reading order
-
-All paths absolute; all verified to exist.
-
-1. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/superpowers/specs/2026-08-16-parental-controls-design.md`
-   — the design. §13 phase table, §5 honest enforcement posture.
-   **Appendix A holds 11 corrections contrary to popular online guidance — do not "fix"
-   them back toward the common claims.**
-2. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/session-state/2026-08-17-phase1-device-controls-runbook.md`
-   — **Phase 1. Ungated, needs no hardware, delivers the original ask.**
-3. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/session-state/2026-08-17-adguard-pi-flashing-runbook.md`
-   — Phase 2. Tuesday gate lifted; blocked only on hardware/location (§5).
-4. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/session-state/2026-08-17-adguard-api-lab-findings.md`
-   — **every software claim tested against a live v0.107.78.** Read before touching
-   AdGuard.
-5. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/reference/adguard-rmw.py`
-   — the only safe way to change an AdGuard **client**.
-6. `/Users/jdehart1/___Code_DEV/KitchenCOM-fortknox/docs/reference/adguard-rule-schedule.py`
-   — cron add/remove for **custom rules** (Roku Live TV).
-
-## 4. 🔴 THE FOUR TRAPS — all the same shape
-
-**This project's signature failure mode: stored successfully, reported success, did
-nothing.** It has now fired four times on Fort Knox alone. Every one was caught only by
-asserting on the *effect* (actual DNS resolution, actual state re-read) rather than on the
-API's response. **Checking the write would have passed in all four cases.**
-
-### 4.1 `/clients/update` destroys protections silently
-
-A **partial** write to `/control/clients/update` returns **HTTP 200** and zeroes every
-field you omitted. Verified — changing only `blocked_services` also turned off:
-
-```
-filtering_enabled  safebrowsing_enabled  parental_enabled  safe_search   → all false
-```
-
-A bedtime cron written the obvious way disables a kid's filtering *while appearing to
-work*. The only symptom is that the internet quietly starts working.
-
-**→ Never hand-write a client update. Use `docs/reference/adguard-rmw.py`.**
-
-### 4.2 Inline comments silently break rules
-
-AdGuard does **not** strip trailing comments. This stores fine, reports success, and never
-blocks:
-
-```
-||therokuchannel.roku.com^$client='kid-roku'   ! my note      → 13.32.179.80  NOT blocked
-||therokuchannel.roku.com^$client='kid-roku'                  → ::            blocked
-```
-
-**→ Comments go on their own line, above the rule. Applies to the UI too** — nothing warns
-you. This bit `adguard-rule-schedule.py` during development; it now exits 1 if it finds a
-marker appended inline.
-
-### 4.3 The `time=` modifier is accepted and ignored
-
-Custom rules cannot be scheduled. `||site.com^$client='kid',time=21:00-07:00` is stored
-verbatim, returns success, and **never fires** — verified with a control rule proving the
-syntax is otherwise valid, including a window that contained "now."
-
-**→ Custom rules are all-day or nothing from AdGuard's own scheduler.** To schedule one,
-cron must add/remove it: `docs/reference/adguard-rule-schedule.py`.
-
-### 4.4 SafeSearch reads as on while being off
-
-`enabled` is a **separate master switch** from the per-engine flags. Stock instance:
-
-```json
-{"enabled": false, "google": true, "bing": true, "youtube": true, ...}
-```
-
-Every engine `true`, SafeSearch **off**. Setting engines without `enabled` does nothing.
-
-**→ Verify explicitly:** `GET /control/safesearch/status` must show `"enabled": true`.
-
-### Related, same family, already in project memory
-
-- **ChoreOps penalties must be stored negative** — the form's negation is bypassed.
-- **A Grocy test asserted `amount` stayed `1.5`** — a green test locking in the bug.
-- **`adguard-rmw.py` itself** reported "protections intact" on an already-broken client.
-  A delta check is not a safety check; it now asserts absolute state.
-
-## 5. Where Phase 2 actually stands
-
-**The Tuesday gate was lifted by Garrett on 2026-08-17** — Tuesday work is proceeding in a
-separate session. Do not re-impose it. Two physical blockers remain, both checked
-2026-08-17:
-
-| Blocker | Evidence | Fix |
-|---|---|---|
-| **No microSD reader** | `diskutil list external physical` → empty | buy/find one |
-| **Not on home network** | `10.250.4.64`, gateway `10.48.73.1` (work) | flash at home |
-
-**Flashing at work bakes the wrong Wi-Fi SSID into the card** (runbook §1 writes creds
-before first boot). Imager is installed; Docker works.
-
-**Software risk is retired.** Runbook §5–§6 are transcription now, not discovery:
-
-- v0.107.78 confirmed newest stable (v0.108.x still beta); pushed 2026-07-13.
-- Image ships **arm64 + armv7 + armv6** → **the unidentified board does not gate the
-  container.** It only decides the 32- vs 64-bit OS choice in §1 step 3.
-- `youtube` service confirmed real: **176 rules**, bundles `googlevideo.com` (so YouTube
-  Music breaks — verified by resolution) and `youtubei.googleapis.com`.
-
-## 6. The household rule, as designed and tested
-
-**Kids' devices scheduled, parents' devices always open. No cron needed for the built-in
-services.**
-
-| Client | `blocked_services` | `blocked_services_schedule` |
-|---|---|---|
-| each kid device | `["youtube","tiktok","instagram","discord",…]` | allow **07:00–21:00** |
-| parent laptop/phone | `[]` | none — nothing to pause |
-
-**136 built-in services exist.** Confirmed present: `tiktok` (33 rules), `instagram` (72),
-`discord` (27), `snapchat`, `twitch`, `reddit`, `facebook` (443), `twitter` — ⚠️ **the X id
-is `twitter`, not `x`.** Prefer a built-in id over a hand-written rule always: maintained
-upstream, **and the only thing the scheduler can pause.**
-
-> 🔴 **The window is an ALLOWANCE window, not a blocking window.** Enter the hours the
-> service should be **available**. Verified: inside → resolves; outside → `0.0.0.0`.
-> Entering `21:00–07:00` to mean "block overnight" inverts the rule.
->
-> 🔴 **Overnight/wrapping ranges are rejected** — `21:00→07:00` gives
-> `HTTP 400 ... start 21h0m0s is greater or equal to end 7h0m0s`. Harmless: the same-day
-> allowance already implies blocked overnight.
-
-**Roku Live TV has no built-in service.** Needs a custom `$client` rule, therefore cron
-(§4.3). Verified working both directions:
+| | |
+|---|---|
+| **Access** | **`ssh adguard`** — passwordless ed25519, alias in `~/.ssh/config` |
+| **IP** | `192.168.1.113` (eth0). ⚠️ also `192.168.1.236` on wlan0 — **one Pi, two IPs** |
+| **Admin UI** | `http://192.168.1.113:3000` |
+| **API creds** | `~/.adguard-netrc` on the Pi (0600) · cron creds `/root/.adguard-env` (0600) |
+| **Board** | Raspberry Pi 3 Model B **Rev 1.2**, `armv7l` |
+| **OS** | Raspberry Pi OS Lite 32-bit (trixie), 0 upgradable, kernel `6.18.39+rpt-rpi-v7` |
+| **Docker** | 29.7.2 + Compose v5.5.0, enabled at boot |
+| **AdGuard** | **`v0.107.78`** pinned, `network_mode: host` |
+| **Power** | Apple 12W iPad brick, 5.2V 2.4A (replaced an under-spec 5V 2.0A Samsung) |
 
 ```bash
-export ADGUARD_URL=http://127.0.0.1:3000 ADGUARD_USER=admin ADGUARD_PASS=...
-adguard-rule-schedule.py block roku-live   # → therokuchannel.roku.com :: 
-adguard-rule-schedule.py allow roku-live   # → resolves
-adguard-rule-schedule.py status            # shows managed vs hand-written
+ssh adguard 'uptime -p; vcgencmd get_throttled; sudo docker ps --format "{{.Image}} {{.Status}}"'
+dig +short @192.168.1.113 example.com     # must return an address
 ```
 
-Idempotent, survives a reboot mid-block, preserves hand-written rules, exits 0/1 for cron
-alerting.
+## 4. What is configured
 
-**Timing behavior** (asked and answered 2026-08-17): rules live on the Pi, not the TV —
-a TV reboot cannot affect them, and config survives an AdGuard/Pi restart. Changes take
-effect in **seconds**, no restart needed. `blocked_response_ttl` is **10s**, so an unblock
-can lag ~10s and a block can lag a minute or two if the device cached the answer.
-**DNS blocking stops things starting, not continuing** — a mid-stream video keeps playing
-until the next app launch.
+**8 clients** — 6 kid devices, 2 parent devices (parents have **no** blocking):
 
-## 7. 🎯 The literal next move
+| Client | IP | Device |
+|---|---|---|
+| `Roku-65-livingrm` | `.216` | 65" Roku TV `65R4CX` |
+| `Roku-55-S425` | `.228` | 55" TCL Roku TV `55S425` |
+| `Roku-55-R625` | `.230` | 55" TCL Roku TV `55R625` |
+| `PS5` | `.82` | PlayStation 5 |
+| `Oculus-VR` | `.238` | Meta/Oculus headset |
+| `iPad-kid-250` | `.250` | kid's iPad |
+| `PARENT-mac-garrett` | `.180` | Garrett's Mac — **exempt** |
+| `PARENT-device-215` | `.215` | Apple device — **exempt** |
 
-> **Updated 2026-08-17 evening, verified on the home LAN.** The two §5 blockers resolved
-> **differently**, so re-check before following the tracks below:
->
-> | §5 blocker | Now | Evidence |
-> |---|---|---|
-> | Not on home network | ✅ **cleared** | `192.168.1.180`, gw `192.168.1.254` |
-> | No microSD reader | ❌ **still blocking** | `diskutil list external` → only a 247.6 GB NTFS disk; `system_profiler SPUSBDataType` shows no reader |
->
-> Also confirmed: **Pi 5 up at `192.168.1.234`** (`ssh kitchencom`, passwordless), **no old
-> Pi on the LAN yet**, **Raspberry Pi Imager installed**. Net: **Track B (Phase 1) is the
-> live track** — but see §8, Phase 1 is now device-by-device because the hardware is
-> scattered. Phase 1 §1 (Family Link) needs no device at all and is the standing first move.
+**The household rule — HARD, every day of the year, no exceptions.** Garrett was explicit.
+An override helper was written and **deleted at his direction — do not re-introduce one.**
+He may move the weeknight cutoff to **19:30** with experience.
 
-**Two tracks. Pick by what hardware is in reach.**
+| Days | Allowed |
+|---|---|
+| **Sun–Thu** | **12:00 – 20:00** |
+| **Fri–Sat** | **12:00 – 23:59** |
 
-**A — at home with an SD reader → Phase 2** (artifact 3). Gate is gone, software risk is
-retired. Follow the runbook; §7's acceptance checklist is unchanged and still requires
-testing against one real volunteer device.
+- **YouTube** (built-in service, 176 rules) → native per-client scheduler.
+  Re-apply with `deploy/adguard/apply-youtube-schedule.py` **on the Pi**.
+- **Roku Live TV** (`therokuchannel.roku.com`) → **no built-in service exists**, so a custom
+  `$client` rule driven by **cron** (`/etc/cron.d/kc-roku-live`, 3 entries →
+  `deploy/adguard/kc-roku-live.cron`). Scoped to the three Rokus **by client name**.
+- **SafeSearch** global, `enabled: true`, all engines.
+- Schedule timezone **`America/New_York`**.
 
-**B — otherwise → Phase 1** (artifact 2). No hardware, no network changes, no Pi. Design
-§13 sequences it *first* because it delivers the download-approval capability that was the
-original ask. Budget an afternoon.
+```bash
+ssh adguard 'sudo sh -c ". /root/.adguard-env && export ADGUARD_URL ADGUARD_USER ADGUARD_PASS && /opt/adguard/adguard-rule-schedule.py status"'
+```
 
-**Do not start Phase 3** (household DNS cutover) without the **printed** rollback card
-physically posted near the gateway — design §12 / runbook §8. The failure it addresses is
-one where looking things up is itself impaired.
+## 5. 🔴 SEVEN TRAPS — all the same shape
+
+**Signature failure mode: stored successfully, reported success, did nothing.** Every one
+was caught by asserting on the *effect* — actual DNS resolution, an actual state re-read —
+never on an API response. **Checking the write would have passed in all seven.**
+
+### Found in the lab (before the Pi existed)
+
+**5.1 `/clients/update` destroys protections.** A *partial* write returns **HTTP 200** and
+zeroes every omitted field — `filtering_enabled`, `safebrowsing_enabled`,
+`parental_enabled`, `safe_search` all → false. A bedtime cron written the obvious way
+disables a kid's filtering while appearing to work. **→ Read-modify-write only; see
+`docs/reference/adguard-rmw.py`.**
+
+**5.2 Inline comments silently break rules.** AdGuard does **not** strip trailing comments.
+`||x.com^$client='kid'   ! note` stores fine, reports success, **never blocks**. Applies in
+the UI too, with no warning. **→ Comments on their own line.**
+
+**5.3 `time=` is accepted and ignored.** `...,time=21:00-07:00` is stored verbatim, returns
+success, **never fires** — proven with a control rule and a window containing "now".
+**→ Custom rules cannot self-schedule. Cron must add/remove them.**
+
+**5.4 SafeSearch reads as on while off.** `enabled` is a **separate master switch** from the
+per-engine flags. A stock instance reports `{"enabled": false, "google": true, ...}` — every
+engine `true`, SafeSearch **off**. Reproduced live on this box.
+**→ `GET /control/safesearch/status` must show `"enabled": true`.**
+
+### Found while building this Pi (2026-08-17)
+
+**5.5 The setup wizard puts the admin UI on port 80**, not the `:3000` its own screen shows.
+Calls to `:3000` then return **`HTTP 000` (connection refused)**, which reads as an auth or
+service failure and is neither. **→ Diagnose with `ss -tlnp`, not by re-checking creds.**
+Corrected here; `AdGuardHome.yaml` line 12 is `address: 0.0.0.0:3000`.
+
+**5.6 🔴 Schedule timezone defaults to UTC** while the Pi is `America/New_York`. Left alone,
+**a 20:00 cutoff fires at 16:00** — working perfectly, at the wrong time, every day, with
+nothing looking broken. **→ Set the zone *name* (DST-aware; EDT is -0400, EST is -0500) and
+re-read to confirm.**
+
+**5.7 apt reports success while fetching nothing.** First upgrade ended with 5 failed
+packages and **all 85 still pending**, via IPv6 timeouts to the Raspbian mirror, while the
+pipeline showed `EXIT:0`. Fixed with `Acquire::ForceIPv4` (`/etc/apt/apt.conf.d/99force-ipv4`).
+**→ Verify apt by remaining-upgradable count, never by exit code.** Also:
+`/var/run/reboot-required` is **unreliable** here — it read `no` right after a new kernel
+was installed. Compare `uname -r` against `ls /boot/vmlinuz-*`.
+
+### Same family, already in project memory
+
+ChoreOps penalties must be stored **negative** · a Grocy test asserted the buggy value and
+locked it in · `adguard-rmw.py` itself once reported "protections intact" on an
+already-broken client.
+
+## 6. 🎯 The literal next move
+
+**Phase 3 — household DNS cutover.** Gates:
+
+| Gate | Status |
+|---|---|
+| Printed rollback card (design §12) | ✅ written + every address verified — **`docs/reference/rollback-card.html`, open and print it** |
+| Config backup for the card swap | ✅ `deploy/adguard/backup/` + restore steps |
+| PSU | ✅ Apple 12W (5.2V 2.4A) |
+| **Fresh A2 microSD** | ❌ **the last cheap gate** — this Pi runs the ~6-year-old drawer-aged SanDisk |
+| Filtered secondary resolver | ❌ deferred by design — expensive; one filtered resolver is normal for a home |
+
+**When the card arrives:** flash per the flashing runbook §1–§4, install Docker, restore
+`deploy/adguard/backup/AdGuardHome.yaml.2026-08-17` per that directory's README (the
+password hash is redacted — regenerate it), reinstall the cron + `/root/.adguard-env`, then
+cut over by pointing the gateway's DHCP DNS at `192.168.1.113`.
+
+**Then verify by resolving from a real device, not by reading a status page.**
+
+## 7. ❓ Open question that may reshape the plan
+
+**The gateway may support per-device scheduling after all** — via the **AT&T Smart Home
+Manager app**, not the local web UI. A local probe (`parentalcontrols.ha`, `schedule.ha`,
+`allowblocklist.ha` → all 400) **cannot detect an app/cloud-managed feature**, so the
+absence measured was not evidence of absence.
+
+**This challenges design line 33**, which says scheduling *"is the capability the AT&T
+gateway lacks and the reason a DNS layer exists at all."*
+
+If it works, gateway-level beats DNS for **full-internet** scheduling on every axis — it
+cuts real traffic (so video already playing **dies**, which DNS cannot do), is immune to
+DoH/VPN, needs no cron, and has an instant per-device pause. **DNS stays the right tool for
+*selective* blocking** (YouTube off on a Roku while the TV still works), which the gateway
+cannot do. Complementary layers; the architecture survives, that one claim may not.
+
+**Blocked on:** Garrett's AT&T password (couched 2026-08-17). **Deciding factor:** a
+**reseller** account (e.g. Sonic over AT&T lines) has no Smart Home Manager, and per-device
+scheduling would then need an external router via IP Passthrough. Detail: build-handoff §4e.
 
 ## 8. Carry-forwards
 
-- 🔴 **Devices are scattered — Phase 1 is device-by-device, not one sitting.** As of
-  2026-08-17: the **Windows laptop is at work being rebuilt, back in ~1 week**
-  (2026-08-24-ish); **one iPad is at work**; **the second iPad returns Wednesday
-  2026-08-20**. Garrett is shuttling hardware and cannot hold them all at once.
-  **Do each device's runbook section the moment that device is in hand** — do not wait for
-  a session where everything is present. That session may not happen.
-- **The laptop rebuild is an opportunity, not just a delay.** Runbook §2 (Standard
-  accounts + AppLocker) is far easier on a fresh install: Standard from the start, admin
-  password at setup, AppLocker before anything reaches `Downloads`, and a clean decision on
-  whether Chrome ships at all. **Do §2 as part of the rebuild rather than retrofitting.**
-  Cost of the delay: §2.2 AppLocker is what closes the **DoH bypass** (portable browser +
-  DNS-over-HTTPS walks around Layers 1 *and* the whole Phase 2/3 DNS layer) — **that hole
-  is open until the laptop is back and §2 is done.**
-- 🔑 **Second-Google-account hole — asked and answered 2026-08-17.** Family Link supervises
-  the *account*, not the device, so a kid signing in with a **different** Google account is
-  outside supervision entirely and Family Link cannot see it. **iPad is the only platform
-  in the house that closes this at device level:** Screen Time → Content & Privacy →
-  Allow Changes → **Account Changes → Don't Allow** (new runbook §3 step 4). ⚠️ That locks
-  *Settings*, not apps — Chrome/Gmail/YouTube keep in-app account switchers, so **Chrome is
-  the live exposure**; removing it is the clean close. Still open afterwards and not
-  fixable this way: a *signed-out* browser and a web login at `google.com` — both are
-  content-filtering problems, i.e. Phase 2/3 DNS. On **Roku** the hole stays open and DNS
-  carries it; on **Windows** it stays open — decide at rebuild time.
-- ✅ **Old Pi IDENTIFIED 2026-08-17 — `Raspberry Pi 3 Model B Rev 1`.** Design §11
-  pre-flight #1 is **closed**; runbook §0's 3B/3B+ inference was correct. Established by
-  booting it on a direct laptop-to-Pi Ethernet cable and reading LuCI, not from silkscreen.
-  Satisfies design §11. **Hardware verified working: it boots, Ethernet works, the card is
-  readable.**
-  - 🔴 **The card holds a working LEDE 17.01.4 / OpenWrt *router* build (~Oct 2017).**
-    **There is no in-place upgrade path** — runbook §5–§6 need Raspberry Pi OS + Docker and
-    LEDE gives neither. "Update the old Pi's software" is **a reflash**, not an upgrade.
-  - 🔴 **It runs a DHCP server and claims `192.168.1.1`.** Fine point-to-point with a
-    laptop; **never plug it into the home LAN with this card in it** — a second DHCP server
-    beside the AT&T gateway is precisely the "internet is broken" failure design §12 guards.
-  - Reaching it in this state: `ssh -o HostKeyAlgorithms=+ssh-rsa -o
-    PubkeyAcceptedKeyTypes=+ssh-rsa root@192.168.1.1` (dropbear offers only legacy
-    `ssh-rsa`), or `http://192.168.1.1/cgi-bin/luci`. ⚠️ That address overlaps a typical
-    home gateway — disambiguate with interface-scoped ping (`ping -b en22` vs `ping -b en0`)
-    before trusting any probe. Sibling confusion: memory `second-pi-hijacks-route.md`.
-- **The SanDisk 32GB card is ~6 years old.** Fine for Phase 2 testing; **do not carry it
-  into Phase 3** — drawer-aged cards fail silently weeks later.
-- **Parent devices need reserved IPs too.** Client entries key on address; a parent laptop
-  that changes IP silently loses its exemption and picks up the kid ruleset.
-- **Add HaGeZi Encrypted DNS/VPN/TOR/Proxy Bypass (registry id 52) in Phase 3.** 16,585
-  rules, auto-updating; verified blocking `dns.google`, `cloudflare-dns.com`,
-  `nordvpn.com`, `protonvpn.com`. Closes the DoH bypass that design §5 called the
-  partially-mitigated hole. ⚠️ **Blocklists are GLOBAL — they hit the parents too.**
-- **Do not stack HaGeZi Ultimate/Pro++ blindly.** Breakage rises with tier; a false
-  positive on the household resolver reads as "the internet is broken."
+- ⚠️ **What the 20:00 cutoff actually does.** It stops YouTube being **startable**, not
+  instantly unusable. A playing video finishes, and the app often serves more from cached
+  DNS for **~10–30 min**. Power-cycling the device ends it. `blocked_response_ttl` is 10s.
+  **A hard curfew is not achievable via DNS** — that needs §7's gateway route. Garrett has
+  been told this plainly; do not oversell it.
+- ⚠️ **Blocking YouTube also blocks `googlevideo.com`, so YouTube Music breaks.** Accepted
+  in design §8.
+- 🔴 **One Pi, two IPs.** `eth0 .113` + `wlan0 .236` both hold leases and advertise the same
+  hostname — it briefly looked like two Raspberry Pis. **Disable wlan0 before reserving the
+  IP at the gateway**, or the wrong address gets reserved:
+  `sudo nmcli con modify netplan-wlan0-ThunderEnlighten connection.autoconnect no`
+- **Reserve every client IP at the gateway (HUMAX, `192.168.1.254`).** Client entries key on
+  IP — an unreserved kid device that changes address **silently loses its ruleset**, and a
+  parent device that changes address **silently picks up the kid one**.
+- 🔑 **Apple "Private Wi-Fi Address": Fixed is sufficient, Off is not required.** Three
+  states — Off ✅, **Fixed ✅ (stable per network)**, Rotating ❌ (breaks reservations).
+  Check each kid iPad.
+- **Devices are scattered.** Windows laptop at work being rebuilt (~1 week from 2026-08-17);
+  a second iPad returns **Wed 2026-08-20**. **Do each device's runbook section when that
+  device is in hand** — do not wait for a session where everything is present.
+  **The laptop rebuild is the right moment to do Phase 1 §2 from scratch** (Standard
+  accounts + AppLocker) rather than retrofitting. Until then the **DoH bypass stays open** —
+  AppLocker is what stops portable browsers.
+- **Phase 1 (device/OS) is still the layer that actually enforces** and is largely undone.
+  Family Link needs no hardware and is the standing first move.
+- **`.107` (Amazon), `.85` (Grandstream), `.227` (ecobee), `.248` (Spreadtrum)** are
+  uncatalogued in AdGuard. Decide whether any belong in the kid set.
 - **No `!` in the AdGuard admin password** — shell history expansion in `curl -u` produces
-  silent 401s that look like bad credentials. It ends up in HA secrets, so it gets
-  scripted.
-- **Phase 3 needs both resolvers filtered.** Handing out a public resolver as secondary
-  silently converts enforcement into a suggestion.
+  silent 401s that look like bad credentials.
+- **Add HaGeZi Encrypted DNS/VPN/TOR/Proxy Bypass (registry id 52) at Phase 3.** 16,585
+  rules; closes the DoH hole design §5 calls partially-mitigated. ⚠️ **Blocklists are
+  GLOBAL — they hit parents too.** Do not stack Ultimate/Pro++ blindly.
+- **Old card contents are gone.** It held LEDE 17.01.4 (OpenWrt); erased deliberately at
+  Garrett's direction, no image taken. Do not go looking for a backup.
 
-## 9. Memory-layer entries that apply
+## 9. Artifacts
+
+**Read in this order.** All paths verified to exist.
+
+1. `docs/session-state/2026-08-17-adguard-pi-build-handoff.md` — **the build. Read first.**
+2. `docs/superpowers/specs/2026-08-16-parental-controls-design.md` — the design. §13 phases,
+   §5 honest enforcement posture. **Appendix A holds 11 corrections contrary to popular
+   online guidance — do not "fix" them back.** ⚠️ **line 33 is challenged by §7 above.**
+3. `docs/session-state/2026-08-17-adguard-api-lab-findings.md` — every software claim tested
+   against a live v0.107.78.
+4. `docs/session-state/2026-08-17-phase1-device-controls-runbook.md` — Phase 1, ungated,
+   the layer that actually enforces.
+5. `docs/session-state/2026-08-17-adguard-pi-flashing-runbook.md` — Phase 2. §0 is
+   **resolved**; the rest is the card-swap procedure.
+6. `docs/reference/rollback-card.html` — **print before cutover.**
+7. `docs/reference/adguard-rmw.py` · `docs/reference/adguard-rule-schedule.py`
+8. `deploy/adguard/` — compose · `apply-youtube-schedule.py` · `kc-roku-live.cron` ·
+   `backup/`
+
+## 10. Memory entries that apply
 
 In `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memory/`:
 
-- `adguard-clients-update-destroys-protections.md` — trap §4.1
-- `adguard-safesearch-master-switch.md` — trap §4.4
+- `adguard-pi-built-and-scheduled.md` — **this box: access, the rule, ms-not-minutes, UTC**
+- `old-pi-is-3b-running-lede.md` — board + the card's prior life
+- `adguard-clients-update-destroys-protections.md` — trap 5.1
+- `adguard-safesearch-master-switch.md` — trap 5.4
 - `concurrent-sessions-branch-hazard.md` — verify the branch before committing
-- `choreops-content-is-generated-json.md` — the penalty-sign bug, same family as §4
-- `pi-ssh-access-from-claude.md` — `ssh kitchencom`, Pi 5 at `.234`
-- `pi-power-and-kiosk-login.md` — never power a Pi from a monitor or dock
+- `pi-power-and-kiosk-login.md` — never power a Pi from a monitor or dock;
+  **`throttled=0x0` proves nothing after a reboot**
+- `pi-ssh-access-from-claude.md` — Pi 5 at `.234` (Home Assistant, a different box)
+- `second-pi-hijacks-route.md` — sibling to the direct-cable DNS hijack
 
-## 10. Verification commands
+## 11. Verification commands
 
 ```bash
-# branch state
+# branch
 git branch --show-current && git log --oneline -1 && git rev-list --count origin/fort-knox..HEAD
 
-# the helpers run
-python3 -m py_compile docs/reference/adguard-rmw.py docs/reference/adguard-rule-schedule.py
+# the Pi is alive and resolving
+ssh adguard 'uptime -p; vcgencmd get_throttled; sudo docker ps --format "{{.Image}} {{.Status}}"'
+dig +short @192.168.1.113 example.com
 
-# artifacts exist
-ls docs/superpowers/specs/2026-08-16-parental-controls-design.md \
-   docs/session-state/2026-08-17-*.md docs/reference/*.py
+# config is what we think it is
+ssh adguard 'curl -s --netrc-file ~/.adguard-netrc http://127.0.0.1:3000/control/safesearch/status'
+ssh adguard 'curl -s --netrc-file ~/.adguard-netrc http://127.0.0.1:3000/control/blocked_services/get'
+ssh adguard 'sudo grep -cE "^[0-9]" /etc/cron.d/kc-roku-live'   # expect 3
+
+# helpers compile
+python3 -m py_compile docs/reference/*.py deploy/adguard/apply-youtube-schedule.py
 ```
 
-**Reproducing the lab** (no Pi needed — this is how every claim above was verified):
-
-```bash
-docker run -d --name adguard-lab -p 3053:3000 \
-  -v "$PWD/lab/work:/opt/adguardhome/work" -v "$PWD/lab/conf:/opt/adguardhome/conf" \
-  adguard/adguardhome:v0.107.78
-curl -X POST http://localhost:3053/control/install/configure -H 'Content-Type: application/json' \
-  -d '{"web":{"ip":"0.0.0.0","port":3000},"dns":{"ip":"0.0.0.0","port":53},"username":"labadmin","password":"LabPassw0rdX9"}'
-# ...then drive the API. Tear down: docker rm -f adguard-lab
-```
-
-⚠️ **Test by resolving a domain, not by reading the API response.** All four traps in §4
+⚠️ **Test by resolving a domain, not by reading an API response.** All seven traps in §5
 return success. Only resolution tells the truth.
