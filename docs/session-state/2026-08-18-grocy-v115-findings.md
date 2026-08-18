@@ -100,3 +100,49 @@ REST to get a done-toggle) may be **unnecessary**. Test in this order:
 
 **Still true and unchanged:** no recipe sensor exists, so recipes remain REST-only via
 `homeassistant/packages/grocy_recipes.yaml`.
+
+
+---
+
+## 4. ✅ ROUND-TRIP PROVEN — HA check-off writes `done=1` to Grocy
+
+Tested 2026-08-18 through HA's **built-in To-do list panel** (sidebar → To-do lists →
+*Grocy Shopping list*), with **no custom card and no dashboard editing**.
+
+| Step | Result |
+|---|---|
+| Checked the box in HA | UI moved the item to completed |
+| `GET /api/objects/shopping_list` immediately after | **`id=3 note='paper towels' done=1`** |
+
+**The row still exists and is reversible** — `PUT {"done":0}` restored it. This is exactly the
+behaviour the custom card structurally could not provide under `pygrocy2`, working here with
+**zero custom code**.
+
+**→ Plan Task 1 (rewrite the shopping card onto REST to obtain a done-toggle) is now
+unnecessary for the DATA path.** What remains is presentation.
+
+### ⚠️ The rendering is poor for free-text rows: `1.00x Unknown product`
+
+Not a bug — a data shape. `custom_components/grocy/todo.py:219`:
+
+```python
+product_name = item.product.name if item.product else "Unknown product"
+```
+
+Every item renders as `{amount}x {product_name}`. The `paper towels` row has
+`product_id: null`, so it falls back to that string and the actual note is demoted to a subtitle.
+
+**Verified by contrast:** adding a product-linked row
+(`POST {"shopping_list_id":1,"product_id":2,"amount":2}`) renders as **`2.00x Milk`**.
+
+Consequences:
+- Items added **from a recipe** are always product-linked and render correctly.
+- Items added as **free text** ("paper towels", "birthday candles") always render as
+  `1.00x Unknown product`, which is unusable on a kitchen wall.
+- **This is a concrete argument for the custom card after all** — not for the data path, which
+  the built-in card handles fine, but for *presentation*. A custom card can render
+  `note || product.name` and drop the `1.00x` noise.
+
+**Where that leaves the plan:** the built-in to-do card is a working, zero-code fallback and a
+proof that the data path is sound. The custom card's remaining job is **looks**, which is
+precisely Garrett's stated complaint. Build it for that reason, not for capability.
