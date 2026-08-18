@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Show an hourly-rotating inspirational quote on the KitchenCOM wall panel, drawn from two HTTPS APIs plus a 5,421-quote local dataset, with no visible failure state.
+**Goal:** Show an hourly-rotating, content-filtered inspirational quote on the KitchenCOM wall panel, drawn from two HTTPS APIs plus a 5,421-quote local dataset, with no visible failure state.
 
 **Architecture:** One Python script picks a source at random, fetches it, and normalises every response shape to `{"text", "author"}` on stdout. Any failure falls back to the local dataset, so there is always something valid to print. A `command_line` sensor runs it hourly; a markdown card renders it.
 
@@ -662,6 +662,142 @@ the cp1252 conversion preserved actually reach the panel."
 
 ---
 
+### Task 5b: Content blocklist
+
+Requested 2026-08-18 after a live ZenQuotes call returned a Bhagavad Gita quote, confirming the
+unfiltered feed does carry religious content. The blocklist applies to **every** source, including
+the ~0.9% of local quotes that mention God.
+
+**Files:**
+- Modify: `deploy/quotes/pick_quote.py`, `deploy/quotes/test_pick_quote.py`
+
+- [ ] **Step 1: Write the failing tests**
+
+```python
+from pick_quote import is_blocked
+
+
+def test_is_blocked_catches_religious_terms():
+    assert is_blocked("God always takes the simplest way")
+    assert is_blocked("Whatever happened, happened for the good. — Bhagavad Gita")
+
+
+def test_is_blocked_is_case_insensitive():
+    assert is_blocked("GOD is great")
+
+
+def test_is_blocked_matches_whole_words_only():
+    """Substring matching would block 'goddess of design' via 'god', and worse,
+    'assessment' via a crude 'ass' rule. Word boundaries are required."""
+    assert not is_blocked("A good goddamn-free sentence about godliness")  # see note
+    assert not is_blocked("The gods of small things")  # plural, not the blocked token
+    assert not is_blocked("Sin City is a film")  # capital S, still a word — see below
+
+
+def test_is_blocked_leaves_ordinary_quotes_alone():
+    assert not is_blocked("You can observe a lot just by watching.")
+    assert not is_blocked("Stay hungry, stay foolish.")
+
+
+def test_pick_rerolls_a_blocked_quote(monkeypatch):
+    """A blocked API result must fall through to a local quote, not be returned."""
+    monkeypatch.setattr(pick_quote, "_choose_source", lambda: "zenquotes")
+    monkeypatch.setattr(
+        pick_quote, "fetch_api", lambda name: {"text": "God is great", "author": "X"}
+    )
+    result = pick_quote.pick()
+    assert result["text"] != "God is great"
+
+
+def test_pick_rerolls_a_blocked_local_quote(monkeypatch):
+    """Guards against infinite recursion when the local pick is itself blocked."""
+    calls = {"n": 0}
+
+    def fake_local():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return {"text": "God is great", "author": "X"}
+        return {"text": "A clean quote", "author": "Y"}
+
+    monkeypatch.setattr(pick_quote, "_choose_source", lambda: "local")
+    monkeypatch.setattr(pick_quote, "load_local_quote", fake_local)
+    assert pick_quote.pick()["text"] == "A clean quote"
+```
+
+**Note on the whole-word test:** decide the exact token list when implementing, then make the test
+match it. The point of that test is to pin the *word-boundary* behaviour, not a specific
+vocabulary — adjust the example strings to whatever list you settle on.
+
+- [ ] **Step 2: Run to verify they fail**
+
+Run: `python3 -m pytest test_pick_quote.py -v -k block`
+Expected: FAIL — `ImportError: cannot import name 'is_blocked'`
+
+- [ ] **Step 3: Implement**
+
+```python
+import re
+
+# Applied to EVERY source. Deliberately short: this is a wall panel in a family
+# kitchen, not a content-moderation system. Word-boundary matched, because a
+# substring rule would block "goddess" via "god" and far worse false positives.
+BLOCKED_WORDS = [
+    "god", "jesus", "christ", "lord", "bible", "scripture", "holy", "prayer",
+    "sin", "damn", "hell", "devil", "satan",
+]
+_BLOCK_RE = re.compile(r"\b(" + "|".join(BLOCKED_WORDS) + r")\b", re.IGNORECASE)
+
+# How many times to re-roll before giving up and using the last resort. Bounded so
+# a pathological blocklist cannot spin forever on a sensor tick.
+MAX_REROLLS = 5
+
+
+def is_blocked(text: str) -> bool:
+    """True when the text contains a blocked word as a WHOLE word."""
+    if not text:
+        return False
+    return _BLOCK_RE.search(text) is not None
+```
+
+Then modify `pick()` so a blocked result re-rolls rather than being returned. Keep the re-roll
+bounded by `MAX_REROLLS` and fall through to `LAST_RESORT`, which must itself pass `is_blocked`.
+
+- [ ] **Step 4: Run the full suite**
+
+Run: `python3 -m pytest test_pick_quote.py -v`
+Expected: 29 passed
+
+- [ ] **Step 5: Sanity-check the blocklist against the real dataset**
+
+```bash
+cd deploy/quotes && python3 -c "
+import json, pick_quote
+data = json.load(open('quotes.json', encoding='utf-8'))
+blocked = [q for q in data if pick_quote.is_blocked(q['quoteText'])]
+print('blocked: %d of %d (%.1f%%)' % (len(blocked), len(data), 100*len(blocked)/len(data)))
+for q in blocked[:5]: print('  -', q['quoteText'][:70])
+"
+```
+Expected: a low single-digit percentage. **If it blocks more than ~5%, the list is too
+aggressive** — check for a word doing unintended work and trim it.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add deploy/quotes/pick_quote.py deploy/quotes/test_pick_quote.py
+git commit -m "feat(quotes): whole-word content blocklist across all sources
+
+Requested after a live ZenQuotes call returned a Bhagavad Gita quote, confirming
+the unfiltered feed carries religious content. Applies to every source including
+the local dataset.
+
+Word-boundary matched, not substring: a substring rule blocks 'goddess' via 'god'.
+Re-rolls are bounded by MAX_REROLLS so a pathological list cannot spin on a sensor
+tick, and LAST_RESORT must itself pass the filter."
+```
+
+---
+
 ## Chunk 3: Wiring it into Home Assistant
 
 ### Task 6: The command_line sensor
@@ -859,7 +995,8 @@ git commit -m "docs(quotes): deployment README and cold-open update"
 
 ## Verification checklist
 
-- [ ] `python3 -m pytest deploy/quotes/test_pick_quote.py -v` — 23 passed
+- [ ] `python3 -m pytest deploy/quotes/test_pick_quote.py -v` — 29 passed
+- [ ] The blocklist rejects only a low single-digit % of the local dataset
 - [ ] `python3 deploy/quotes/pick_quote.py` — one line of valid JSON, run 5× for variety
 - [ ] `ssh kitchencom 'sudo docker exec homeassistant python3 /config/quotes/pick_quote.py'` — works on 3.14.5
 - [ ] `check_config` exits 0 after both the package and the dashboard change
