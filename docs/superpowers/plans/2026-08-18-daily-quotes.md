@@ -846,6 +846,13 @@ ssh kitchencom 'sudo cp /tmp/pick_quote.py /tmp/quotes.json /home/garrettdehart/
   sudo ls -la /home/garrettdehart/homeassistant/quotes'
 ```
 
+> **Verified 2026-08-18 by probe — do not re-derive:** when HA invokes the command the working
+> directory is **`/`**, not the script's directory. `__file__` still resolves correctly to
+> `/config/quotes`, which is why `DATASET` is built from
+> `os.path.dirname(os.path.abspath(__file__))`. A relative dataset path would break here.
+> Also confirmed: the container runs scripts from a `/config` subdirectory, and `python3` is on
+> PATH at `/usr/local/bin/python3`.
+
 - [ ] **Step 3: Verify the script runs INSIDE the container**
 
 The container is a different Python (3.14.5) from the laptop (3.9.6), so a local pass does not
