@@ -25,3 +25,50 @@ def test_conversion_preserved_non_ascii_characters():
     with open(DATASET, encoding="utf-8") as f:
         raw = f.read()
     assert any(ord(ch) > 127 for ch in raw), "no non-ascii survived — conversion likely lossy"
+
+
+from pick_quote import normalise_zenquotes, normalise_affirmation, normalise_local
+
+
+def test_normalise_zenquotes():
+    raw = [{"q": "Stay hungry.", "a": "Steve Jobs", "h": "<blockquote>ignored</blockquote>"}]
+    assert normalise_zenquotes(raw) == {"text": "Stay hungry.", "author": "Steve Jobs"}
+
+
+def test_normalise_affirmation_has_no_author():
+    raw = {"affirmation": "It is a marathon, not a sprint"}
+    assert normalise_affirmation(raw) == {
+        "text": "It is a marathon, not a sprint",
+        "author": "",
+    }
+
+
+def test_normalise_local():
+    raw = {"quoteText": "You can observe a lot just by watching.", "quoteAuthor": "Yogi Berra"}
+    assert normalise_local(raw) == {
+        "text": "You can observe a lot just by watching.",
+        "author": "Yogi Berra",
+    }
+
+
+def test_normalise_local_tolerates_a_blank_author():
+    """349 of the 5,421 local quotes have no author. The card must get "", not None."""
+    assert normalise_local({"quoteText": "A saying.", "quoteAuthor": ""})["author"] == ""
+    assert normalise_local({"quoteText": "A saying."})["author"] == ""
+
+
+def test_normalisers_reject_an_empty_payload():
+    """A 200 response with an empty body must not yield an empty quote on the wall."""
+    for fn, empty in (
+        (normalise_zenquotes, []),
+        (normalise_affirmation, {}),
+        (normalise_local, {}),
+    ):
+        assert fn(empty) is None
+
+
+def test_normalisers_strip_surrounding_whitespace():
+    assert normalise_zenquotes([{"q": "  spaced  ", "a": "  Someone  "}]) == {
+        "text": "spaced",
+        "author": "Someone",
+    }
