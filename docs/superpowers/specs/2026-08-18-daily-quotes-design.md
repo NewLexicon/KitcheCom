@@ -24,11 +24,21 @@ inspiration, taken as-is from the sources rather than hand-curated.
 
 All three verified from the Pi on 2026-08-18.
 
-| Source | Transport | Response shape | Author? |
-|---|---|---|---|
-| **Local `quotes.json`** | none — on disk | `{"quoteText": ..., "quoteAuthor": ...}` | mostly |
-| **ZenQuotes** `https://zenquotes.io/api/random` | HTTPS ✅ | `[{"q": ..., "a": ...}]` | yes |
-| **Affirmations.dev** `https://www.affirmations.dev` | HTTPS ✅ | `{"affirmation": ...}` | **no** |
+| Source | Transport | Response shape | Author? | Weight |
+|---|---|---|---|---|
+| **Local `quotes.json`** | none — on disk | `{"quoteText": ..., "quoteAuthor": ...}` | mostly | ~65% |
+| **ZenQuotes** `https://zenquotes.io/api/random` | HTTPS ✅ | `[{"q": ..., "a": ...}]` | yes | ~35% |
+
+### Dropped: Affirmations.dev (2026-08-18, after measurement)
+
+Originally included, then removed once measured: **25 consecutive fetches returned only 17
+unique affirmations**, several repeating 2-3×. At uniform source selection that put ~1/3 of the
+wall's content on a pool that repeats within days, while the 5,421-quote local dataset went
+underused. Affirmations also carry no author.
+
+**Note the author-less code path is still live** — 349 of the 5,421 *local* quotes have no
+author, so the `{% if a %}` card guard and `_clean()`'s empty-string behaviour remain load-bearing.
+It would be a mistake to assume that handling existed only for affirmations.
 
 ### Local dataset — empirical facts
 
@@ -169,8 +179,19 @@ routine, not an edge case.
   applies to every source, including the ~0.9% of local quotes. See plan Task 5b.
 - **Long quotes.** Two local quotes exceed 200 characters. Probably fine; revisit if they look
   cramped on the card.
-- **Source weighting.** Currently uniform-random across three sources, so ~1/3 of quotes are
-  author-less affirmations. If that feels like too many, weight the choice.
+- ~~Source weighting~~ **RESOLVED 2026-08-18:** affirmations dropped after measurement (see §2),
+  remaining two sources weighted ~65% local / ~35% ZenQuotes.
+- **Quoteverse (RapidAPI) is a candidate for later.** 28,000+ quotes across 21 categories
+  (Wisdom, Stoicism, Mindfulness, Affirmations, Proverbs) — far deeper than anything here.
+  **Deferred, not rejected:** it needs a RapidAPI account and an API key, which means secret
+  handling this design does not currently have (the key must live in `secrets.yaml` on the Pi and
+  reach the script via the environment — never in the repo). Its free-tier request limit is
+  unverified; hourly polling is ~730 requests/month. Adding it later is one entry in `SOURCES`
+  plus key plumbing.
+- **Quotable remains excluded.** Its tag-filtered endpoint
+  (`/quotes/random?tags=inspirational|wisdom|life|...`) does work and returns exactly the desired
+  shape — **but only over plain HTTP**. Its TLS certificate expired **2024-09-10** and has not
+  been renewed in ~2 years, which suggests an unmaintained service.
 
 ---
 
