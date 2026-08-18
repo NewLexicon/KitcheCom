@@ -67,3 +67,20 @@ def normalise_local(raw: Any) -> Optional[Dict[str, str]]:
     if not text:
         return None
     return {"text": text, "author": _clean(raw.get("quoteAuthor"))}
+
+
+def load_local_quote() -> Optional[Dict[str, str]]:
+    """Pick one random quote from the local dataset.
+
+    Returns None rather than raising on a missing or corrupt file: this is the
+    fallback path, and an exception here would make the sensor unavailable, which
+    is the exact outcome the fallback exists to prevent.
+    """
+    try:
+        with open(DATASET, encoding="utf-8") as f:
+            data = json.load(f)
+    except (IOError, OSError, ValueError, UnicodeDecodeError):
+        return None
+    if not data:
+        return None
+    return normalise_local(random.choice(data))

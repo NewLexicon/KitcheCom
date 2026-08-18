@@ -72,3 +72,26 @@ def test_normalisers_strip_surrounding_whitespace():
         "text": "spaced",
         "author": "Someone",
     }
+
+
+from pick_quote import load_local_quote
+
+
+def test_load_local_quote_returns_a_usable_quote():
+    q = load_local_quote()
+    assert q is not None
+    assert q["text"]
+    assert isinstance(q["author"], str)
+
+
+def test_load_local_quote_survives_a_missing_file(monkeypatch):
+    """A missing dataset must not raise — the sensor would go unavailable."""
+    monkeypatch.setattr("pick_quote.DATASET", "/nonexistent/path/quotes.json")
+    assert load_local_quote() is None
+
+
+def test_load_local_quote_survives_a_corrupt_file(tmp_path, monkeypatch):
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr("pick_quote.DATASET", str(bad))
+    assert load_local_quote() is None
