@@ -528,15 +528,6 @@ export class ScreensaverCard extends LitElement {
       orientation: it.kind === "image" ? (it.orientation ?? "unknown") : "landscape",
     }));
     const slot = planSlot(oriented, this._index, this._pairedShown);
-    // TEMP DIAGNOSTIC (2026-08-18): pairing has failed twice for reasons only
-    // visible in the browser. Remove once confirmed working.
-    console.log("[screensaver]", JSON.stringify({
-      idx: this._index,
-      here: oriented[this._index]?.orientation,
-      slot: slot.items.length,
-      fit: slot.fit,
-      counts: oriented.reduce((a, o) => { a[o.orientation] = (a[o.orientation] || 0) + 1; return a; }, {} as Record<string, number>),
-    }));
 
     // Map planned contentIds back to urls, RESOLVING the partner if needed.
     // The partner was found by seeking ahead, so _advance() has never resolved
@@ -598,7 +589,18 @@ export class ScreensaverCard extends LitElement {
    *  planner shows solo rather than pairing. */
   private async _ensureOrientation(item: MediaItem, gen: number): Promise<void> {
     if (item.orientation !== undefined) return;
-    if (!item.url) { item.orientation = "unknown"; return; }
+    // A candidate found by seeking ahead has never been through the main loop,
+    // so it has no url yet. Resolving here is what makes look-ahead possible at
+    // all: without it every candidate stamped "unknown" -- permanently, since the
+    // value is cached -- and planSlot refuses to pair with unknown, so every
+    // portrait fell back to contain-blur no matter how many partners existed.
+    if (!item.url) {
+      await this._resolveItem(item, gen);
+      if (gen !== this._gen) return;
+    }
+    // Leave orientation UNSET on a resolve failure rather than caching "unknown":
+    // a transient failure would otherwise blacklist the photo for the session.
+    if (!item.url) return;
     const url = item.url;
     const o = await new Promise<Orientation>((resolve) => {
       const probe = new Image();
