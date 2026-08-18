@@ -9,6 +9,7 @@ export type ShoppingRow = {
   amountLabel: string;   // display string ("1.5")
   amount: number;        // numeric, for the remove payload
   note: string;
+  done: boolean;         // grocy v1.15.0+ carries this; pygrocy2 dropped it
 };
 
 // Grocy amount is a float (ShoppingListProduct.amount). "2.0 eggs" reads wrong on a
@@ -29,11 +30,21 @@ export function parseShoppingItems(products?: any[] | null): ShoppingRow[] {
     // the two differ in live data (Eggs was entry 5 / product 1). Carry both.
     // null when Grocy's row has no product (free-text row) — canCheckOff hides ✓.
     productId: typeof p?.product_id === "number" ? p.product_id : null,
-    name: p?.product?.name ?? "(unnamed)",   // name is nested; fail-safe if unhydrated
+    // Display name, in priority order: product name -> free-text note -> placeholder.
+    // A free-text row (product_id: null) carries its text in `note` and has no
+    // product to name it. Falling straight through to a placeholder is how HA's
+    // own built-in card ends up rendering "1.00x Unknown product" while the real
+    // text sits unused (grocy custom_components/grocy/todo.py:219). Verified
+    // against the live row `paper towels` on 2026-08-18.
+    name: p?.product?.name ?? (String(p?.note ?? "").trim() || "(unnamed)"),
     amountLabel: formatAmount(p?.amount),
     // Numeric amount for the remove payload; the label above is display-only.
     amount: typeof p?.amount === "number" && Number.isFinite(p.amount) ? p.amount : 0,
     note: p?.note ?? "",
+    // grocy v1.15.0 (grocy-py) carries `done` through; pygrocy2 dropped it, which
+    // is why the card could previously only delete. REST returns 0/1 and the
+    // sensor attribute surfaced false/true, so accept both shapes.
+    done: p?.done === true || p?.done === 1,
   }));
 }
 
@@ -69,6 +80,19 @@ export function canCheckOff(shoppingListId?: string, productId?: number | null):
   // never be removed through it. Hide ✓ rather than render a button that returns
   // 200 and changes nothing.
   return typeof productId === "number";
+}
+
+// canToggleDone — supersedes canCheckOff for the done-toggle path.
+//
+// canCheckOff exists because the old `remove_product_in_shopping_list` service
+// keys on PRODUCT id, so a free-text row could never be removed through it and
+// its control had to be hidden. The done-toggle keys on the ENTRY id instead,
+// which EVERY row has — so free-text rows are toggleable too. Verified live on
+// 2026-08-18: checking "paper towels" (product_id: null) wrote done=1 to Grocy.
+//
+// canCheckOff is retained for the delete path and its tests; do not delete it.
+export function canToggleDone(row: { id?: number | null }): boolean {
+  return typeof row?.id === "number" && Number.isFinite(row.id);
 }
 
 // buildRemovePayload — Tier-2-CONFIRMED against the live service on 2026-08-13

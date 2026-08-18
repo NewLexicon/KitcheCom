@@ -17,15 +17,29 @@ views:
             tap_action:
               action: assist        # opens HA Assist (voice) — native
           - type: custom:screensaver-card
-            media_path: media
+            # media_path is a folder UNDER the media_source root, which
+            # configuration.yaml maps as media_dirs.local -> /config/media.
+            # So this resolves to /config/media/photos. Renamed from the
+            # confusing nested "media/media" on 2026-08-17.
+            media_path: photos
             photo_duration: 10
+            # 2026-08-18: without shuffle the order is strictly alphabetical, and
+            # the first 41 photos are all landscape -- so the first portrait pair
+            # did not appear until ~6m50s in, and every kiosk restart reset the
+            # cursor to 0. Shuffling distributes the 34 portraits throughout.
+            shuffle: true
             # idle_entity defaults to input_boolean.kitchen_idle
       # Groceries
       - type: grid
         cards:
-          - type: todo-list
-            title: Groceries
-            entity: todo.groceries  # local_todo (wired 2026-06-15, spec M-2)
+          # 2026-08-18: swapped from the todo.groceries local_todo placeholder to
+          # the real Grocy list (S1 Task 11). The card reads the sensor and marks
+          # items DONE via the todo entity's update path -- reversible, and it
+          # works on free-text rows, which the old remove-service could not touch.
+          - type: custom:grocy-shopping-card
+            entity: sensor.grocy_shopping_list
+            todo_entity: todo.grocy_shopping_list
+            shopping_list_id: 1
       # Calendar + chores
       - type: grid
         cards:
@@ -36,9 +50,16 @@ views:
               # so the old placeholder resolved on its own. Read AND write verified
               # (calendar.create_event succeeded against the live calendar).
               - calendar.family
-          - type: todo-list
-            title: Chores
-            entity: todo.chores     # local_todo (wired 2026-06-15)
+          # Supersedes the todo.chores local_todo card (wired 2026-06-15).
+          # ChoreOps owns chores now; its generated dashboard lives at /cod-chores
+          # (Task 8). The orphaned todo.chores entity is deleted in Task 10.
+          - type: button
+            name: Chores
+            icon: mdi:broom
+            tap_action:
+              action: navigate
+              navigation_path: /cod-chores
+            show_state: false
 # Screensaver: the custom card (custom:screensaver-card) is now instantiated in
 # the hero grid section above. It renders nothing unless idle, driven by the
 # kitchen_idle automation (packages/screensaver.yaml, Task 4). Its JS resource
