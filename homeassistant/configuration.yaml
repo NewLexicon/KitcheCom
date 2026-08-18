@@ -10,8 +10,9 @@ homeassistant:
   # 26 photos live in /config/media, so media_source never saw them and the card
   # rendered black for a month. Map source_dir_id "local" at the photo directory.
   # The card builds media-source://media_source/local/<media_path> and coerces an
-  # empty media_path back to "media" (screensaver-card.ts:43), so the photos must
-  # live in a media/ SUBFOLDER: /config/media/media/*.jpg.
+  # empty media_path back to "media" (screensaver-card.ts:43), so photos MUST live
+  # in a subfolder, not at this root. kitchen.yaml sets media_path: photos, so the
+  # photos live at /config/media/photos/*.jpg.
   media_dirs:
     local: /config/media
   # Set 2026-08-17: internal_url was unset, which makes the iOS companion app

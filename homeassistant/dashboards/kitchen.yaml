@@ -17,7 +17,11 @@ views:
             tap_action:
               action: assist        # opens HA Assist (voice) — native
           - type: custom:screensaver-card
-            media_path: media
+            # media_path is a folder UNDER the media_source root, which
+            # configuration.yaml maps as media_dirs.local -> /config/media.
+            # So this resolves to /config/media/photos. Renamed from the
+            # confusing nested "media/media" on 2026-08-17.
+            media_path: photos
             photo_duration: 10
             # idle_entity defaults to input_boolean.kitchen_idle
       # Groceries
