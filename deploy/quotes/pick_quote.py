@@ -14,6 +14,7 @@ container is on 3.14.5. No match statements, no `X | Y` unions.
 import json
 import os
 import random
+import re
 import sys
 from typing import Any, Dict, Optional
 
@@ -135,17 +136,43 @@ def _choose_source() -> str:
     return random.choice(CHOICES)
 
 
+# Applied to EVERY source. Deliberately short: this is a wall panel in a family
+# kitchen, not a content-moderation system. Word-boundary matched, because a
+# substring rule would block "goddess" via "god" and far worse false positives.
+BLOCKED_WORDS = [
+    "god", "jesus", "christ", "bible", "scripture", "holy", "prayer",
+    "devil", "satan", "gita",
+]
+_BLOCK_RE = re.compile(r"\b(" + "|".join(BLOCKED_WORDS) + r")\b", re.IGNORECASE)
+
+# How many times to re-roll before giving up and using the last resort. Bounded so
+# a pathological blocklist cannot spin forever on a sensor tick.
+MAX_REROLLS = 5
+
+
+def is_blocked(text: str) -> bool:
+    """True when the text contains a blocked word as a WHOLE word."""
+    if not text:
+        return False
+    return _BLOCK_RE.search(text) is not None
+
+
 def pick() -> Dict[str, str]:
-    """Return one quote. Never raises, always returns a usable dict."""
+    """Return one quote. Never raises, always returns a usable dict.
+
+    A blocked result re-rolls rather than being returned, bounded by MAX_REROLLS
+    so a pathological blocklist cannot spin forever on a sensor tick.
+    """
     try:
-        source = _choose_source()
-        if source != "local":
-            result = fetch_api(source)
-            if result:
-                return result
-        local = load_local_quote()
-        if local:
-            return local
+        for _ in range(MAX_REROLLS):
+            source = _choose_source()
+            if source != "local":
+                result = fetch_api(source)
+                if result and not is_blocked(result["text"]):
+                    return result
+            local = load_local_quote()
+            if local and not is_blocked(local["text"]):
+                return local
     except Exception:
         pass
     return LAST_RESORT

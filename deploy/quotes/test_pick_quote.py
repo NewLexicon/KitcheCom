@@ -192,3 +192,53 @@ def test_main_prints_one_line_of_valid_json(capsys):
     assert "\n" not in captured, "the command_line sensor parses a single line"
     parsed = json.loads(captured)
     assert set(parsed) == {"text", "author"}
+
+
+from pick_quote import is_blocked
+
+
+def test_is_blocked_catches_religious_terms():
+    assert is_blocked("God always takes the simplest way")
+    assert is_blocked("Whatever happened, happened for the good. — Bhagavad Gita")
+
+
+def test_is_blocked_is_case_insensitive():
+    assert is_blocked("GOD is great")
+
+
+def test_is_blocked_matches_whole_words_only():
+    """Substring matching would block 'goddess of design' via 'god', and worse,
+    'assessment' via a crude 'ass' rule. Word boundaries are required."""
+    assert not is_blocked("A good goddess of design")
+    assert not is_blocked("The gods of small things")  # plural, not the blocked token
+    assert not is_blocked("Sin City is a film")  # capital S, still a word — matched case-insensitively
+
+
+def test_is_blocked_leaves_ordinary_quotes_alone():
+    assert not is_blocked("You can observe a lot just by watching.")
+    assert not is_blocked("Stay hungry, stay foolish.")
+
+
+def test_pick_rerolls_a_blocked_quote(monkeypatch):
+    """A blocked API result must fall through to a local quote, not be returned."""
+    monkeypatch.setattr(pick_quote, "_choose_source", lambda: "zenquotes")
+    monkeypatch.setattr(
+        pick_quote, "fetch_api", lambda name: {"text": "God is great", "author": "X"}
+    )
+    result = pick_quote.pick()
+    assert result["text"] != "God is great"
+
+
+def test_pick_rerolls_a_blocked_local_quote(monkeypatch):
+    """Guards against infinite recursion when the local pick is itself blocked."""
+    calls = {"n": 0}
+
+    def fake_local():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return {"text": "God is great", "author": "X"}
+        return {"text": "A clean quote", "author": "Y"}
+
+    monkeypatch.setattr(pick_quote, "_choose_source", lambda: "local")
+    monkeypatch.setattr(pick_quote, "load_local_quote", fake_local)
+    assert pick_quote.pick()["text"] == "A clean quote"
