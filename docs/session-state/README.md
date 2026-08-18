@@ -158,6 +158,32 @@ version that works here.** Full table in the findings doc §4-DONE.
   *management*, and keep the custom card for the glanceable *view*. Test that before building a
   quantity stepper, a ✓→✗ swap, or any further parity work — those may all be moot.
 
+- 🔄 **REOPENED 2026-08-18 — the parity gap may NOT be structural after all.**
+  The "stop investing" call above rests on *"pygrocy drops the `done` field, so the card can only
+  DELETE"*. That is true **of the pygrocy path** — but S2 already proved the escape hatch: the recipe
+  cards do **not** use pygrocy at all. They go through `rest_command` + `returnResponse` straight to
+  Grocy's REST API (`homeassistant/packages/grocy_recipes.yaml`), which returns the **full, lossless**
+  object. `GET /objects/shopping_list` carries `done`, and Grocy's REST API can set it.
+  ✅ **VERIFIED live 2026-08-18** against Grocy 4.6.0 — `GET /api/objects/shopping_list` returns:
+  ```json
+  [{"id": 3, "product_id": null, "note": "paper towels", "amount": 1,
+    "shopping_list_id": 1, "done": 0, "qu_id": null}]
+  ```
+  **`done` is present in the REST payload.** The field pygrocy discards is right there.
+  **Nobody has tried this for the shopping list.** If it works, ✓ becomes a real reversible
+  done-toggle, filtering checked-off items becomes possible, and the reason the card was shelved
+  disappears. **Cost:** one `rest_command`, mirroring a pattern already built, debugged, and
+  live-verified twice.
+  **Garrett's motivation, stated 2026-08-18:** *"I'm hating the look of Grocy. It's not an appealing
+  app to live with in our kitchen and seems far too complicated for our needs."* That is an argument
+  **for** the custom cards, not against them — Grocy's UI exposes stock, batteries, chores, equipment
+  and price history the household will never use, while a custom card shows only what is wanted.
+  **The cards were never a CSS reskin of Grocy; they are Lit components rendering from scratch**, so
+  the visual ceiling is whatever can be built in HTML/CSS.
+  ⚠️ **Re-evaluate the iframe direction against this:** an iframe inherits *exactly* the Grocy look
+  Garrett dislikes. The embed may still earn a place for **management** (bulk entry on a laptop), but
+  it is now a weaker candidate for the **kitchen panel**.
+
 - **NEXT (food slice, if it is ever picked back up) — the ✓ button feels dead for up to 30s.** The grocy integration polls on
   `SCAN_INTERVAL = 30s` (`custom_components/grocy/const.py:14`), so a removed row lingers on
   screen until the next poll. **A user's natural response is to press again, firing a second
