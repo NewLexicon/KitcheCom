@@ -76,10 +76,23 @@ A small script the sensor shells out to. Responsibilities:
 `author` is an empty string when the source has none. The script never raises and never exits
 non-zero; a fallback path always produces output.
 
-### 3.3 `sensor.daily_quote` + markdown card (presentation)
+### 3.3 `sensor.daily_quote` + the "Perspective" card (presentation)
 
-A `command_line` sensor runs the script hourly and exposes `text` and `author` as attributes. A
-markdown card on the Kitchen dashboard renders them, showing the text alone when `author` is empty.
+A `command_line` sensor runs the script hourly and exposes `text` and `author` as attributes.
+
+The card is a **self-contained titled markdown card** on the Kitchen dashboard, styled like the
+existing FAMILY and GROCERIES cards. It shows the text alone when `author` is empty.
+
+**Why a boxed card rather than a full-width band or a header strip** (decided 2026-08-18 after
+mocking five arrangements): a titled card with fixed column width can be dragged into any column
+on any dashboard, whereas a band or a clock-merged block is welded to one layout. Garrett intends
+a full layout pass later, so portability beats visual impact here. It is also stock Lovelace — no
+custom card, no layout surgery, draggable in the HA UI.
+
+**Titled "Perspective", not "Daily Quote":** the quote rotates hourly, so "daily" is inaccurate.
+
+**Initial position:** third column, below the Chores button. A starting point, not a final
+placement.
 
 ### Why one script rather than three REST sensors
 
@@ -150,8 +163,10 @@ routine, not an edge case.
 
 ## 7. Open questions
 
-- **Religious content in the local file is unfiltered** (~0.9%, mild). Consistent with taking the
-  APIs as-is. If something lands badly on the wall, a blocklist in `pick_quote.py` is the fix.
+- ~~Religious content unfiltered~~ **RESOLVED 2026-08-18: a blocklist was added.** A live
+  ZenQuotes call returned a Bhagavad Gita quote, which showed the take-it-as-is decision had been
+  made without evidence that the feed carries religious content. A whole-word blocklist now
+  applies to every source, including the ~0.9% of local quotes. See plan Task 5b.
 - **Long quotes.** Two local quotes exceed 200 characters. Probably fine; revisit if they look
   cramped on the card.
 - **Source weighting.** Currently uniform-random across three sources, so ~1/3 of quotes are

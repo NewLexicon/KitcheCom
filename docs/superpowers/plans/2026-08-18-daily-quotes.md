@@ -41,7 +41,7 @@
 | `deploy/quotes/test_pick_quote.py` | **create** — pytest suite |
 | `deploy/quotes/README.md` | **create** — what this is, how to deploy it |
 | `homeassistant/packages/quotes.yaml` | **create** — the `command_line` sensor |
-| `homeassistant/dashboards/kitchen.yaml` | **modify** — add the markdown card |
+| `homeassistant/dashboards/kitchen.yaml` | **modify** — add the "Perspective" markdown card |
 
 Rationale: everything quote-related lives in one directory so the pieces that change together
 stay together, matching how `deploy/choreops-content/` is organised.
@@ -892,20 +892,39 @@ the script handles fallback internally so this sensor always has a value."
 
 ---
 
-### Task 7: The markdown card
+### Task 7: The Perspective card
+
+**Design decision (2026-08-18):** a **self-contained titled card**, styled like the existing
+FAMILY and GROCERIES cards — not a full-width band, a header strip, or a clock-merged block.
+Garrett's reasoning: a boxed card with a header can be dragged into any column on any dashboard,
+while the other arrangements are welded to one layout. It is also stock Lovelace — no custom card
+and no layout surgery.
+
+**Title: "Perspective"** — chosen over "Daily Quote" because the quote rotates *hourly*, so
+"daily" would be inaccurate.
+
+**Initial position: the third column, below the Chores button.** Garrett intends a full layout
+pass later; this is a starting point, not a final placement, and the card is movable by design.
 
 **Files:**
 - Modify: `homeassistant/dashboards/kitchen.yaml`
 
 - [ ] **Step 1: Add the card**
 
-Add to the hero grid section, after the `custom:screensaver-card` entry:
+Add to the THIRD grid section (the one holding the calendar and the Chores button), after the
+Chores button:
 
 ```yaml
-          # Daily quote (spec: 2026-08-18-daily-quotes-design.md). Reads ATTRIBUTES,
-          # not the state: HA truncates state at 255 chars, and attributes are also
-          # where the author lives.
+          # Perspective (spec: 2026-08-18-daily-quotes-design.md). A titled, movable
+          # card by design — Garrett wants to drag it between columns and dashboards
+          # during a later layout pass, so it must stay self-contained.
+          #
+          # Titled "Perspective", not "Daily Quote": the quote rotates hourly.
+          #
+          # Reads ATTRIBUTES, not the state. HA truncates state at 255 chars, and the
+          # author only exists as an attribute.
           - type: markdown
+            title: Perspective
             content: >-
               {% set q = state_attr('sensor.daily_quote', 'text') %}
               {% set a = state_attr('sensor.daily_quote', 'author') %}
@@ -918,8 +937,8 @@ Add to the hero grid section, after the `custom:screensaver-card` entry:
               {% endif %}
 ```
 
-The `{% if a %}` guard is load-bearing: affirmations and 349 of the local quotes have no author,
-and without it the card renders a dangling em dash.
+The `{% if a %}` guard is load-bearing: affirmations have no author and neither do 349 of the
+5,421 local quotes, so without it the card renders a dangling em dash.
 
 - [ ] **Step 2: Deploy and validate**
 
@@ -931,7 +950,7 @@ sudo cp /tmp/kitchen.yaml /home/garrettdehart/homeassistant/dashboards/kitchen.y
 sudo chown root:root /home/garrettdehart/homeassistant/dashboards/kitchen.yaml
 sudo docker exec homeassistant python -m homeassistant --script check_config --config /config 2>&1 | tail -3'
 ```
-Expected: no errors.
+Expected: no errors. **If check_config fails, stop and fix before restarting.**
 
 - [ ] **Step 3: Restart HA and the kiosk**
 
@@ -944,28 +963,37 @@ sudo -u garrettdehart rm -rf "$P/Service Worker" "$P/Cache" "$P/Code Cache"
 sleep 12; pgrep -c chromium'
 ```
 
-Clearing `Service Worker` is required, not optional — see the cold-open. Keep `Local Storage`
-or the panel is logged out.
+Clearing `Service Worker` is REQUIRED, not optional — a card change can otherwise look deployed
+server-side and never reach the panel. Keep `Local Storage` or the panel is logged out.
 
 - [ ] **Step 4: Confirm on the panel — HUMAN ONLY**
 
-Look at the ViewSonic. Confirm the quote renders, and that an author-less quote shows no dangling
-dash. **Browser automation cannot verify this** — per project convention it nulls
-`customElements`, renders nothing, and reports success while verifying nothing.
+Look at the ViewSonic. Confirm:
+- the card renders with the "Perspective" header, matching FAMILY and GROCERIES
+- an author-less quote shows **no dangling dash** (wait for one, or temporarily force the
+  affirmations source)
+- a long quote grows the card rather than clipping
+
+**Browser automation cannot verify this** — per project convention it nulls `customElements`,
+renders nothing, and reports success while verifying nothing.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add homeassistant/dashboards/kitchen.yaml
-git commit -m "feat(quotes): markdown card on the Kitchen dashboard
+git commit -m "feat(quotes): Perspective card on the Kitchen dashboard
+
+A self-contained titled card styled like FAMILY and GROCERIES, so it can be
+dragged between columns and dashboards during a later layout pass. Stock Lovelace
+markdown — no custom card, no layout surgery.
+
+Titled Perspective rather than Daily Quote because the quote rotates hourly.
 
 Reads attributes rather than state: HA truncates state at 255 chars and the author
-lives in attributes anyway. The {% if a %} guard is load-bearing — affirmations and
-349 of the 5,421 local quotes have no author, and without it the card renders a
-dangling em dash."
+only exists as an attribute. The {% if a %} guard is load-bearing — affirmations
+and 349 of the 5,421 local quotes have no author, and without it the card renders
+a dangling em dash."
 ```
-
----
 
 ### Task 8: Document it
 
