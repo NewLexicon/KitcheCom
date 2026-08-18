@@ -1,6 +1,11 @@
 services:
   grocy:
-    image: lscr.io/linuxserver/grocy:latest   # arm64 multi-arch — auto-selects aarch64 on Pi 5
+    # PINNED. Every Grocy behaviour this project relies on was verified against
+    # v4.6.0-ls329 specifically: StockApiController.php:745 intval() truncation,
+    # the exact recipes_pos_resolved key set, negative-id meal-plan scaffolding
+    # rows, and the done/free-text/add-to-shoppinglist REST endpoints (2026-08-18).
+    # :latest would silently move off it. arm64 multi-arch → aarch64 on Pi 5.
+    image: lscr.io/linuxserver/grocy:v4.6.0-ls329
     container_name: grocy
     environment:
       - PUID=1000
