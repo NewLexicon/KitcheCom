@@ -13,7 +13,9 @@ before every commit, and see §6 before touching `kitchen.yaml`.
 - **Worktree:** `/Users/jdehart1/___Code_DEV/KitchenCOM-grocy` · branch **`feat/grocy-kitchen`**
 - **Last substantive commit:** `5ab0a9d` — the shopping-card rewrite. Anything after it is
   documentation. Cited this way deliberately: a commit cannot name its own SHA.
-- **7 commits ahead of `origin/main`**, all pushed, working tree clean.
+- **8 commits ahead of `origin/main`**, all pushed, working tree clean.
+  (Deliberately not frozen further: a count that counts the commits it lives inside
+  cannot be stamped correctly. Trust the command, not this number.)
 
 ```bash
 git branch --show-current && git log --oneline -1 && git rev-list --count origin/feat/grocy-kitchen..HEAD
