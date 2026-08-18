@@ -947,6 +947,12 @@ Chores button:
 The `{% if a %}` guard is load-bearing: affirmations have no author and neither do 349 of the
 5,421 local quotes, so without it the card renders a dangling em dash.
 
+> **Template pre-verified 2026-08-18** by rendering it inside the Pi's HA container (jinja2 is
+> not installed locally) against all four real cases. Confirmed output:
+> quote + author renders attribution; **both author-less cases render the quote alone with NO
+> dangling dash**; an unavailable sensor renders the fallback line. The guard works — if the
+> panel shows a dangling dash, the template was altered, not mis-designed.
+
 - [ ] **Step 2: Deploy and validate**
 
 ```bash
