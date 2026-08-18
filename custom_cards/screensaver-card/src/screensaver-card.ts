@@ -124,6 +124,9 @@ export type Slot = {
   fit: SlotFit;
   /** Index to plan from on the next tick; wraps to 0 at the end. */
   nextIndex: number;
+  /** Partner contentIds pulled forward out of sequence. The caller records these
+   *  so they are not shown again when the cursor later reaches them. */
+  consumed: string[];
 };
 
 /** Classify by aspect ratio. Square counts as landscape: it fills the frame
@@ -144,25 +147,63 @@ export function classifyOrientation(width: number, height: number): Orientation 
  *  partner falls back to `contain-blur` so it is shown whole.
  *
  *  Pure: no DOM, no clock, no network -- the whole policy is testable. */
-export function planSlot(items: Oriented[], index: number): Slot {
+/** Decide what occupies the screen for one display tick.
+ *
+ *  A portrait SEEKS the next portrait ahead of it, skipping over landscapes, so
+ *  pairing does not depend on two portraits happening to be adjacent -- in a real
+ *  library (~20 portraits among ~122 photos) that almost never happens. The
+ *  partner is reported in `consumed` so the caller can skip it when the cursor
+ *  reaches it later, rather than showing it twice.
+ *
+ *  It never pairs with a landscape (mismatched scale) nor an `unknown` (an
+ *  undecodable image would blank half the frame), and never wraps around to an
+ *  earlier portrait (which would re-show it immediately next cycle). A portrait
+ *  with no partner ahead falls back to `contain-blur` so it is shown whole.
+ *
+ *  `shown` holds contentIds already consumed as partners. Pure. */
+export function planSlot(
+  items: Oriented[],
+  index: number,
+  shown: ReadonlySet<string> = new Set(),
+): Slot {
   const n = items.length;
-  if (n === 0) return { items: [], fit: "cover", nextIndex: 0 };
-  // An out-of-range index must not freeze the loop: recover to the start.
-  const i = index >= 0 && index < n ? index : 0;
-
-  const here = items[i];
+  if (n === 0) return { items: [], fit: "cover", nextIndex: 0, consumed: [] };
+  let i = index >= 0 && index < n ? index : 0;
   const wrap = (k: number) => (k >= n ? 0 : k);
 
+  // Walk forward past anything already shown as someone else's partner. Doing
+  // this HERE rather than returning an empty slot means the caller always gets
+  // something displayable: a run of consumed items would otherwise produce a
+  // burst of empty ticks and the slideshow would visibly stall.
+  let cursor = i;
+  for (let step = 0; step < n && shown.has(items[cursor].contentId); step++) {
+    cursor = wrap(cursor + 1);
+  }
+  // Every item has been consumed (all portraits paired): show from the cursor
+  // anyway rather than returning nothing.
+  const here = items[cursor];
+  i = cursor;
+
   if (here.orientation === "portrait") {
-    const partner = i + 1 < n ? items[i + 1] : undefined;
-    if (partner?.orientation === "portrait") {
-      return { items: [here.contentId, partner.contentId], fit: "cover", nextIndex: wrap(i + 2) };
+    // Seek forward only -- wrapping would pair with a portrait that is about to
+    // be shown again at the top of the next cycle.
+    for (let j = i + 1; j < n; j++) {
+      const cand = items[j];
+      if (shown.has(cand.contentId)) continue;
+      if (cand.orientation === "portrait") {
+        return {
+          items: [here.contentId, cand.contentId],
+          fit: "cover",
+          nextIndex: wrap(i + 1),
+          consumed: [cand.contentId],
+        };
+      }
     }
-    return { items: [here.contentId], fit: "contain-blur", nextIndex: wrap(i + 1) };
+    return { items: [here.contentId], fit: "contain-blur", nextIndex: wrap(i + 1), consumed: [] };
   }
 
-  // Landscape and unknown both display solo, filling the frame.
-  return { items: [here.contentId], fit: "cover", nextIndex: wrap(i + 1) };
+  // Landscape and unknown display solo, filling the frame.
+  return { items: [here.contentId], fit: "cover", nextIndex: wrap(i + 1), consumed: [] };
 }
 
 export type ScreensaverConfig = {
@@ -293,6 +334,9 @@ export class ScreensaverCard extends LitElement {
   private _currentUrl = "";
   // One url for a solo image/video, two for a portrait pair.
   private _currentUrls: string[] = [];
+  /** contentIds already displayed as another portrait's partner. Prevents
+   *  showing the same photo twice in one pass. Cleared when the list reloads. */
+  private _pairedShown = new Set<string>();
   private _currentFit: SlotFit = "cover";
   private _currentKind: "image" | "video" = "image";
   private _now = "";
@@ -405,6 +449,7 @@ export class ScreensaverCard extends LitElement {
     // collection, discard everything and bail.
     if (gen !== this._gen) { this._loopRunning = false; return; }
     this._items = this._cfg.shuffle ? shuffleOrder(items, Math.random) : items;
+    this._pairedShown.clear();
     this._mode = this._items.length === 0 ? "fallback" : "media";
     this._index = -1;
     if (this._mode === "media") this._advance();
@@ -418,6 +463,8 @@ export class ScreensaverCard extends LitElement {
     // so the per-item resolve cache survives. // TODO defer: no-immediate-repeat on reshuffle
     if (this._cfg.shuffle && next === 0 && this._index >= 0 && this._items.length > 1) {
       this._items = shuffleOrder(this._items, Math.random);
+      // New order means new pairings; old partner bookkeeping no longer applies.
+      this._pairedShown.clear();
     }
     this._index = next;
     const item = this._items[this._index];
@@ -466,7 +513,7 @@ export class ScreensaverCard extends LitElement {
       contentId: it.contentId,
       orientation: it.kind === "image" ? (it.orientation ?? "unknown") : "landscape",
     }));
-    const slot = planSlot(oriented, this._index);
+    const slot = planSlot(oriented, this._index, this._pairedShown);
 
     // Map planned contentIds back to resolved urls. A partner that failed to
     // resolve drops out rather than rendering an empty half-frame.
@@ -481,8 +528,12 @@ export class ScreensaverCard extends LitElement {
     this._currentFit = urls.length === 1 ? slot.fit : "cover";
     this._currentKind = "image";
     this._currentUrl = urls[0];
-    // Consume the whole slot: a pair advances past both.
-    this._index = slot.items.length > 1 ? this._index + 1 : this._index;
+    // Remember any partner pulled forward out of sequence so the cursor skips it
+    // instead of showing the same photo again later in this pass.
+    for (const cid of slot.consumed) this._pairedShown.add(cid);
+    // planSlot decides where the cursor lands; a pair does NOT skip the items
+    // between, they still get their own turn.
+    this._index = slot.nextIndex > 0 ? slot.nextIndex - 1 : this._items.length - 1;
     this._timer = setTimeout(() => this._advance(), this._cfg.photoDuration * 1000);
   }
 
