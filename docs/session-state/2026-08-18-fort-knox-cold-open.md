@@ -12,9 +12,10 @@ commit. A concurrent session parks other branches in the primary checkout
 
 ## 1. Where is HEAD
 
-- **Last substantive commit:** `439e06b` — Phase 3 gate table. Anything after it is
-  cold-open bookkeeping. Cited this way deliberately: a commit cannot name its own SHA.
-- **Branch:** ~33 commits ahead of `origin/main`, all pushed. 17 files, ~4,150 lines.
+- **Last substantive commit:** `949adf5` — AdGuard config backup + restore path. Everything
+  after it is cold-open bookkeeping. Cited this way deliberately: a commit cannot name its
+  own SHA, and chasing the exact count just spawns another fix-up.
+- **Branch:** **34 commits ahead** of `origin/main`, all pushed. 17 files, ~4,150 lines.
 - **Content:** design + runbooks + reference helpers + `deploy/adguard/`.
   **No app code, no test suite, no build.** Test tables in the main cold-open do not apply.
 
