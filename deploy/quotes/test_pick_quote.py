@@ -144,3 +144,51 @@ def test_fetch_returns_none_when_the_request_itself_raises(monkeypatch):
 
 def test_fetch_rejects_an_unknown_source_name():
     assert pick_quote.fetch_api("not-a-real-source") is None
+
+
+import random
+
+
+def test_pick_falls_back_to_local_when_the_api_fails(monkeypatch):
+    monkeypatch.setattr(pick_quote, "fetch_api", lambda name: None)
+    result = pick_quote.pick()
+    assert result["text"]
+    assert isinstance(result["author"], str)
+
+
+def test_pick_uses_the_api_result_when_it_succeeds(monkeypatch):
+    monkeypatch.setattr(pick_quote, "_choose_source", lambda: "zenquotes")
+    monkeypatch.setattr(
+        pick_quote, "fetch_api", lambda name: {"text": "From API", "author": "A"}
+    )
+    assert pick_quote.pick() == {"text": "From API", "author": "A"}
+
+
+def test_pick_returns_the_last_resort_when_everything_fails(monkeypatch):
+    monkeypatch.setattr(pick_quote, "fetch_api", lambda name: None)
+    monkeypatch.setattr(pick_quote, "load_local_quote", lambda: None)
+    assert pick_quote.pick() == pick_quote.LAST_RESORT
+
+
+def test_pick_never_raises_whatever_happens(monkeypatch):
+    """The sensor must always get parseable output."""
+    def boom(*a, **k):
+        raise RuntimeError("catastrophe")
+    monkeypatch.setattr(pick_quote, "_choose_source", boom)
+    result = pick_quote.pick()
+    assert result["text"]
+
+
+def test_choose_source_can_return_local(monkeypatch):
+    """'local' must be a first-class source, not only a fallback — otherwise the
+    5,421-quote dataset would only ever appear when the network was down."""
+    monkeypatch.setattr(random, "choice", lambda seq: "local")
+    assert pick_quote._choose_source() == "local"
+
+
+def test_main_prints_one_line_of_valid_json(capsys):
+    pick_quote.main()
+    captured = capsys.readouterr().out.strip()
+    assert "\n" not in captured, "the command_line sensor parses a single line"
+    parsed = json.loads(captured)
+    assert set(parsed) == {"text", "author"}

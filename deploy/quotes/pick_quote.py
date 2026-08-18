@@ -124,3 +124,38 @@ def fetch_api(name: str) -> Optional[Dict[str, str]]:
         return normalise(response.json())
     except Exception:
         return None
+
+
+# "local" is a first-class source, not merely the fallback: without it the 5,421-quote
+# dataset would only ever surface when the network was down.
+CHOICES = ["zenquotes", "affirmations", "local"]
+
+
+def _choose_source() -> str:
+    return random.choice(CHOICES)
+
+
+def pick() -> Dict[str, str]:
+    """Return one quote. Never raises, always returns a usable dict."""
+    try:
+        source = _choose_source()
+        if source != "local":
+            result = fetch_api(source)
+            if result:
+                return result
+        local = load_local_quote()
+        if local:
+            return local
+    except Exception:
+        pass
+    return LAST_RESORT
+
+
+def main() -> None:
+    # ensure_ascii=False so curly quotes and em dashes survive to the panel; the
+    # whole point of the cp1252 conversion was to keep them.
+    sys.stdout.write(json.dumps(pick(), ensure_ascii=False) + "\n")
+
+
+if __name__ == "__main__":
+    main()
