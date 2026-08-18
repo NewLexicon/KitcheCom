@@ -245,6 +245,51 @@ Prevention is in two places: `veto files` + `delete veto files` in the `[photos]
 
 ---
 
+## 4c. Daily quotes — SHIPPED (2026-08-18)
+
+The **Perspective** card on the Kitchen dashboard, third column below Chores. Confirmed rendering
+on the panel. Rotates hourly.
+
+| Piece | Where |
+|---|---|
+| Script + dataset + 30 tests | `deploy/quotes/` (see its README) |
+| Sensor | `homeassistant/packages/quotes.yaml` |
+| Card | `homeassistant/dashboards/kitchen.yaml` |
+| Spec / plan | `docs/superpowers/specs/2026-08-18-daily-quotes-design.md`, `docs/superpowers/plans/2026-08-18-daily-quotes.md` |
+| On the Pi | `/config/quotes/pick_quote.py` + `quotes.json` |
+
+Sources: ~65% local 5,421-quote dataset, ~35% ZenQuotes. Affirmations.dev was dropped after
+measurement (25 fetches → only 17 unique). Quotable excluded: TLS cert expired 2024-09-10.
+Quoteverse (RapidAPI, 28k quotes) is a deferred candidate — it needs an API key, so it brings
+secret handling this design does not have.
+
+### 🔴 A command_line sensor CANNOT be verified from storage files
+
+`command_line` sensors have **no `unique_id`** — that key is not in the schema for HA 2026.6.3 and
+adding it fails `check_config`. Consequently they never appear in `core.entity_registry`, and they
+are not restore-backed either, so they never appear in `core.restore_state`. **Both files will
+tell you the sensor does not exist even when it is working perfectly.** Verify by looking at the
+panel, or by querying HA's API with a token. Time was lost here believing the sensor had failed.
+
+`check_config --info all` IS a useful check — it confirms the package resolved:
+```bash
+ssh kitchencom 'sudo docker exec homeassistant python -m homeassistant --script check_config \
+  --config /config --info all 2>&1 | grep -A4 command_line'
+```
+
+### Other gotchas worth keeping
+
+- **`scan_interval: 3600` is load-bearing** — `command_line` defaults to **60 seconds**, which
+  would mean ~1,440 ZenQuotes calls a day.
+- **cwd is `/` when HA runs the command**, not the script's directory — hence the
+  `os.path.dirname(os.path.abspath(__file__))` dataset path.
+- **The local dataset was cp1252, not UTF-8.** Converted once at prep time; a test asserts
+  non-ascii survived so mojibake cannot silently reach the wall.
+- **Each `docker exec` is a separate shell** — an `mv` in one call does not persist into the next,
+  which made a failure-path test appear to pass while proving nothing.
+
+---
+
 ## 5. Traps and corrections
 
 ### 🟡 The dashboard file uses an UNDERSCORE
@@ -378,9 +423,20 @@ remote-debugging port on the kiosk.
   (`shuffle: true` on the card in `kitchen.yaml`) is a one-line change if the order gets stale.
 - **32 photos are low-resolution Facebook downloads** (960x720 or smaller) and look soft on the
   1080p panel. Replacing them with originals is the single biggest available quality win. See §4b.
-- **Daily quotes — NOT STARTED.** Garrett raised it 2026-08-18 as the next feature. No design, no
-  spec, no decision on source (static list vs API), placement, or cadence yet.
-- **§8 Google Calendar OAuth on the Pi** — not started. Dev-rig OAuth does not carry over.
+- ✅ ~~Daily quotes~~ **SHIPPED 2026-08-18 and confirmed rendering on the panel.** The
+  "Perspective" card on the Kitchen dashboard, hourly, ~65% local dataset / ~35% ZenQuotes, with a
+  whole-word content blocklist. Spec, plan, and `deploy/quotes/README.md` all committed.
+  30 tests; spec-compliance and code-quality reviews both passed.
+- 🔴 **The calendar card on the Kitchen dashboard SPINS FOREVER.** It references
+  `calendar.family`, which **does not exist on the Pi** — Google Calendar was never set up there.
+  The only calendars present are `calendar.rowan_choreops_calendar`,
+  `calendar.wystan_choreops_calendar`, and `calendar.grocy_calendar`. Confirmed 2026-08-18:
+  `application_credentials` does not exist in `.storage`, so no OAuth client was ever added.
+  **§8 fixes this at the cause** — Garrett chose that over patching the card to a different entity.
+- **§8 Google Calendar OAuth on the Pi** — not started. Follow
+  `docs/session-state/2026-08-14-google-calendar-oauth-setup.md` §3 and §3b exactly; it documents
+  a redirect-URI trap and an autofill trap that hit TWICE on the dev rig. The dev rig's OAuth does
+  NOT carry over. Requires Google Cloud Console and a browser sign-in — not automatable. Dev-rig OAuth does not carry over.
 - **`Wystan` has `points=None`** while Rowan has a number. Benign — the field initializes on first
   award (proven by Rowan going `None → 4.0`). It will resolve the first time Wystan is approved.
 - **Rowan sat at 14.0 points** after testing. If you want a clean slate before the kids see it,
