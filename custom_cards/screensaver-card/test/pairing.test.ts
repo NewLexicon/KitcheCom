@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyOrientation, planSlot, type Oriented } from "../src/screensaver-card";
+import { classifyOrientation, planSlot, PARTNER_SEEK_LIMIT, type Oriented } from "../src/screensaver-card";
 
 const P = (id: string): Oriented => ({ contentId: id, orientation: "portrait" });
 const L = (id: string): Oriented => ({ contentId: id, orientation: "landscape" });
@@ -147,5 +147,20 @@ describe("planSlot — seeking a partner ahead (2026-08-18)", () => {
     const slot = planSlot([P("a"), U("x"), L("y")], 0);
     expect(slot.items).toEqual(["a"]);
     expect(slot.fit).toBe("contain-blur");
+  });
+});
+
+describe("PARTNER_SEEK_LIMIT", () => {
+  it("is large enough that a partner is usually found in a real library", () => {
+    // ~34 portraits among 122 photos means a partner is typically within a few
+    // places. A limit of 1 was the original bug: everything past item+1 stayed
+    // unprobed, read as "unknown", and pairing could never fire.
+    expect(PARTNER_SEEK_LIMIT).toBeGreaterThanOrEqual(20);
+  });
+
+  it("is bounded so one tick cannot decode an entire album", () => {
+    // Each probe is a real image fetch. A lone portrait must not trigger 122 of
+    // them while the viewer waits.
+    expect(PARTNER_SEEK_LIMIT).toBeLessThanOrEqual(60);
   });
 });

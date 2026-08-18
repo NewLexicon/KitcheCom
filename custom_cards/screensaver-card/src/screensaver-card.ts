@@ -220,6 +220,11 @@ export type ScreensaverConfig = {
 
 const PHOTO_DURATION_FLOOR = 2;
 
+// How far ahead to decode looking for a portrait partner. Each probe is a real
+// image fetch, so this bounds the work one tick can do: with no portrait within
+// this many places the image is shown solo (contained, never cropped) instead.
+export const PARTNER_SEEK_LIMIT = 40;
+
 // ── Activity bridge (M-10) ───────────────────────────────────────────────────
 // The button the screensaver package watches to clear idle and restart the
 // inactivity timer. Nothing was pressing it: the wake automation existed but its
@@ -498,15 +503,24 @@ export class ScreensaverCard extends LitElement {
       return;
     }
 
-    // Orientation is needed BEFORE deciding the slot, and it is only knowable by
-    // decoding the image. Resolve this one and, so a pair can be planned, the
-    // next one too. Failures degrade to "unknown", which displays solo.
+    // Orientation is only knowable by decoding, and planSlot treats an unprobed
+    // item as "unknown" -- which it refuses to pair. Seeking a partner therefore
+    // requires probing AHEAD, not just the next item: with ~34 portraits among
+    // 122 photos a partner is typically several places away, and probing only
+    // item+1 left everything between unknown so pairing could never fire.
     await this._ensureOrientation(item, gen);
     if (gen !== this._gen) return;
-    const peekIdx = this._index + 1 < this._items.length ? this._index + 1 : -1;
-    if (peekIdx >= 0 && this._items[peekIdx].kind === "image") {
-      await this._ensureOrientation(this._items[peekIdx], gen);
-      if (gen !== this._gen) return;
+    if (item.orientation === "portrait") {
+      // Look ahead until a portrait partner is found. Bounded so a library with
+      // one lone portrait cannot decode the entire album on a single tick.
+      for (let j = this._index + 1; j < this._items.length && j <= this._index + PARTNER_SEEK_LIMIT; j++) {
+        const cand = this._items[j];
+        if (cand.kind !== "image") continue;
+        if (this._pairedShown.has(cand.contentId)) continue;
+        await this._ensureOrientation(cand, gen);
+        if (gen !== this._gen) return;
+        if (cand.orientation === "portrait") break;   // partner found
+      }
     }
 
     const oriented: Oriented[] = this._items.map((it) => ({
@@ -531,8 +545,9 @@ export class ScreensaverCard extends LitElement {
     // Remember any partner pulled forward out of sequence so the cursor skips it
     // instead of showing the same photo again later in this pass.
     for (const cid of slot.consumed) this._pairedShown.add(cid);
-    // planSlot decides where the cursor lands; a pair does NOT skip the items
-    // between, they still get their own turn.
+    // _advance() increments at the top of the next tick, so store one BEFORE
+    // where planSlot wants the cursor to land. A pair does NOT skip the items
+    // between the two portraits -- they still get their own turn.
     this._index = slot.nextIndex > 0 ? slot.nextIndex - 1 : this._items.length - 1;
     this._timer = setTimeout(() => this._advance(), this._cfg.photoDuration * 1000);
   }
