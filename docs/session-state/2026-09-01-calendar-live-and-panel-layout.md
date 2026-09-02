@@ -326,6 +326,30 @@ solved it, after two guesses.
 
 ---
 
+## 6b. 🟢 Remote access — Tailscale (added 2026-09-02)
+
+The Pi is on a tailnet so Garrett can work from his (Jamf-managed) work laptop while the
+Pi stays home. Tailscale **1.102.3**, service enabled, survives reboot.
+
+| | |
+|---|---|
+| Address | **`100.91.117.105`** (hostname `kitchencom`) |
+| Account | `garrettdehart@gmail.com` — personal, deliberately not work SSO |
+| HA | `http://100.91.117.105:8123` → verified **200** |
+
+- **`--accept-dns=false` is deliberate** — Tailscale DNS would override the Pi's resolver,
+  and the kiosk resolves the local HA instance. Use the `100.x` IP, not MagicDNS.
+- **Tailscale SSH deliberately NOT enabled** — the existing `id_ed25519` key works.
+- 🔴 **Key expiry must be disabled in the admin console** (Machines → `···`). Default was
+  `2027-03-01`; a headless Pi that silently de-authorises strands remote access. Only
+  settable from the console, not the node. **Confirm this was done.**
+- On the work laptop: **generate a fresh SSH key**, don't copy the personal one onto an
+  MDM-managed machine.
+- ⚠️ Restarting HA / killing chromium remotely **blanks the live kitchen panel** the
+  family is using. Prefer the dev rig for layout work; deploy in the evening.
+
+---
+
 ## 7. Verification & recovery
 
 **Every dashboard deploy needs the service-worker clear** — it bit repeatedly tonight;
