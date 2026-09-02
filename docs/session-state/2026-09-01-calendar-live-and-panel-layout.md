@@ -37,9 +37,12 @@ itself.
 - **HEAD (tip):** deliberately NOT frozen — run `git log --oneline -1`. A close-out commit
   cannot stamp its own SHA, and stamping it is itself a commit, so the loop never converges.
 - **Stable prefix** (immutable): `8112835` → `9af5299` → `934a9b6` → `429cd3a`
-  (the previous cold-open).
+  (previous cold-open) → `b3cc39d` (tonight's work). The tip above `b3cc39d` is
+  deliberately not frozen — see the HEAD note.
 - **Branch:** `feat/choreops-chores`, primary checkout `/Users/jdehart1/___Code_DEV/KitchenCOM`
-- **Ahead / unpushed:** run the commands — **74 / 0** at `429cd3a`, before tonight's commit.
+- **Ahead / unpushed:** a number that counts the commits it lives inside cannot be
+  frozen correctly — **run `git rev-list --count origin/main..HEAD`**. It was 74 at
+  `429cd3a` and 75 at `b3cc39d`; this doc's own fix-up commit adds one more.
 
 ```bash
 cd /Users/jdehart1/___Code_DEV/KitchenCOM
