@@ -275,13 +275,13 @@ The previous cold-open listed "a 2.0-point chore awarded 4.0" as never investiga
 completions — daily chores replaying on the nightly reset with nobody doing them.
 That is how 14.0 became 28.0 while the Pi sat idle.
 
-Both kids were zeroed. **The mechanism was NOT fixed.**
+Both kids were zeroed. **The mechanism is now identified and fixed upstream — see the RESOLVED block below (2026-09-02).**
 
 ### ⚠️ First data point, 2026-09-02 04:00 UTC — NOT the bug
 
 Rowan showed **2.0 points / 1 ledger entry** at session close. It looked exactly like the
 Aug-19 phantom (same 04:00:00 reset boundary, same `reference_id a209b28e`), but it is
-**legitimate**: his `chore_data` shows `last_claimed: 2026-09-02T02:32:04` — he really did
+**legitimate**: his chore record shows `last_claimed: 2026-09-02T02:32:04` — he really did
 claim Morning Brush that evening (the CLAIMED tile was visible on the panel). The chore's
 `approval_reset_pending_claim_action` is **`auto_approve_pending`**, so the nightly reset
 correctly auto-approved a real pending claim and paid it.
@@ -291,18 +291,76 @@ preceding claim; a real one has a claim timestamp before the 04:00 award. Check 
 field before concluding anything — the shapes are otherwise identical, and I called it a
 reproduction before checking.
 
-Morning check:
+### ✅ RESOLVED 2026-09-02 — mechanism found, fix confirmed on the Pi
+
+**The nightly re-award bug is fixed, and the fix is verified empirically.**
+
+**Mechanism.** `SystemManager._run_startup_midnight_catchup()` guards on a meta field
+`last_midnight_processed`:
+
+```python
+if last_processed_utc is not None and last_processed_utc >= today_midnight_utc:
+    return   # already processed today -> no rollover
+```
+
+Before the `schema45_seed_last_midnight_processed` migration existed, that field did not
+exist, so the getter returned `None` — and `None` **fails the guard open**. Every startup
+emitted a MIDNIGHT_ROLLOVER, replaying the day's daily chores with their **original
+`reference_id`s**. That is exactly the Aug-19 signature (same refs, 120ms apart, nobody
+home) and why 14.0 became 28.0 across the Aug 18 restart.
+
+**The fix** is that seeding migration. It is marker-guarded (`if midnight_processed_marker
+not in applied`), so it runs once ever; the marker is present in this install's
+`meta.migrations_applied`, and the stamp is populated.
+
+**Empirical confirmation (2026-09-02, Pi, ChoreOps 1.0.7):** HA restarted **twice** at
+~09:02 and ~09:03 local — i.e. mid-day, the power-outage scenario. With
+`custom_components.choreops: debug` temporarily enabled, the log shows the guard taking the
+early return:
+
+```
+2026-09-02 09:02:45.752 DEBUG ... SystemManager: Midnight catch-up not needed
+    (last_processed=2026-09-02T04:00:00.558071+00:00)
+```
+
+Rowan stayed at **2.0 points / 1 ledger entry** (`ref a209b28e`) across both restarts, and
+the stamp was not even re-written. 0 ChoreOps errors after. The temporary `logger:` block
+was removed and `configuration.yaml` verified byte-identical to its pre-test backup.
+
+**Answer to "would a midday power outage double that day's points?" — No.** The guard is
+date-granular, not restart-count-granular. Any number of restarts within one local day
+emit at most one rollover, at real midnight.
+
+**Residual risk (low, worth knowing):** the guard keys on *local* midnight. If
+`last_midnight_processed` is ever cleared, or the Pi's clock/timezone jumps backwards
+across a midnight boundary, the `None`/stale path re-opens and a startup replay becomes
+possible again. Symptom to watch: ledger entries at a reset boundary with **no preceding
+`last_claimed`**.
+
+### The discriminator, corrected
+
+`last_claimed` and `last_completed` are **top-level fields on the chore record**, NOT under
+a `chore_data` key. An earlier version of this doc said `chore_data.last_claimed`; that key
+does not exist, and querying it returns `None` for every chore — which reads exactly like
+"no claim ever happened" and will send you chasing a phantom. Verified 2026-09-02.
+
+Correct query:
 
 ```bash
 ssh kitchencom 'sudo python3 -c "
 import json
 d=json.load(open(\"/home/garrettdehart/homeassistant/.storage/choreops/choreops_data_01KXV33Q540SYEF1KFM54DCEDJ\"))
+print(\"stamp:\", d[\"data\"][\"meta\"][\"last_midnight_processed\"])
 for k,v in d[\"data\"][\"users\"].items():
     if isinstance(v,dict): print(v.get(\"name\"), v.get(\"points\"), len(v.get(\"ledger\") or []))
+for k,v in d[\"data\"][\"chores\"].items():
+    if isinstance(v,dict): print(v.get(\"name\"), v.get(\"last_claimed\"), v.get(\"last_completed\"))
 "'
 ```
-Still 0.0 → possibly a one-off tied to the Aug 18 restart, not a nightly job. Non-zero →
-read the ledger timestamps and chase `chore_manager.py`'s reset path.
+
+Note ChoreOps does **not** log resets at default verbosity. To observe the guard you must
+temporarily add a `logger:` block with `custom_components.choreops: debug` (back up
+`configuration.yaml` first — it is a contested file), restart, read, then restore.
 
 ### Rowan's achievement progress was NOT zeroed
 
