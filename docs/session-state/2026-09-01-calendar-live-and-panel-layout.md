@@ -340,9 +340,13 @@ Pi stays home. Tailscale **1.102.3**, service enabled, survives reboot.
 - **`--accept-dns=false` is deliberate** — Tailscale DNS would override the Pi's resolver,
   and the kiosk resolves the local HA instance. Use the `100.x` IP, not MagicDNS.
 - **Tailscale SSH deliberately NOT enabled** — the existing `id_ed25519` key works.
-- 🔴 **Key expiry must be disabled in the admin console** (Machines → `···`). Default was
-  `2027-03-01`; a headless Pi that silently de-authorises strands remote access. Only
-  settable from the console, not the node. **Confirm this was done.**
+- ✅ **Key expiry IS disabled** — console shows "Expiry disabled", node reports
+  `KeyExpiry: None`. (Default had been `2027-03-01`.)
+- The work Mac joined as `prvh9n63p0qvp` / `100.81.209.35` (macOS 15.7.7). Its
+  system-extension approval succeeded despite Jamf MDM. The name is the hardware
+  serial — worth renaming in the console.
+- **SSH from the work Mac is not set up yet** — generate a key there and add it to the
+  Pi's `authorized_keys` (`ssh-copy-id -i ~/.ssh/id_ed25519.pub garrettdehart@100.91.117.105`).
 - On the work laptop: **generate a fresh SSH key**, don't copy the personal one onto an
   MDM-managed machine.
 - ⚠️ Restarting HA / killing chromium remotely **blanks the live kitchen panel** the
