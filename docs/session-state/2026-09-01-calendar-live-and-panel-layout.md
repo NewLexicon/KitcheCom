@@ -231,7 +231,8 @@ without the year, and the "Today" button turned into an icon moved into the grid
 1. **A custom calendar card** — `atomic-calendar-revive` is purpose-built for kitchen
    panels: native control of date formats, per-calendar colours, compact modes. This is
    the actual answer to what Garrett is describing.
-2. **An HA theme** (`themes/kitchencom.yaml`) — the supported global mechanism for
+2. **An HA theme** (would be `themes/kitchencom.yaml` — **does not exist yet**, this is
+   a proposal) — the supported global mechanism for
    fonts/colours/radii across every card. Best value for "tighten up the whole app".
 3. **`card-mod`** — gets maybe a third of the list, adds a dependency reaching into
    shadow DOM. Weakest option; do not reach for it first.
