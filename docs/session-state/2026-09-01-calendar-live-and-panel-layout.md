@@ -80,7 +80,7 @@ points repair, and every layout iteration were direct writes to the Pi's
 |---|---|
 | Address | `192.168.1.234` (reserved), `kitchencom.local` |
 | HA | **2026.6.3** · ChoreOps **1.0.7** |
-| ChoreOps entities | **316** (was 288) — +8 Night Brush, +16 pet split, −8 removed originals |
+| ChoreOps entities | **316** (was 288) — +8 Night Brush, +16 pet split, −8 removed originals. Re-run the count; it moved four times tonight. |
 | Chores | **14** (was 11) — Night Brush + 4 pet chores, −2 replaced |
 | Calendar entities | **12** (was 3) — 9 Google calendars arrived |
 | OAuth credential | **PRESENT** · 72 chars · ends `.apps.googleusercontent.com` · prefix `438890574011-d` |
@@ -167,9 +167,22 @@ one-shot script). Could later be an HA automation on a weekly trigger.
 
 Each kid now has **7 daily chores** — watch the Home column for overflow.
 
-**Rowan's Early Riser streak was zeroed** (2 → 0) at Garrett's request; Wystan was
-already 0. Chore Champion (`6/250`) was NOT zeroed — still open if a clean slate
-is wanted there too.
+**Rowan's Early Riser streak was zeroed** (2 → 0), Wystan already 0 — verified AFTER a
+restart, which is the only proof that counts here (see below). Chore Champion `6/250`
+is **still un-zeroed**; that 6 includes the Aug-19 phantom re-awards.
+
+### 🔴 Achievement progress is DERIVED — the first zeroing silently reverted
+
+`data.achievements[].progress[user_id]` is **recomputed** by
+`gamification_manager.py:2770` (`_get_tracked_current_streak`) from
+`data.users[uid].chore_data[chore_id].current_streak`. Writing the achievement record
+reports success, then reverts on the next HA restart — Garrett caught this ("Rowan is
+still at 2"). Zero the **per-chore counters** instead (`current_streak`,
+`longest_streak`, `streak_tally`, `*_missed_streak`); stale entries persist even for
+**deleted** chores (one was found on the removed Feed Cats id `2d99b007`).
+
+Same shape as the points bug: **write to the field that OWNS the value, not the one
+that displays it**, and re-verify after a restart.
 
 ### 🔴 Rotation is COMPLETION-driven, not calendar-driven
 
