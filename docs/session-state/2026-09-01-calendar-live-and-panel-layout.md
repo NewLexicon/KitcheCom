@@ -82,9 +82,10 @@ points repair, and every layout iteration were direct writes to the Pi's
 | HA | **2026.6.3** · ChoreOps **1.0.7** |
 | ChoreOps entities | **316** (was 288) — +8 Night Brush, +16 pet split, −8 removed originals. Re-run the count; it moved four times tonight. |
 | Chores | **14** (was 11) — Night Brush + 4 pet chores, −2 replaced |
+| Remote access | Tailscale — `ssh kitchencom-ts` works from anywhere (see §6b) |
 | Calendar entities | **12** (was 3) — 9 Google calendars arrived |
 | OAuth credential | **PRESENT** · 72 chars · ends `.apps.googleusercontent.com` · prefix `438890574011-d` |
-| Points | Rowan **0.0**, Wystan **0.0** (both zeroed; structures well-formed) |
+| Points | Rowan **2.0** (earned — real claim auto-approved at the 04:00 reset), Wystan **0.0** |
 | Screensaver idle | **30 min** (was 3) — `packages/screensaver.yaml:25` |
 | Points-sensor errors | **0** · coordinator listener errors **0** |
 
@@ -272,7 +273,23 @@ The previous cold-open listed "a 2.0-point chore awarded 4.0" as never investiga
 completions — daily chores replaying on the nightly reset with nobody doing them.
 That is how 14.0 became 28.0 while the Pi sat idle.
 
-Both kids are now 0.0. **The mechanism was NOT fixed.** Morning check:
+Both kids were zeroed. **The mechanism was NOT fixed.**
+
+### ⚠️ First data point, 2026-09-02 04:00 UTC — NOT the bug
+
+Rowan showed **2.0 points / 1 ledger entry** at session close. It looked exactly like the
+Aug-19 phantom (same 04:00:00 reset boundary, same `reference_id a209b28e`), but it is
+**legitimate**: his `chore_data` shows `last_claimed: 2026-09-02T02:32:04` — he really did
+claim Morning Brush that evening (the CLAIMED tile was visible on the panel). The chore's
+`approval_reset_pending_claim_action` is **`auto_approve_pending`**, so the nightly reset
+correctly auto-approved a real pending claim and paid it.
+
+**The discriminator is `last_claimed`.** A phantom award has a ledger entry with NO
+preceding claim; a real one has a claim timestamp before the 04:00 award. Check that
+field before concluding anything — the shapes are otherwise identical, and I called it a
+reproduction before checking.
+
+Morning check:
 
 ```bash
 ssh kitchencom 'sudo python3 -c "
