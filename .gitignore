@@ -46,3 +46,6 @@ venv/
 .playwright-mcp/
 
 .superpowers/
+
+# Vendored reference collections (design link lists), cloned 2026-09-01. Not ours.
+git/
