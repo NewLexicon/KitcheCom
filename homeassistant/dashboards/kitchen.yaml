@@ -52,34 +52,28 @@ views:
       # ---- Column 2: Rowan --------------------------------------------------
       - type: grid
         cards:
-          - type: markdown
-            text_only: true
-            content: >-
-              <h1 style="margin:0;padding:2px 0 8px;font-size:36px;line-height:1.05;
-              font-weight:800;letter-spacing:0.5px;color:#4fc3f7;
-              text-shadow:0 0 20px #4fc3f755;">Rowan</h1>
           - type: custom:button-card
-            name: Chores Due
+            name: Rowan
             show_icon: false
             show_state: false
             tap_action:
               action: none
             styles:
               card:
-                - height: 32px
+                - height: 56px
                 - background: "#4fc3f722"
                 - border: none
-                - border-left: "4px solid #4fc3f7"
+                - border-left: "5px solid #4fc3f7"
                 - border-radius: 8px
                 - box-shadow: none
               name:
                 - justify-self: start
-                - padding-left: 10px
-                - font-size: 13px
-                - font-weight: 700
-                - letter-spacing: 1px
-                - text-transform: uppercase
+                - padding-left: 12px
+                - font-size: 34px
+                - font-weight: 800
+                - letter-spacing: 0.5px
                 - color: "#4fc3f7"
+                - text-shadow: 0 0 20px #4fc3f755
           - type: custom:button-card
             name: ☀ Morning
             show_icon: false
@@ -955,34 +949,28 @@ views:
       # ---- Column 3: Wystan -------------------------------------------------
       - type: grid
         cards:
-          - type: markdown
-            text_only: true
-            content: >-
-              <h1 style="margin:0;padding:2px 0 8px;font-size:36px;line-height:1.05;
-              font-weight:800;letter-spacing:0.5px;color:#ba68c8;
-              text-shadow:0 0 20px #ba68c855;">Wystan</h1>
           - type: custom:button-card
-            name: Chores Due
+            name: Wystan
             show_icon: false
             show_state: false
             tap_action:
               action: none
             styles:
               card:
-                - height: 32px
+                - height: 56px
                 - background: "#ba68c822"
                 - border: none
-                - border-left: "4px solid #ba68c8"
+                - border-left: "5px solid #ba68c8"
                 - border-radius: 8px
                 - box-shadow: none
               name:
                 - justify-self: start
-                - padding-left: 10px
-                - font-size: 13px
-                - font-weight: 700
-                - letter-spacing: 1px
-                - text-transform: uppercase
+                - padding-left: 12px
+                - font-size: 34px
+                - font-weight: 800
+                - letter-spacing: 0.5px
                 - color: "#ba68c8"
+                - text-shadow: 0 0 20px #ba68c855
           - type: custom:button-card
             name: ☀ Morning
             show_icon: false
