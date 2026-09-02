@@ -80,8 +80,8 @@ points repair, and every layout iteration were direct writes to the Pi's
 |---|---|
 | Address | `192.168.1.234` (reserved), `kitchencom.local` |
 | HA | **2026.6.3** · ChoreOps **1.0.7** |
-| ChoreOps entities | **300** (was 288 — +4 Feed Cats/Wystan, +8 Night Brush) |
-| Chores | **12** (was 11 — Night Brush added) |
+| ChoreOps entities | **316** (was 288) — +8 Night Brush, +16 pet split, −8 removed originals |
+| Chores | **14** (was 11) — Night Brush + 4 pet chores, −2 replaced |
 | Calendar entities | **12** (was 3) — 9 Google calendars arrived |
 | OAuth credential | **PRESENT** · 72 chars · ends `.apps.googleusercontent.com` · prefix `438890574011-d` |
 | Points | Rowan **0.0**, Wystan **0.0** (both zeroed; structures well-formed) |
@@ -148,6 +148,28 @@ All six were his decisions, applied by direct storage write + HA restart.
 | Trash, Recycling | *(unchanged)* | already `rotation_smart` + both kids — verified, not touched |
 | Brush Teeth | **renamed → "Morning Brush"** | ID kept, so Early Riser stays linked |
 | *(new)* Night Brush | cloned from it, fresh UUID `4ab75a5b…` | separate evening chore |
+| Feed Cats, Fishy | **deleted**, replaced by 4 morning/evening chores | see below |
+| Cook Dinner | stays **Rowan-only** — decided, not an oversight | Wystan is 8 |
+
+### Pet chores — 14 chores now; the weekly swap is MANUAL
+
+`Feed Cats` and `Fishy` were replaced by four `independent` chores, 2.0 pts each,
+each assigned to ONE kid. Week 1: **Rowan** = Feed Cats—Morning + Fishy—Evening;
+**Wystan** = Fishy—Morning + Feed Cats—Evening. Each kid does one pet in the morning
+and the other at night; they swap times weekly.
+
+**They are NOT rotating chores, deliberately.** ChoreOps has only `rotation_simple`
+and `rotation_smart`, both **completion-driven** — there is no time-based rotation
+(verified in `const.py:1462-1468`). A rotating version would decouple the
+morning/evening pairing the first time one kid completed something the other did not.
+Fixed assignment holds it; **the weekly swap is a manual reassign** (ask, and it is a
+one-shot script). Could later be an HA automation on a weekly trigger.
+
+Each kid now has **7 daily chores** — watch the Home column for overflow.
+
+**Rowan's Early Riser streak was zeroed** (2 → 0) at Garrett's request; Wystan was
+already 0. Chore Champion (`6/250`) was NOT zeroed — still open if a clean slate
+is wanted there too.
 
 ### 🔴 Rotation is COMPLETION-driven, not calendar-driven
 
@@ -254,8 +276,9 @@ read the ledger timestamps and chase `chore_manager.py`'s reset path.
 
 Points, ledger, `point_periods` and `cumulative_badge_progress` were cleared — but
 achievement progress lives in the **achievement records**, not the user record. Rowan
-still holds Early Riser **2/5** and Chore Champion **6/250**, partly from the phantom
-re-award. Garrett was offered a zeroing and moved on without answering. **Still open.**
+still held Early Riser **2/5** and Chore Champion **6/250**, partly from the phantom
+re-award. **Early Riser was zeroed** at Garrett's request (2026-09-01, late).
+**Chore Champion `6/250` is still un-zeroed** — open if a clean slate is wanted.
 
 ### 🔴 The points-structure bug — a warning, not just history
 
