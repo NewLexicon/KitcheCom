@@ -1,6 +1,6 @@
 # Fort Knox — cold-open (branch `fort-knox`)
 
-**Rewritten 2026-08-17, late evening.** Every claim below has the command that verifies it.
+**Rewritten 2026-08-17, late evening. Amended 2026-09-01** (§6a — card swap postponed). Every claim below has the command that verifies it.
 The project-wide cold-open (`docs/session-state/README.md`) is written from **main's**
 perspective and does not describe this branch.
 
@@ -12,10 +12,18 @@ commit. A concurrent session parks other branches in the primary checkout
 
 ## 1. Where is HEAD
 
-- **Last substantive commit:** `949adf5` — AdGuard config backup + restore path. Everything
-  after it is cold-open bookkeeping. Cited this way deliberately: a commit cannot name its
-  own SHA, and chasing the exact count just spawns another fix-up.
-- **Branch:** **34 commits ahead** of `origin/main`, all pushed. 17 files, ~4,150 lines.
+- **Stable prefix (frozen, immutable):** `1bf1bfd` (design) → `1af56db` (Phase 2 runbook)
+  → `0be81e3` (Phase 1 runbook) → `4025488` (API lab) → `949adf5` (AdGuard config backup
+  + restore path) → `ce850d4` (cold-open rewrite) → `d92acb7` / `acfbe06` / `68ecd79`
+  (Grocy docs + Pi deploy).
+- **The tip is deliberately NOT frozen here.** Get it live — do not stamp it back into this
+  doc, that loop does not converge:
+
+  ```bash
+  git log --oneline -1
+  git rev-list --count origin/main..HEAD      # branch-ahead count
+  git rev-list --count origin/fort-knox..HEAD # expect 0 when pushed
+  ```
 - **Content:** design + runbooks + reference helpers + `deploy/adguard/`.
   **No app code, no test suite, no build.** Test tables in the main cold-open do not apply.
 
@@ -147,7 +155,7 @@ already-broken client.
 | Printed rollback card (design §12) | ✅ written + every address verified — **`docs/reference/rollback-card.html`, open and print it** |
 | Config backup for the card swap | ✅ `deploy/adguard/backup/` + restore steps |
 | PSU | ✅ Apple 12W (5.2V 2.4A) |
-| **Fresh A2 microSD** | ❌ **the last cheap gate** — this Pi runs the ~6-year-old drawer-aged SanDisk |
+| **Fresh A2 microSD** | ❌ **the last cheap gate** — card + reader both **missing as of 2026-09-01**; see §6a. The running card is a SanDisk `SL32G` dated **11/2016** (~10 yrs, not ~6) |
 | Filtered secondary resolver | ❌ deferred by design — expensive; one filtered resolver is normal for a home |
 
 **When the card arrives:** flash per the flashing runbook §1–§4, install Docker, restore
@@ -156,6 +164,65 @@ password hash is redacted — regenerate it), reinstall the cron + `/root/.adgua
 cut over by pointing the gateway's DHCP DNS at `192.168.1.113`.
 
 **Then verify by resolving from a real device, not by reading a status page.**
+
+## 6a. 🛑 Card swap attempted 2026-09-01 — postponed, no work done
+
+Garrett returned after a break intending to **clone the running card onto a spare** (a cold
+spare, not a rebuild — that was his explicit pick over a fresh install). It stopped
+immediately: **he could locate neither the spare microSD nor a card reader.** His words:
+*"I can't seem to find my reader or my microSD. I'll have to postpone this project."*
+
+**Nothing was changed.** No flashing, no config edits, no commits to `deploy/adguard/`.
+The Pi is untouched.
+
+### What the session did establish
+
+- ✅ **The Pi is healthy.** Verified live before the network dropped: `up 5 days`,
+  `throttled=0x0`, `adguard/adguardhome:v0.107.78 Up 5 days`, root fs 14% used.
+- 🔴 **The card is ~10 years old, not ~6.** From
+  `/sys/block/mmcblk0/device/` — `name: SL32G`, `manfid: 0x000003` (SanDisk),
+  `date: 11/2016`. The gate above is corrected. Still healthy, but the age argument for
+  replacing it is stronger than the doc claimed.
+- 🔴 **There is NO remote path to this Pi.** `~/.ssh/config` `Host adguard` is a bare
+  `192.168.1.113` with no jump host, and the box **is not on the tailnet** —
+  `tailscale status` lists only `kitchencom` (the Pi 5) and the Mac. From the GSU/work
+  network (Mac on `10.250.77.x`) Tailscale is *also* blocked outright, with the health
+  check naming **Fortinet** equipment.
+
+  **⚠️ Do not misread this.** `ssh adguard` returning `Connection refused` is the
+  expected result off the home LAN. Run `ipconfig getifaddr en0` first — a `10.x`
+  answer means wrong network, **not** a dead Pi. This session hit exactly that and it
+  briefly looked like an outage.
+
+### Also worth knowing: the committed config backup could not be refreshed
+
+`deploy/adguard/backup/AdGuardHome.yaml.2026-08-17` is still the newest copy. A refresh was
+attempted and **failed for two independent reasons**, both worth writing down:
+
+1. `ssh adguard 'sudo cat ...' > file` wrote a **zero-byte file** — sudo wanted a TTY and
+   the redirect captured nothing. The subsequent `diff` then showed the entire committed
+   backup as "removed", which reads like catastrophic drift and is pure artifact.
+   **Use `sudo -n` and check the byte count before trusting any diff.**
+   This is the same family as the §5 traps: *it looked like an answer and was not one.*
+2. The network had moved off the home LAN by then, so it was unreachable regardless.
+
+**The backup's staleness is unquantified.** The only expected drift is `user_rules`, which
+cron toggles for the Roku rule and which the backup README already calls not-meaningful.
+Confirm from the home LAN before relying on it.
+
+### The literal next move for this gate
+
+1. Find the spare microSD **and** a USB card reader. This is the whole blocker.
+2. Be **on the home LAN** — nothing about this Pi is reachable otherwise.
+3. Refresh the config backup first (cheap, no downtime):
+   `ssh adguard 'sudo -n cat /opt/adguard/conf/AdGuardHome.yaml' > deploy/adguard/backup/AdGuardHome.yaml.$(date +%F)`
+   — verify it is non-empty, redact the `password:` line, then commit.
+4. Then clone: power the Pi down, image the old card, write it to the spare.
+   Cloning was chosen deliberately — **the card is the wear item, not the OS**, so a
+   bit-for-bit copy avoids re-verifying all seven §5 traps that a fresh install would
+   force. Do not silently upgrade this to a rebuild.
+
+---
 
 ## 7. ❓ Open question that may reshape the plan
 
@@ -246,6 +313,8 @@ In `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memo
   **`throttled=0x0` proves nothing after a reboot**
 - `pi-ssh-access-from-claude.md` — Pi 5 at `.234` (Home Assistant, a different box)
 - `second-pi-hijacks-route.md` — sibling to the direct-cable DNS hijack
+- `adguard-pi-card-age-and-no-remote-path.md` — **card is 11/2016; this Pi is home-LAN
+  only and NOT on the tailnet, so `Connection refused` usually means wrong network**
 
 ## 11. Verification commands
 
