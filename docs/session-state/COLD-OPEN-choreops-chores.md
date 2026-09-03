@@ -20,9 +20,11 @@ git rev-list --count main..HEAD           # ahead of main
 git status --porcelain                    # expect: empty
 ```
 
-**Stable prefix of the 2026-09-02 arc** (immutable; anything above `6c8d7e2` landed later):
+**Stable PREFIX of the arc** — immutable and verifiable. The tip is deliberately **not**
+frozen here (see below); `99ef30f` and everything below it will not move:
 
 ```
+99ef30f docs: close the auto-approve leak; root-cause the reward-pruning failure
 64fda01 docs: correct the kiosk-approval finding — the hole is closed, not open
 2ef6949 docs: session state + branch cold-open for feat/choreops-chores
 6c8d7e2 feat(panel): merge each kid's name into the section header bar
@@ -338,6 +340,8 @@ they were invisible before only because the `unavailable`/`unknown` excludes cau
 (outside the repo; `MEMORY.md` there is the index)
 
 Most relevant to this branch:
+- 🔴 `reward-visibility-needs-1-0-8.md` — **read before touching rewards** (§4a)
+- 🔴 `chore-reset-and-missable-semantics.md` — **read before promising "missable"** (§4b)
 - `midnight-rollover-guard.md`
 - `zigbee-channel-and-radio.md`
 - `kiosk-admin-approval-hole.md`
