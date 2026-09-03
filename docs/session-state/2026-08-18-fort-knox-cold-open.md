@@ -10,6 +10,59 @@ commit. A concurrent session parks other branches in the primary checkout
 
 ---
 
+## 0. 🎯 START HERE — next session (written 2026-09-03)
+
+**Last session did no Pi work.** The card swap was postponed within minutes: Garrett could
+find neither the spare microSD nor a card reader. The Pi is untouched and healthy.
+Full write-up: `docs/session-state/2026-09-01-card-swap-postponed.md`.
+
+### Before anything else, answer this — it decides the whole session
+
+```bash
+ipconfig getifaddr en0
+```
+
+| Answer | What it means | What to do |
+|---|---|---|
+| **`192.168.1.x`** | You are on the home LAN | The Pi is reachable. Proceed below. |
+| **`10.x` / anything else** | You are **not** home | **The AdGuard Pi is unreachable, full stop.** It has no remote path — bare `192.168.1.113`, and it is **not on the tailnet**. `ssh adguard` will say `Connection refused` and that is **expected, not an outage**. Do not debug it. |
+
+⚠️ Last session burned time misreading exactly this as a dead Pi. The Pi 5 (`kitchencom`)
+*is* on the tailnet; this box is not. **Two different machines — don't let one imply the other.**
+
+### If you ARE home
+
+Do these in order. Steps 1–2 need no card and are worth doing alone.
+
+1. **Confirm the Pi is alive** (~10 s):
+   ```bash
+   ssh adguard 'uptime -p; vcgencmd get_throttled; sudo docker ps --format "{{.Image}} {{.Status}}"'
+   dig +short @192.168.1.113 example.com     # must return an address
+   ```
+2. **Refresh the config backup** — cheap, zero downtime, and the committed copy is from
+   **2026-08-17** with unquantified drift:
+   ```bash
+   ssh adguard 'sudo -n cat /opt/adguard/conf/AdGuardHome.yaml' > deploy/adguard/backup/AdGuardHome.yaml.$(date +%F)
+   wc -c deploy/adguard/backup/AdGuardHome.yaml.$(date +%F)   # 🔴 MUST be non-zero
+   ```
+   🔴 **`sudo -n` and the byte check are both mandatory.** Without `-n`, sudo wants a TTY,
+   the redirect writes **zero bytes**, and a diff against it renders the entire backup as
+   deleted — which looks like catastrophic drift and means nothing. This happened last
+   session. Then redact the `password:` line before committing.
+3. **Only if the card AND a reader are in hand** — clone per §6a step 4.
+   **Clone, do not rebuild.** That was Garrett's explicit choice and the reasoning is in
+   §6a: the card is the wear item, not the OS, so a bit-for-bit copy avoids re-verifying
+   all seven §5 traps.
+
+### If you are NOT home
+
+Nothing on this branch needs the Pi. The standing alternative is **Phase 1**
+(`docs/session-state/2026-08-17-phase1-device-controls-runbook.md`) — device/OS controls,
+**no hardware required**, and per §8 it is "the layer that actually enforces" and is
+largely undone. Family Link is the standing first move.
+
+---
+
 ## 1. Where is HEAD
 
 - **Stable prefix (frozen, immutable):** `1bf1bfd` (design) → `1af56db` (Phase 2 runbook)
@@ -285,19 +338,22 @@ scheduling would then need an external router via IP Passthrough. Detail: build-
 
 **Read in this order.** All paths verified to exist.
 
-1. `docs/session-state/2026-08-17-adguard-pi-build-handoff.md` — **the build. Read first.**
-2. `docs/superpowers/specs/2026-08-16-parental-controls-design.md` — the design. §13 phases,
+1. `docs/session-state/2026-09-01-card-swap-postponed.md` — **most recent session.**
+   Why the card gate is still open, plus two gotchas that cost time (wrong-network
+   `Connection refused`, and `sudo cat` over ssh writing zero bytes).
+2. `docs/session-state/2026-08-17-adguard-pi-build-handoff.md` — **the build.**
+3. `docs/superpowers/specs/2026-08-16-parental-controls-design.md` — the design. §13 phases,
    §5 honest enforcement posture. **Appendix A holds 11 corrections contrary to popular
    online guidance — do not "fix" them back.** ⚠️ **line 33 is challenged by §7 above.**
-3. `docs/session-state/2026-08-17-adguard-api-lab-findings.md` — every software claim tested
+4. `docs/session-state/2026-08-17-adguard-api-lab-findings.md` — every software claim tested
    against a live v0.107.78.
-4. `docs/session-state/2026-08-17-phase1-device-controls-runbook.md` — Phase 1, ungated,
+5. `docs/session-state/2026-08-17-phase1-device-controls-runbook.md` — Phase 1, ungated,
    the layer that actually enforces.
-5. `docs/session-state/2026-08-17-adguard-pi-flashing-runbook.md` — Phase 2. §0 is
+6. `docs/session-state/2026-08-17-adguard-pi-flashing-runbook.md` — Phase 2. §0 is
    **resolved**; the rest is the card-swap procedure.
-6. `docs/reference/rollback-card.html` — **print before cutover.**
-7. `docs/reference/adguard-rmw.py` · `docs/reference/adguard-rule-schedule.py`
-8. `deploy/adguard/` — compose · `apply-youtube-schedule.py` · `kc-roku-live.cron` ·
+7. `docs/reference/rollback-card.html` — **print before cutover.**
+8. `docs/reference/adguard-rmw.py` · `docs/reference/adguard-rule-schedule.py`
+9. `deploy/adguard/` — compose · `apply-youtube-schedule.py` · `kc-roku-live.cron` ·
    `backup/`
 
 ## 10. Memory entries that apply
