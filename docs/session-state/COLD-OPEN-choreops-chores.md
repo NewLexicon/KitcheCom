@@ -1,6 +1,6 @@
 # COLD OPEN — `feat/choreops-chores`
 
-**Refreshed:** 2026-09-03 late morning (chore-reset + reward-pruning session).
+**Refreshed:** 2026-09-03 afternoon (offline reward-prune prep — Pi unreachable from the office).
 **Read this first.** Everything below is verified, with the command that verifies it.
 
 > ⚠️ `docs/session-state/README.md` is the **main**-branch cold-open and is **STALE**
@@ -143,13 +143,29 @@ Per-reward assignment is a **1.0.8 feature**. All 16 rewards still show.
 stashed verbatim at **`meta._kc_unassigned_rewards_20260903`** (12 entries). No definition was
 deleted. Backup: `.storage/choreops/choreops_data_01KXV33Q540SYEF1KFM54DCEDJ.bak-premissable-20260903-0958`.
 
-Three paths — **Garrett has not picked one yet**:
-1. **Delete the 12 from the store** — works on 1.0.7 today; regenerable later from
-   `deploy/choreops-content/gen_content.py`.
-2. **Upgrade 1.0.7 → 1.0.8** — makes the already-applied edit take effect and is the
-   reversible mechanism Garrett wanted; but it is an upgrade on a live family-facing panel.
-   Back up the store and review the `pre_v50` migration path first.
-3. **Revert the unassign** (from the stash or the backup) and leave all 16 visible.
+**✅ DECIDED 2026-09-03 (afternoon): PATH 1 — delete the 12.** Chosen because it works on
+the Pi's 1.0.7 as-is and is reversible from `gen_content.py`, unlike path 2 which means
+upgrading a live family-facing panel. (Rejected: 2 = upgrade to 1.0.8; 3 = revert the unassign.)
+
+**The work is BUILT and fixture-verified, but NOT YET RUN** — the Pi was unreachable all
+afternoon (Mac on corporate `10.x`, Tailscale stopped and blocked by Fortinet).
+
+🔴 **NEXT SESSION, AT HOME, START HERE:**
+**`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-09-03-reward-prune-runbook.md`**
+— step-by-step, with dry-run-first, HA-stop, verification and rollback.
+Script: **`/Users/jdehart1/___Code_DEV/KitchenCOM/deploy/choreops-content/prune_rewards.py`**
+
+It mirrors ChoreOps' own `delete_reward` (`reward_manager.py:929`) — including pruning each
+assignee's `reward_data[reward_id]`, which is easy to miss and otherwise orphans redemption
+history — and adds a guard ChoreOps lacks: `delete_reward` does **not** check `pending_count`,
+so deleting a reward with an unapproved redemption silently discards a claim the kid already
+spent points on. The script refuses unless `--force`.
+
+Verified 6/6 against fixtures: dry-run default writes nothing; pending redemption refuses
+(exit 2, no write); wrong store / store-directory refuse (exit 1); backup holds the original
+16; idempotent; points and Cash Out history preserved.
+
+⚠️ The script has **never touched the Pi**. Run the dry run first and read it.
 
 ### (b) "Missable" chores — the premise is partly wrong, re-read before acting
 
@@ -271,6 +287,17 @@ Zigbee substitute.
 ~3 min on cached state, then offline. `tailscale up`/`down` are **no-ops on the Mac App Store
 build**. Unaffected at home.
 
+**⚠️ AT THE OFFICE, the Pi is simply unreachable — verified 2026-09-03.** Both `en0` and
+`en19` sit on corporate `10.x` subnets (not the home `192.168.1.0/24`), and Tailscale reads
+`stopped` — which `tailscale up` cannot fix on the Mac App Store build (§6). There is **no**
+path to the Pi from the office; do not burn time hunting one. **Diagnose in this order** —
+it takes 15 seconds and distinguishes three different failures that all look like a dead Pi:
+```bash
+route -n get default | grep interface   # en0 = home · utun* = Cisco VPN · en19/10.x = office
+ipconfig getifaddr en0                  # 192.168.1.x = home · 10.x = office
+```
+Plan office sessions as repo-only work (§4e is the standing candidate).
+
 **⚠️ Cisco VPN gotcha — cost ~20 min on 2026-09-02.** With the work VPN connected *at home*,
 the Mac's default route goes to `utun11` and the Pi is unreachable on the LAN;
 `ssh kitchencom` returns *"Connection refused"* or a timeout, which reads exactly like a dead
@@ -314,9 +341,11 @@ they were invisible before only because the `unavailable`/`unknown` excludes cau
 - **`kitchen.yaml` is contested** — other sessions edit it live on the Pi. Always `diff` the Pi
   copy against the repo before deploying; back up on the Pi first.
 - **Shared checkout** — verify `git branch --show-current` before every commit.
-- 🔴 **Reward pruning is UNFINISHED** (§4a) — 12 rewards carry an inert
-  `assigned_user_ids: []` on 1.0.7 and all 16 still show. Three paths, none chosen. Originals
-  stashed at `meta._kc_unassigned_rewards_20260903`.
+- 🔴 **Reward pruning is PREPARED BUT NOT APPLIED** (§4a) — path 1 chosen; script + runbook
+  committed (`c4edd39`) and fixture-verified, but **never run against the Pi** (unreachable
+  from the office). The 12 still carry the inert `assigned_user_ids: []` and all 16 still
+  show. Originals stashed at `meta._kc_unassigned_rewards_20260903`; the script clears that
+  stash when it applies.
 - **`meta._kc_unassigned_rewards_20260903` is a KitchenCOM-added key**, not a ChoreOps field.
   Harmless (ChoreOps ignores unknown meta keys — verified across a restart), but delete it once
   the reward decision lands so it does not confuse a future reader.
