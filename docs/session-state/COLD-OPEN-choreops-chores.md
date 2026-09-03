@@ -173,8 +173,11 @@ and the cheapest Cash Out is 10, so it becomes `available` at 10 points.
 > ```
 > The known-dead `treat` / `cash` rewards are the **control group** — they read `unavailable`.
 
-**To bring the 12 back later:** regenerate from `deploy/choreops-content/gen_content.py`.
-Runbook (now historical): `docs/session-state/2026-09-03-reward-prune-runbook.md`.
+**To bring the 12 back later:** regenerate from
+**`/Users/jdehart1/___Code_DEV/KitchenCOM/deploy/choreops-content/gen_content.py`**.
+Script used: **`/Users/jdehart1/___Code_DEV/KitchenCOM/deploy/choreops-content/prune_rewards.py`**
+(re-runnable; idempotent; dry-run by default).
+Runbook, now historical: **`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-09-03-reward-prune-runbook.md`**
 
 ### (b) "Missable" chores — the premise is partly wrong, re-read before acting
 
@@ -376,7 +379,13 @@ they were invisible before only because the `unavailable`/`unknown` excludes cau
 (outside the repo; `MEMORY.md` there is the index)
 
 Most relevant to this branch:
-- 🔴 `reward-visibility-needs-1-0-8.md` — **read before touching rewards** (§4a)
+- `reward-visibility-needs-1-0-8.md` — now RESOLVED (the prune shipped); still the reference
+  for why `assigned_user_ids` is inert on 1.0.7
+- 🔴 `entity-registry-is-not-live-state.md` — **read before verifying that any entity is gone**;
+  the registry and `restore_state` both lie about it
+- 🔴 `reward-delete-drops-pending-claims.md` — **read before deleting any reward**; ChoreOps
+  discards an unapproved redemption the kid already paid for
+- `pi-unreachable-from-office.md` — the office/VPN/home network ladder (§6)
 - 🔴 `chore-reset-and-missable-semantics.md` — **read before promising "missable"** (§4b)
 - `midnight-rollover-guard.md`
 - `zigbee-channel-and-radio.md`
