@@ -145,7 +145,7 @@ harmless meanwhile.
 
 ---
 
-## 5. 🔴 OPEN: the kiosk cannot APPROVE chores
+## 5. ✅ RESOLVED: the kiosk cannot APPROVE chores — the self-approval hole is CLOSED
 
 **Found in the log 2026-09-03 08:01** — a real user action, not a side effect of this work:
 
@@ -156,26 +156,37 @@ ERROR ... Authorization failed to Approve Chore 'Morning Brush' for Assignee 'Ro
 
 **Why.** The two auth paths differ:
 
-- `AUTH_ACTION_PARTICIPATION` (claim) → `_has_participation_authority_for_target()` →
-  `if user.is_admin: return True`. **Unconditional admin grant** — so claiming works.
+- `AUTH_ACTION_PARTICIPATION` (claim) → `_has_participation_authority_for_target()`. Admin
+  short-circuits, but it also falls through to per-user checks, and **`CONF_KIOSK_MODE` skips
+  the assignee check on claim** (`button.py:623`) so unlinked kids can claim. Non-admin
+  `Panel` claims fine — which is why tap-to-claim works.
 - `AUTH_ACTION_APPROVAL` (approve) → `_has_approval_authority_for_target()` → gated behind
   **`is_admin_approval_bypass_enabled(hass)`**, a ChoreOps *setting*, currently **off**.
+  Non-admin `Panel` is refused. **This split is the intended design.**
 
-**Identity facts (verified, and they correct an earlier memory note):**
-- Kiosk browser runs as HA user **`KitchenCom`**, which IS admin — via
-  `group_ids: ['system-admin']`. The raw `is_admin` field in `.storage/auth` reads `None`;
-  **group membership is authoritative, the field is not.** Don't re-derive this from the field.
-- ChoreOps `Garrett` and `Rebecca` **both link to the same HA user** `KitchenCom`
-  (`487379b1...`). `Rowan` and `Wystan` are **UNLINKED** (no `ha_user_id`).
-- A third HA user `Panel` exists in `system-users` (non-admin), largely unused.
+**Identity facts (verified 2026-09-03 from refresh tokens):**
+- The kiosk browser runs as **`Panel`** (`system-users`, **NON-admin**) — token last used from
+  ip `::1`, i.e. localhost on the Pi itself. `KitchenCom` (`system-admin`) tokens come from
+  `192.168.1.180` — Garrett's **Mac**, not the panel.
+- ⚠️ **The raw `is_admin` field in `.storage/auth` reads `None` for EVERY user.**
+  **`group_ids` is authoritative.** Reading `is_admin` wrongly suggests nobody is admin.
+- ChoreOps `Garrett` and `Rebecca` **share one HA user** (`KitchenCom`, `487379b1...`), both
+  `can_approve=True`. `Rowan`/`Wystan` are **UNLINKED** — which is why `CONF_KIOSK_MODE` is
+  needed for them to claim at all.
 
-**This is a design decision for Garrett, not a bug to silently fix.** Enabling the admin
-approval bypass would let anyone at the kiosk approve chores — including the kids, since the
-panel is a shared logged-in session. That is the same approval hole already recorded in
-[[kiosk-admin-approval-hole]]. Options, unexplored:
-1. Enable the bypass (convenient; kids can self-approve).
-2. Leave it off and approve from a phone/personal login.
-3. Link `Rebecca` to her own HA user so approvals are attributable.
+**This is the self-approval hole being CLOSED, not a bug.** [[kiosk-admin-approval-hole]]
+recorded (2026-08-17) that the kiosk ran as admin `KitchenCom` and a kid could claim then
+approve on the same screen. The fix that note proposed — give the panel its own non-admin user
+— **has since been implemented**. That memory has been corrected.
+
+**Do NOT enable `is_admin_approval_bypass_enabled`** to make panel approval "work" — it
+re-opens the hole for any kid at the shared session.
+
+**Remaining minor gap:** Garrett and Rebecca share one HA account, so approvals are not
+attributable to a specific parent. Linking Rebecca to her own HA user would fix it. Not urgent.
+
+⚠️ **A real claim is waiting:** `Fishy — Evening` is `state=claimed` and needs approval from a
+non-panel device.
 
 ---
 

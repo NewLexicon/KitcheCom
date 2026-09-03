@@ -79,9 +79,9 @@ Full detail: **`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-0
 
 **Nothing is blocked.** Three candidates:
 
-### (a) The kiosk-approval decision — needs Garrett, not code — HIGHEST VALUE
-See §5. There is a real claim sitting unapproved right now, and an approval was refused on
-the panel at 08:01 on 2026-09-03. Ask Garrett which of the three options he wants.
+### (a) Approve the waiting claim — 30 seconds, not a code change
+`Fishy — Evening` sits in `state=claimed`. Approve it from a **phone or the Mac** (as
+`KitchenCom`), NOT from the panel — the panel is deliberately non-admin now. See §5.
 
 ### (b) ZHA setup + bulb pairing — requires Garrett PHYSICALLY AT THE PANEL
 **Switch branches first:** `git checkout feat/adaptive-lighting`. The runbook is
@@ -105,7 +105,7 @@ both written up with source citations in
 
 ---
 
-## 5. 🔴 OPEN DECISION: the kiosk cannot APPROVE chores
+## 5. ✅ NOT A BUG: the kiosk cannot APPROVE chores — that is the fix working
 
 Observed in the log **2026-09-03 08:01** — a real user action:
 
@@ -116,24 +116,38 @@ ERROR ... Authorization failed to Approve Chore 'Morning Brush' for Assignee 'Ro
 
 **Why the two paths differ** (`helpers/auth_helpers.py`):
 
-- **Claim** → `_has_participation_authority_for_target()` → `if user.is_admin: return True`.
-  **Unconditional admin grant.** This is why tap-to-claim works.
+- **Claim** → `_has_participation_authority_for_target()`. Admin short-circuits, but it also
+  falls through to per-user checks, and **`CONF_KIOSK_MODE` skips the assignee check on claim**
+  (`button.py:623`) so unlinked kids can claim. Non-admin `Panel` claims fine.
 - **Approve** → `_has_approval_authority_for_target()` → gated behind
   **`is_admin_approval_bypass_enabled(hass)`**, a ChoreOps setting, currently **off**.
+  Non-admin `Panel` is refused. This is the intended split.
 
-**Identity facts — verified, and they correct an earlier assumption:**
-- The kiosk browser runs as HA user **`KitchenCom`**, which **IS** admin via
-  `group_ids: ['system-admin']`. The raw `is_admin` field in `.storage/auth` reads **`None`**
-  — **group membership is authoritative, the field is not.** Do not re-derive from the field
-  and conclude the kiosk is non-admin.
-- ChoreOps `Garrett` and `Rebecca` **share one HA user** (`KitchenCom`, `487379b1...`).
-  `Rowan` and `Wystan` are **UNLINKED** (no `ha_user_id`).
-- A third HA user `Panel` exists in `system-users` (non-admin), largely unused.
+**Identity facts — verified 2026-09-03:**
+- HA users: **`Panel`** (`system-users`, NON-admin) — **this is what the kiosk runs as**;
+  **`KitchenCom`** (`system-admin`) — Garrett's Mac/phone; `Home Assistant Content`
+  (`system-read-only`, system-generated).
+- ⚠️ **The raw `is_admin` field in `.storage/auth` reads `None` for EVERY user.**
+  **`group_ids` is authoritative.** Reading `is_admin` will wrongly suggest nobody is admin.
+- ChoreOps `Garrett` and `Rebecca` **share one HA user** (`KitchenCom`, `487379b1...`), both
+  `can_approve=True`. `Rowan` and `Wystan` are **UNLINKED** (no `ha_user_id`) — which is why
+  kiosk mode is required for them to claim at all.
 
-**This is Garrett's design call, not a bug to silently fix.** Enabling the bypass lets anyone
-at the kiosk approve — including the kids, since the panel is one shared logged-in session
-(see [[kiosk-admin-approval-hole]]). Options: (1) enable the bypass; (2) leave it off and
-approve from a phone; (3) link Rebecca to her own HA user so approvals are attributable.
+**This is the self-approval hole being CLOSED, not a regression.** Verified 2026-09-03 from
+refresh tokens: the kiosk browser runs as **`Panel`** (ip `::1` = localhost on the Pi), while
+`KitchenCom` sessions come from `192.168.1.180` — Garrett's **Mac**, not the panel. An earlier
+memory note said the kiosk ran as admin `KitchenCom` and could self-approve; that fix was
+implemented at some point between 2026-08-17 and now, and the memory has been corrected.
+
+**Do NOT "fix" this by enabling `is_admin_approval_bypass_enabled`** — that re-opens the hole,
+letting any kid at the shared panel approve their own chores.
+
+Parents approve from a phone/Mac as `KitchenCom`. **Remaining minor gap:** Garrett and Rebecca
+share that one HA account, so approvals are not attributable to a specific parent. Linking
+Rebecca to her own HA user would fix it. Not urgent.
+
+⚠️ **There is a real claim waiting**: `Fishy — Evening` is in `state=claimed` and needs a
+parent approval from a non-panel device.
 
 ---
 
