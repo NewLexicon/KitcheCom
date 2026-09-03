@@ -1,6 +1,6 @@
 # COLD OPEN — `feat/choreops-chores`
 
-**Refreshed:** 2026-09-03 afternoon (offline reward-prune prep — Pi unreachable from the office).
+**Refreshed:** 2026-09-03 evening (reward prune APPLIED to the Pi and verified).
 **Read this first.** Everything below is verified, with the command that verifies it.
 
 > ⚠️ `docs/session-state/README.md` is the **main**-branch cold-open and is **STALE**
@@ -143,29 +143,38 @@ Per-reward assignment is a **1.0.8 feature**. All 16 rewards still show.
 stashed verbatim at **`meta._kc_unassigned_rewards_20260903`** (12 entries). No definition was
 deleted. Backup: `.storage/choreops/choreops_data_01KXV33Q540SYEF1KFM54DCEDJ.bak-premissable-20260903-0958`.
 
-**✅ DECIDED 2026-09-03 (afternoon): PATH 1 — delete the 12.** Chosen because it works on
-the Pi's 1.0.7 as-is and is reversible from `gen_content.py`, unlike path 2 which means
-upgrading a live family-facing panel. (Rejected: 2 = upgrade to 1.0.8; 3 = revert the unassign.)
+**✅ DONE 2026-09-03 evening — APPLIED TO THE PI AND VERIFIED.** Path 1 (delete the 12) was
+chosen and executed. **Only the 4 Cash Outs remain redeemable.** Nothing here is outstanding.
 
-**The work is BUILT and fixture-verified, but NOT YET RUN** — the Pi was unreachable all
-afternoon (Mac on corporate `10.x`, Tailscale stopped and blocked by Fortinet).
+Applied with `deploy/choreops-content/prune_rewards.py --apply` (HA stopped, then restarted).
+Dry run was clean: no pending redemptions, and **no per-user `reward_data` to prune** — the
+kids had never redeemed anything, so no history was lost.
 
-🔴 **NEXT SESSION, AT HOME, START HERE:**
-**`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-09-03-reward-prune-runbook.md`**
-— step-by-step, with dry-run-first, HA-stop, verification and rollback.
-Script: **`/Users/jdehart1/___Code_DEV/KitchenCOM/deploy/choreops-content/prune_rewards.py`**
+**Verified after the restart:** store holds 4 rewards; `meta._kc_unassigned_rewards_20260903`
+cleared; HA `200`; **0** ChoreOps errors; Rowan still 6.0 points; `kitchen.yaml` identical to
+the repo. Backup: `...choreops_data_01KXV33Q540SYEF1KFM54DCEDJ.bak-prunerewards-20260903-173917`.
 
-It mirrors ChoreOps' own `delete_reward` (`reward_manager.py:929`) — including pruning each
-assignee's `reward_data[reward_id]`, which is easy to miss and otherwise orphans redemption
-history — and adds a guard ChoreOps lacks: `delete_reward` does **not** check `pending_count`,
-so deleting a reward with an unapproved redemption silently discards a claim the kid already
-spent points on. The script refuses unless `--force`.
+Live-state proof (`sensor.rowan_choreops_reward_status_*`, newest recorder rows):
+the 4 Cash Outs are `locked`; all 12 pruned rewards flipped to `unavailable` at 17:40:05.
+`locked` is **normal** — Pi `sensor.py:2729-2740` returns it when points < cost. Rowan has 6.0
+and the cheapest Cash Out is 10, so it becomes `available` at 10 points.
 
-Verified 6/6 against fixtures: dry-run default writes nothing; pending redemption refuses
-(exit 2, no write); wrong store / store-directory refuse (exit 1); backup holds the original
-16; idempotent; points and Cash Out history preserved.
+> ⚠️ **VERIFYING A PRUNE — do not repeat this mistake.** `core.entity_registry` and
+> `core.restore_state` are **NOT** live state. The registry keeps rows for deleted entities
+> forever (it had not been written since **2026-09-01**), and `restore_state` is a *startup*
+> snapshot. Both showed all 16 rewards long after the prune succeeded. **Query the recorder DB
+> instead** — newest `states` row per `metadata_id`, joined to `states_meta`:
+> ```bash
+> ssh kitchencom 'sudo python3 -c "
+> import sqlite3
+> c=sqlite3.connect(\"file:/home/garrettdehart/homeassistant/home-assistant_v2.db?mode=ro\",uri=True)
+> q=c.execute(\"SELECT sm.entity_id,s.state FROM states s JOIN states_meta sm ON s.metadata_id=sm.metadata_id WHERE sm.entity_id LIKE \x27sensor.rowan_choreops_reward_status_%\x27 AND s.state_id IN (SELECT MAX(state_id) FROM states GROUP BY metadata_id)\")
+> [print(e,st) for e,st in sorted(q)]"'
+> ```
+> The known-dead `treat` / `cash` rewards are the **control group** — they read `unavailable`.
 
-⚠️ The script has **never touched the Pi**. Run the dry run first and read it.
+**To bring the 12 back later:** regenerate from `deploy/choreops-content/gen_content.py`.
+Runbook (now historical): `docs/session-state/2026-09-03-reward-prune-runbook.md`.
 
 ### (b) "Missable" chores — the premise is partly wrong, re-read before acting
 
@@ -341,14 +350,12 @@ they were invisible before only because the `unavailable`/`unknown` excludes cau
 - **`kitchen.yaml` is contested** — other sessions edit it live on the Pi. Always `diff` the Pi
   copy against the repo before deploying; back up on the Pi first.
 - **Shared checkout** — verify `git branch --show-current` before every commit.
-- 🔴 **Reward pruning is PREPARED BUT NOT APPLIED** (§4a) — path 1 chosen; script + runbook
-  committed (`c4edd39`) and fixture-verified, but **never run against the Pi** (unreachable
-  from the office). The 12 still carry the inert `assigned_user_ids: []` and all 16 still
-  show. Originals stashed at `meta._kc_unassigned_rewards_20260903`; the script clears that
-  stash when it applies.
-- **`meta._kc_unassigned_rewards_20260903` is a KitchenCOM-added key**, not a ChoreOps field.
-  Harmless (ChoreOps ignores unknown meta keys — verified across a restart), but delete it once
-  the reward decision lands so it does not confuse a future reader.
+- ✅ **Reward pruning is DONE** (§4a) — applied and verified 2026-09-03 evening; only the 4
+  Cash Outs remain. Backup `...bak-prunerewards-20260903-173917`. The 12 are regenerable from
+  `gen_content.py`. **New orphans:** 12 rewards' button/sensor entities now read `unavailable`
+  (same harmless class as §7); cleanable from the HA UI.
+- ✅ **`meta._kc_unassigned_rewards_20260903` has been REMOVED** by the prune (2026-09-03
+  evening). It was a KitchenCOM-added key, not a ChoreOps field. Nothing to clean up.
 - **Bonuses (4) and penalties (2) are dormant, intentionally.** They have **no `enabled` flag
   and no assignment field**, so "disable" is not expressible in the data — only delete or
   leave. They are approver-only buttons and appear **nowhere** in `kitchen.yaml`
