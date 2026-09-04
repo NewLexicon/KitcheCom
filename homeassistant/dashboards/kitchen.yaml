@@ -29,11 +29,21 @@ views:
               action: navigate
               navigation_path: /kitchen-snapshot/schedule
           - type: calendar
-            # dayGridWeek, NOT listWeek: FullCalendar's list plugin only renders
-            # days that HAVE events (ha-full-calendar.ts:65 -> type "list"), so
-            # empty days silently vanished. dayGridWeek shows all 7 day cells,
-            # so a day with nothing on it reads as genuinely empty.
-            initial_view: dayGridWeek
+            # listWeek = this week's events as an agenda list.
+            #
+            # ⚠️ 2026-09-03: the card accepts ONLY three views. Verified in the
+            # shipped frontend bundle on HA 2026.6.3 (hui-calendar-card,
+            # frontend_latest/64859.*.js): _=["dayGridMonth","dayGridDay","listWeek"].
+            # There is NO dayGridWeek and NO timeGridWeek. This card previously
+            # said dayGridWeek, which is not a valid value, so the card silently
+            # fell back to its default dayGridMonth — that is why Home showed a
+            # MONTH instead of the intended week.
+            #
+            # The old comment here claimed listWeek was rejected because the list
+            # plugin hides days with no events. That trade-off is real (listWeek
+            # shows only days that HAVE events), but it was never actually in
+            # effect, because dayGridWeek never rendered.
+            initial_view: listWeek
             grid_options:
               rows: 12
             entities:
@@ -1805,11 +1815,21 @@ views:
       - type: grid
         cards:
           - type: calendar
-            # timeGridWeek = the Google-style hour grid. Each CALENDAR gets its
-            # own colour (hui-calendar-card.ts:146 reads the entity registry's
-            # calendar.color, else auto-assigns by index). Per-EVENT Google
-            # colours are not exposed over the API, so they can't be mirrored.
-            initial_view: timeGridWeek
+            # ⚠️ 2026-09-03: timeGridWeek is NOT a supported value for this card
+            # (see the note on the Home calendar above) — it silently fell back
+            # to dayGridMonth, so the Google-style hour grid described here was
+            # never actually rendering. The card supports only dayGridMonth,
+            # dayGridDay and listWeek.
+            #
+            # dayGridMonth is now set EXPLICITLY: this is the full-calendar page,
+            # where a month overview is the useful thing, and Home carries the
+            # week agenda. Colour behaviour below still applies.
+            #
+            # Each CALENDAR gets its own colour (hui-calendar-card reads the
+            # entity registry's calendar.color, else auto-assigns by index).
+            # Per-EVENT Google colours are not exposed over the API, so they
+            # can't be mirrored.
+            initial_view: dayGridMonth
             grid_options:
               rows: 14
             entities:
