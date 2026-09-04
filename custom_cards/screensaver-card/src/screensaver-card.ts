@@ -288,6 +288,59 @@ export function shouldReResolve(
   return now - resolvedAt >= threshold;
 }
 
+
+// ── Resume ordering across activations (2026-09-04) ──────────────────────────
+// Ordering used to be an independent reshuffle on EVERY activation, restarting at
+// index 0 of a fresh permutation. The start was genuinely random, but because each
+// activation drew independently, a photo could reappear in the very next session
+// while others waited: measured ~24% of a ~5-minute session repeated from the
+// previous one (122 photos at 10s, i.e. a 20-minute full pass against a 30-minute
+// idle timer, so a session rarely finishes a pass).
+//
+// Resuming the SAME shuffled order and cursor turns the sequence into a true
+// shuffle bag: every photo shows once before any shows twice, no matter how many
+// times the screensaver starts and stops. The first photo of the very first
+// activation is still random, because the order itself is shuffled.
+//
+// The order is only re-shuffled when the COLLECTION changes (photos added or
+// removed) — stale indices must not survive that. Identity is the set of
+// contentIds, so an unchanged folder resumes even though HA's browse order is
+// not guaranteed stable.
+//
+// Deliberately NOT an index-returning "bag": portrait pairing (planSlot) seeks
+// forward through _items and repositions the cursor itself, so it needs a stable
+// ordered array plus a positional cursor. Keeping that shape means pairing is
+// untouched. Closes the deferred "no-immediate-repeat on reshuffle" TODO.
+export function planResumeOrder(
+  fetched: MediaItem[],
+  previous: MediaItem[],
+  previousIndex: number,
+  shuffle: boolean,
+  rand: () => number,
+): { items: MediaItem[]; index: number; reshuffled: boolean } {
+  if (fetched.length === 0) return { items: [], index: -1, reshuffled: true };
+
+  const sameCollection =
+    previous.length === fetched.length &&
+    (() => {
+      const prevIds = new Set(previous.map((i) => i.contentId));
+      return fetched.every((i) => prevIds.has(i.contentId));
+    })();
+
+  if (sameCollection) {
+    // Keep the previous ORDER and cursor. `previous` carries resolved urls, so
+    // reusing those objects preserves the resolve cache too.
+    const index = previousIndex >= previous.length ? previous.length - 1 : previousIndex;
+    return { items: previous, index, reshuffled: false };
+  }
+
+  return {
+    items: shuffle ? shuffleOrder(fetched, rand) : fetched,
+    index: -1,
+    reshuffled: true,
+  };
+}
+
 // Fisher-Yates shuffle with injectable randomness (rand() -> [0,1)). Returns a NEW
 // array; does not mutate input. Injectable rand keeps it deterministically testable
 // (glue passes Math.random). Used for shuffle-bag photo ordering.
@@ -453,10 +506,21 @@ export class ScreensaverCard extends LitElement {
     // Authoritative guard BEFORE mutating display state: if a stop happened during
     // collection, discard everything and bail.
     if (gen !== this._gen) { this._loopRunning = false; return; }
-    this._items = this._cfg.shuffle ? shuffleOrder(items, Math.random) : items;
-    this._pairedShown.clear();
+    // Resume the previous order+cursor when the folder is unchanged, so the
+    // sequence is a true shuffle bag across activations rather than an
+    // independent redraw each time (see planResumeOrder).
+    const plan = planResumeOrder(
+      items,
+      this._items,
+      this._index,
+      this._cfg.shuffle,
+      Math.random,
+    );
+    this._items = plan.items;
+    this._index = plan.index;
+    // Partner bookkeeping is only valid for the order it was built against.
+    if (plan.reshuffled) this._pairedShown.clear();
     this._mode = this._items.length === 0 ? "fallback" : "media";
-    this._index = -1;
     if (this._mode === "media") this._advance();
   }
 
