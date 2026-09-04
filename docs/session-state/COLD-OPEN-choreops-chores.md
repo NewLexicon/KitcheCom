@@ -1,6 +1,6 @@
 # COLD OPEN — `feat/choreops-chores`
 
-**Refreshed:** 2026-09-03 evening (reward prune APPLIED to the Pi and verified).
+**Refreshed:** 2026-09-04 (AdGuard card cloned + verified; CLI auto-updater pinned).
 **Read this first.** Everything below is verified, with the command that verifies it.
 
 > ⚠️ `docs/session-state/README.md` is the **main**-branch cold-open and is **STALE**
@@ -332,6 +332,138 @@ Entity IDs were minted from ORIGINAL chore names and **did not follow renames**:
 **Never infer chore identity from the slug.** Map via `core.entity_registry`'s `original_name`
 first (command in the session-state doc, §4). The orphans are excluded from the current lists;
 they were invisible before only because the `unavailable`/`unknown` excludes caught them.
+
+---
+
+## 7b. AdGuard Pi card clone + tooling changes (2026-09-03/04 session)
+
+**The AdGuard Pi now runs on a CLONED SD card. Verified backups exist off-Pi.**
+
+### Backups on the laptop — `/Users/jdehart1/Pi-Images/`
+
+| File | Size | What it is |
+|---|---|---|
+| `adguard-20260903.img.gz` | 1.4 GB | Full card image, gzipped. Decompresses to exactly **31,914,983,424 bytes**. |
+| `AdGuardHome-20260903.yaml` | 12,518 B | Standalone config, 20 top-level keys, `schema_version: 34`. |
+
+Restore the image to any ≥32 GB card (needs an ADMIN account — see below):
+
+```bash
+sudo sh -c 'gzip -dc /Users/jdehart1/Pi-Images/adguard-20260903.img.gz | dd of=/dev/rdiskN bs=4m'
+```
+
+⚠️ `AdGuardHome-20260903.yaml` contains the `users:` block with **password hashes**. It is
+deliberately OUTSIDE the repo. Never commit it.
+
+### The two SD cards — tell them apart by SERIAL, not by sight
+
+Both are SanDisk **SDSL32G, manufactured 2016-11**, bought as a pair. Visually identical.
+
+| Serial | Role |
+|---|---|
+| `0x55ce4187` | **ORIGINAL** — pulled from the Pi, known-good fallback. Keep safe. |
+| `0x55ce406f` | **CLONE** — now running in the Pi. |
+
+```bash
+system_profiler SPCardReaderDataType | grep -E 'Serial Number|Product Name'
+```
+
+⚠️ **The clone did NOT retire the age risk** — only write-wear. Both cards are ~10 years old.
+A genuinely new card is still worth buying; with the image file that swap is a 15-minute job.
+
+### Clone verification (all passed)
+
+`dd` read and write both moved 31,914,983,424 bytes / `7609+1` records; MBR `55aa`; ext4 magic
+`53ef`; `cmdline.txt` PARTUUID `19cffe87-02` byte-identical to the source; after boot
+`example.com` resolved and `doubleclick.net` → `0.0.0.0` (filtering live).
+
+### AdGuard runs in DOCKER — `systemctl` reports NOTHING
+
+`systemctl is-active AdGuardHome` returns `inactive` **even when AdGuard is running fine.**
+That is not an outage.
+
+```bash
+ssh adguard 'sudo -n docker ps --format "{{.Names}}\t{{.Status}}\t{{.Image}}"'
+```
+
+- Container `adguardhome`, image pinned `adguard/adguardhome:v0.107.78`
+- Config bind-mount: **`/opt/adguard/conf/AdGuardHome.yaml`** — NOT `/opt/AdGuardHome/`
+- Listens `:53` UDP+TCP and `:3000`
+
+### Blocking config as deployed (read from the live Pi)
+
+- **Filter lists:** AdGuard DNS filter (`filter_1.txt`) enabled; AdAway `enabled: false`.
+- **Per-device YouTube schedule, 7 days**, on 6 devices: Oculus-VR, PS5, Roku-55-R625,
+  Roku-55-S425, Roku-65-livingrm, iPad-kid-250. `PARENT-device-215` and `PARENT-mac-garrett`
+  are deliberately exempt. Every client sets `use_global_blocked_services: false`, which is
+  what makes the parent exemption work.
+- **SafeSearch:** master `enabled: true`; youtube/google/bing/ddg/ecosia/pixabay/yandex forced.
+- `user_rules: []` — no hand-written rules. Add specific domains there.
+
+⚠️ **Two gaps, both deliberate-looking but worth a decision:**
+1. `safebrowsing_enabled: false` **globally** while all 8 clients set it `true`. Per-client
+   wins, so protection is live — but a **newly added device inherits `false`**.
+2. `parental_enabled: false` everywhere. AdGuard's adult-content category blocking is OFF.
+
+**Nothing points at the Pi for DNS yet.** It was not in service during this work; the router
+still has to be pointed at `192.168.1.113`.
+
+### 🔴 This Mac needs an ADMIN account for raw disk access
+
+`jdehart1` is **NOT in sudoers** ("jdehart1 is not in the sudoers file"). The admin account is
+**`admin-jdehart1`** (`dscl . -read /Groups/admin GroupMembership` → `root admin-jdehart1
+tstech jamfadm`). Use `su - admin-jdehart1` in a REAL Terminal — the harness has no TTY for a
+password prompt, and `!`-prefixed commands hit the same wall.
+
+The Mac is **Jamf-managed** (DEP-enrolled, `gsu.jamfcloud.com`). If `dd` fails with "Operation
+not permitted" *despite* a good sudo, that is policy, not credentials.
+
+### 🔴 `sudo cmd > file` FAILS — the shell redirects UNPRIVILEGED
+
+This cost three attempts. The `>` is performed by *your* shell before `sudo` runs, so it writes
+as the unprivileged user and fails on root-only paths.
+
+```bash
+sudo sh -c 'cmd > /path/file'      # correct — root performs the redirection
+```
+
+Also: under `su - admin-jdehart1`, `~` resolves to **that** account's home. Use absolute paths.
+
+### Claude CLI auto-updater — FIXED at the supported layer
+
+`autoUpdates: false` was being overridden by `autoUpdatesProtectedForNative: true` (native
+install). A prior session added `export DISABLE_AUTOUPDATER=1` to `~/.zshrc`; **that did not
+hold** — `.zshrc` only reaches interactive shells, and the CLI self-updates in-process at
+startup. 2.1.260 installed at 19:54 and repointed the symlink at 20:14, mid-session.
+
+**Fix applied 2026-09-04:** an `env` block in `~/.claude/settings.json` — the location the
+binary's own docs name:
+
+```json
+"env": { "DISABLE_AUTOUPDATER": "1" }
+```
+
+Backup of the file with this change: **`~/.claude/settings.json.bak-20260904-post-env`**
+(9,228 bytes). Older backups: `.bak`, `.bak-2026-07-01-pre-claudemem-hooks`,
+`.doctor-backup-20260828-080156`.
+
+Currently on **2.1.260** (2.1.258 and .259 remain on disk under
+`~/.local/share/claude/versions/`). Takes effect in NEWLY started sessions only. This disables
+BACKGROUND updates only — `claude update` still works by hand.
+
+### Project `CLAUDE.md` created on `main` (commit `b2203e6`)
+
+`/Users/jdehart1/___Code_DEV/KitchenCOM/CLAUDE.md` — the repo had none. Load-bearing rule:
+**write read targets as absolute paths, including after a `cd`.** The permission prompt is
+armed by four `Read()` deny rules in `~/.claude/settings.json` (`**/.env`, `**/.env.*`,
+`**/secrets*`, `**/credentials*`); an unresolvable relative `src/` cannot be proven not to
+match them.
+
+**Two theories already falsified — do not retry:** a `Bash(cd *)` allow-rule was present and
+did NOT fire; and "never use `cd`" is wrong (absolute `cd` + relative `grep` still prompts).
+Does not apply to revspecs (`git diff main...HEAD` has no absolute form).
+
+⚠️ It is committed on **`main`**, so it is NOT visible in this worktree until merged.
 
 ---
 
