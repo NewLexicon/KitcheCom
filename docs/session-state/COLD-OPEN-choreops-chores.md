@@ -1,6 +1,8 @@
 # COLD OPEN — `feat/choreops-chores`
 
-**Refreshed:** 2026-09-04 (AdGuard card cloned + verified; CLI auto-updater pinned).
+**Refreshed:** 2026-09-04 evening (ZHA live, calendar view fixed, 212 photos, shuffle-bag ordering, Wi-Fi fixed, **PR #4 open**).
+> ⚠️ **Two sessions worked this branch on 2026-09-04.** §7b is the other session's AdGuard/tooling
+> work; §3b below is this one's. Both are current — do not assume one supersedes the other.
 **Read this first.** Everything below is verified, with the command that verifies it.
 
 > ⚠️ `docs/session-state/README.md` is the **main**-branch cold-open and is **STALE**
@@ -16,14 +18,29 @@
 ```bash
 git branch --show-current                 # expect: feat/choreops-chores
 git log --oneline -1                      # authoritative tip — NOT frozen in this doc
-git rev-list --count main..HEAD           # ahead of main
+git rev-list --count origin/main..HEAD    # ahead of main (use origin/main — local main
+                                          #   carries an UNPUSHED commit, see §7b)
 git status --porcelain                    # expect: empty
+git ls-remote origin refs/heads/feat/choreops-chores   # pushed? compare to git rev-parse HEAD
 ```
+
+⚠️ **Two sessions share this checkout and both pushed on 2026-09-04.** The branch tip can move
+under you mid-session — it did. Re-run `git log` rather than trusting any SHA you remember, and
+check `git branch --show-current` before every commit.
 
 **Stable PREFIX of the arc** — immutable and verifiable. The tip is deliberately **not**
-frozen here (see below); `99ef30f` and everything below it will not move:
+frozen here (see below); `5948535` and everything below it will not move:
 
 ```
+5948535 docs: cold-open §7b — AdGuard card clone, backups, and tooling changes
+81a852f feat(screensaver): resume photo order across activations (true shuffle bag)
+13dc6ed docs(photos): screensaver photo reference + resize/upload helper
+592be89 fix(panel): calendar cards used invalid views and silently rendered as month
+38b16a0 docs: cold-open close-out — absolute paths restored, memory roster refreshed
+8c4bbf1 docs: reward prune APPLIED and verified on the Pi — only Cash Outs remain
+b17970e docs: record the reward-prune decision + the office-network diagnosis
+c4edd39 feat(rewards): prune-to-Cash-Outs script + runbook (path 1, prepared offline)
+3738f77 docs: cold-start sanity-check fix-ups
 99ef30f docs: close the auto-approve leak; root-cause the reward-pruning failure
 64fda01 docs: correct the kiosk-approval finding — the hole is closed, not open
 2ef6949 docs: session state + branch cold-open for feat/choreops-chores
@@ -40,6 +57,17 @@ ahead-count: quote the command, not the answer.
 ---
 
 ## 2. Empirical state
+
+> **Provenance of the numbers below (be honest with yourself about this).**
+> Repo-side facts were re-verified at close on 2026-09-04 evening: **109 tests passing**,
+> **3 pre-existing typecheck errors**, `initial_view: listWeek` present, **PR #4 OPEN /
+> MERGEABLE**, **99 commits** ahead of `origin/main`.
+> **Pi-side facts** (212 photos, ZHA ch 15 / PAN 2701, Wi-Fi ch 10 @ 0% loss, card `?v=11`)
+> were verified earlier the same day **while the Pi was reachable**, and could NOT be
+> re-checked at close — the work VPN had captured the LAN route (see §6). Re-run the table
+> below before relying on them.
+
+
 
 | Check | Command | Expected |
 |---|---|---|
@@ -115,6 +143,42 @@ Full detail: **`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-0
 7. **"Missable" was investigated and is PARTLY A NON-ISSUE — read §4a before promising it.**
 8. **Reward pruning FAILED (root-caused).** See §4a — it is a 1.0.7-vs-1.0.8 version gap, and
    the ineffective data edit is still applied.
+
+---
+
+### Then on 2026-09-04 (panel/photos/network session)
+
+Ran alongside the AdGuard session in §7b — **the branch tip moved under both of us.** Verify
+`git log` rather than trusting any SHA written here.
+
+1. **ZHA IS NOW CONFIGURED — §4d is DONE.** Network formed on **channel 15**, PAN `2701`,
+   ext-PAN `e1:e5:88:cc:f0:a0:a0:02`, radio_type `znp`, coordinator IEEE
+   `00:12:4B:00:3A:04:E7:4E`. 0 ZHA errors. **No bulbs paired yet** (`devices_v15` = 1).
+   🔴 **Channel 15 is FINE — do NOT re-form to chase 25.** Home Wi-Fi 2.4 GHz is now on ch 10;
+   re-forming would force re-pairing every device for nothing.
+
+2. **Calendar cards were using INVALID views** (`592be89`). The card accepts only
+   `dayGridMonth` / `dayGridDay` / `listWeek` — verified in the shipped frontend bundle
+   (`hass_frontend/frontend_latest/64859.*.js`). `dayGridWeek` and `timeGridWeek` do not exist,
+   so both cards silently fell back to a **month** view while their comments described week
+   layouts that never rendered. Home is now `listWeek`, Schedule explicit `dayGridMonth`.
+
+3. **Photos: 122 → 212** (287 MB), all valid JPEGs. Added 90 from Dropbox via
+   `deploy/photos/add-photos.sh` (resize to 1920px, HEIC→jpg). Two incoming files collided with
+   existing *different* photos and were renamed `IMG_0249-dbx.jpg` / `IMG_0263-dbx.jpg`.
+
+4. **Screensaver ordering is now a true shuffle bag** (`81a852f`). The start was always random;
+   the defect was **repeats** — independent reshuffles meant ~25% of a session repeated from the
+   previous one. `_startLoop` now resumes the previous order AND cursor when the folder is
+   unchanged. Measured: repeats **25% → 0%**, coverage **99/122 → 122/122**. 109 tests pass.
+
+5. **Wi-Fi FIXED — this was behind the SSH drops all day.** Not distance: a **hidden AP
+   (`C6:98:5C:AB:21:A2`) sat on the same 5 GHz channel 44**. Symptom shape was clean latency
+   (6-20 ms) with **46.7% packet loss**. Pinned to 2.4 GHz → **ch 10, signal 66, 0% loss**.
+   Also disabled Wi-Fi power save. Both persist (netplan `band: "2.4GHz"`, `powersave 2`).
+
+6. **PR #4 IS OPEN** — https://github.com/NewLexicon/KitcheCom/pull/4 (`feat/choreops-chores`
+   → `main`, MERGEABLE, 99 commits, 51 files).
 
 ---
 
@@ -201,21 +265,40 @@ Garrett's ask was *"not claimed before midnight → chart resets, no points."*
 When a claim *does* wait: approve from a **phone or the Mac** (as `KitchenCom`), NOT from the
 panel — the panel is deliberately non-admin. See §5.
 
-### (d) ZHA setup + bulb pairing — requires Garrett PHYSICALLY AT THE PANEL
-**Switch branches first:** `git checkout feat/adaptive-lighting`. The runbook is
-`homeassistant/packages/lighting.yaml` on **that** branch — it does **not** exist here.
+### (d) ZHA — ✅ SET UP 2026-09-04. Remaining: PAIR THE BULBS (needs Garrett at the panel)
 
-- Settings → Devices & Services → Add Integration → **Zigbee Home Automation**
-- Serial port: the **by-id** path (§6), never `/dev/ttyUSB0`
-- Radio type: **`znp`** (TI Z-Stack) — correct for CC2652P
-- **Form a new network**
-- ⚠️ ZHA usually does **not** prompt for a channel and silently forms on **15**. That is
-  **fine** here — **do NOT re-form a network to chase 25.** If it does offer a choice, pick
-  **25**. Never 26 (regulation power-limited; some bulbs refuse to join).
-- Pair each bulb **in its final fixture** (mesh topology depends on it), power-cycling an
-  unprovisioned ZL1 to enter pairing mode.
+Network is live: **ch 15**, PAN `2701`, `znp`, 0 errors, **0 bulbs paired**.
 
-### (e) Calendar CSS decision — pure repo-side, no Pi needed
+🔴 **THE SERIAL PATH MUST STAY `/dev/ttyUSB0` — the by-id path BREAKS IT HERE.**
+This corrects the instruction that used to sit in this section (and still sits in
+`lighting.yaml` §4 step 1a on `feat/adaptive-lighting`), which says to always use
+`/dev/serial/by-id/...`. That advice is written for **host-installed** HA. **This Pi runs HA in
+Docker**, and `/dev/serial/by-id/` is a udev symlink tree that exists on the host but **not
+inside the container** — verified:
+```bash
+docker exec homeassistant ls /dev/serial/by-id/   # No such file or directory
+docker exec homeassistant ls -l /dev/ttyUSB0      # crw-rw---- root dialout 188,0  ✅
+```
+⚠️ **The failure is SILENT:** HA still returns 200, the log shows **zero** ZHA errors, and the
+config entry looks right — but `zigbee.db` is never opened. **Diagnostic:** a live radio has
+`zigbee.db-wal` and `-shm` beside it; their absence means ZHA never connected.
+Changing the path does NOT harm the network — the config-entry `unique_id` is the extended PAN
+ID, not the path (round-tripped 2026-09-04 with channel/PAN intact).
+
+**To pair bulbs** (Third Reality ZL1, on `feat/adaptive-lighting` the runbook is
+`homeassistant/packages/lighting.yaml`):
+- Settings → Devices & Services → **Zigbee Home Automation** → Add Device, then power-cycle an
+  unprovisioned ZL1 to enter pairing mode
+- Pair each bulb **in its final fixture** — mains-powered bulbs are mesh routers, so location
+  shapes the mesh
+- Then check `supported_color_modes`: `color_temp` present → `mode: mired`; only `hs`/`rgb`/`xy`
+  → `mode: xy`. The ZL1 box says "Tunable White", so `mired` is expected
+- Only then uncomment §2/§3 of `lighting.yaml`, `check_config`, restart
+
+### (e) Calendar CSS decision — STILL OPEN (the *view* was fixed 2026-09-04, the CSS was not)
+⚠️ Don't conflate the two. **Fixed:** the cards were using invalid `initial_view` values and
+rendered as a month; Home is now `listWeek` (§3b item 2). **Still open:** the "SEPT 2" styling
+below — a different problem with a different cause.
 Carried since 2026-09-01. The built-in calendar card **cannot** produce "SEPT 2" strings —
 they come from FullCalendar inside a shadow root. Real paths are a custom card or an HA theme,
 both written up with source citations in
@@ -284,13 +367,17 @@ parent approval from a non-panel device.
 - ITead **ZBDongle-P** (CC2652P), `SYS_VERSION` → `transport=2 product=1 fw=2.7.1`.
 - **-P vs -E discriminator:** the **CP210x** bridge (`10c4:ea60` → `ttyUSB`) means **-P**.
   The -E is EFR32MG21 with native USB → `ttyACM`.
-- **Stable path — never `/dev/ttyUSB0`:**
-  `/dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_8aae1a09dd9def11b750cda661ce3355-if00-port0`
+- 🔴 **ZHA must use `/dev/ttyUSB0` — CORRECTED 2026-09-04.** The by-id path
+  (`/dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_8aae1a09dd9def11b750cda661ce3355-if00-port0`)
+  exists on the **host** but NOT inside the HA **Docker** container, so pointing ZHA at it stops
+  the radio silently. See §4d. The by-id path is still the right way to *identify* the dongle
+  from a host shell — just not what goes in the ZHA config entry.
 - Mounted in the USB extension cradle from a surplus Wi-Fi dongle — permanent home, satisfies
   `lighting.yaml`'s extension-cable requirement. Link: 12 Mbps, 100 mA, **direct to Pi root
   hub (bus 001)**, NOT behind the RTS5411 hub the touchscreen needs.
-- Home 2.4 GHz Wi-Fi is on **ch 10**; the Pi's own `wlan0` is **5 GHz ch 44** (different band,
-  cannot interfere with Zigbee).
+- Home 2.4 GHz Wi-Fi is on **ch 10**. ⚠️ **CHANGED 2026-09-04: the Pi's `wlan0` is now on
+  2.4 GHz ch 10 too** (was 5 GHz ch 44 — moved off it because a hidden AP was colliding there;
+  see §6b). Zigbee is on **ch 15**, which does not overlap Wi-Fi ch 10, so this is fine.
 
 **Surplus Wi-Fi dongle** (RTL8822BU): unplugged, spare. **No macOS driver exists.** Not a
 Zigbee substitute.
@@ -310,11 +397,53 @@ ipconfig getifaddr en0                  # 192.168.1.x = home · 10.x = office
 ```
 Plan office sessions as repo-only work (§4e is the standing candidate).
 
+**⚠️ Cisco VPN gotcha — HIT AGAIN 2026-09-04 evening.** Symptom that time was
+`ssh: connect to host 192.168.1.234 port 22: Connection refused` plus **100% ping loss**, with
+`ipconfig getifaddr en0` STILL returning `192.168.1.180` — so the Mac *looks* like it is on the
+home LAN. The tell is the ROUTE, not the address:
+```bash
+route -n get default | grep interface        # utun11 = VPN  ·  en0 = home
+netstat -rn | grep '^192.168.1'              # "192.168.1 ... utun11" = the LAN is being swallowed
+```
+Disconnect the work VPN and the Pi returns instantly. **Nothing is wrong with the Pi.**
+
 **⚠️ Cisco VPN gotcha — cost ~20 min on 2026-09-02.** With the work VPN connected *at home*,
 the Mac's default route goes to `utun11` and the Pi is unreachable on the LAN;
 `ssh kitchencom` returns *"Connection refused"* or a timeout, which reads exactly like a dead
 Pi. **Check `route -n get default | grep interface` before diagnosing anything else** — it
 should say `en0`.
+
+---
+
+## 6b. 🔴 Pi Wi-Fi — co-channel interference, FIXED 2026-09-04
+
+**The Pi's SSH sessions died mid-command and transfers stalled all day.** It was **not**
+distance or a weak radio — the Pi sits ~20 ft from the router, near line-of-sight.
+
+**The diagnostic shape that matters:** latency stayed clean (6-20 ms) while **46.7% of packets
+vanished**. Attenuation degrades latency *and* throughput together; clean latency plus heavy
+loss means **collisions**.
+
+A **hidden AP `C6:98:5C:AB:21:A2` was on 5 GHz channel 44** — the Pi's own channel:
+```bash
+ssh kitchencom 'sudo nmcli -f BSSID,SSID,SIGNAL,CHAN dev wifi list --rescan yes'
+```
+
+**Fix applied — pinned to 2.4 GHz** (ch 44 signal 56 → **ch 10 signal 66**, loss **46.7% → 0%**):
+```bash
+sudo nmcli con modify netplan-wlan0-ThunderEnlighten 802-11-wireless.band bg
+sudo nmcli con modify netplan-wlan0-ThunderEnlighten 802-11-wireless.powersave 2
+# reconnect in the BACKGROUND — taking the connection down kills your own ssh:
+sudo nohup sh -c "sleep 2; nmcli con down <profile>; sleep 3; nmcli con up <profile>" &
+```
+**Both persist** — netplan holds `band: "2.4GHz"`; backup
+`/etc/netplan/90-NM-37d92620-*.yaml.bak-preband-20260904-110835`.
+
+Also found `Power save: on` (`iw dev wlan0 get power_save`) — worst-case latency 230 ms → 47 ms
+once off, but it did **not** fix the loss; only the band change did.
+
+**Better long-term fixes:** change the router's 5 GHz channel away from 44 (helps every device
+and lets the Pi use the faster band), or plug in ethernet — **`eth0` is DOWN**.
 
 ---
 
@@ -453,6 +582,15 @@ BACKGROUND updates only — `claude update` still works by hand.
 
 ### Project `CLAUDE.md` created on `main` (commit `b2203e6`)
 
+> 🔴 **VERIFIED 2026-09-04 evening: `b2203e6` is UNPUSHED and the file is NOT on this branch.**
+> `git rev-list --count origin/main..main` → **1**. It exists only in this laptop's local `main`;
+> `origin/main` is at `b6451cb` without it, and **PR #4 does not carry it** (not an ancestor of
+> `feat/choreops-chores`). So `/Users/jdehart1/___Code_DEV/KitchenCOM/CLAUDE.md` **does not
+> exist in the working tree** while this branch is checked out — do not go looking for it.
+> To publish it: `git push origin main`. Left unpushed deliberately — it is the other session's
+> commit, not this one's to push.
+
+
 `/Users/jdehart1/___Code_DEV/KitchenCOM/CLAUDE.md` — the repo had none. Load-bearing rule:
 **write read targets as absolute paths, including after a `cd`.** The permission prompt is
 armed by four `Read()` deny rules in `~/.claude/settings.json` (`**/.env`, `**/.env.*`,
@@ -468,6 +606,28 @@ Does not apply to revspecs (`git diff main...HEAD` has no absolute form).
 ---
 
 ## 8. Carry-forwards
+
+**From 2026-09-04 (this session):**
+- 🔴 **PR #4 is OPEN and unmerged** — https://github.com/NewLexicon/KitcheCom/pull/4
+  (99 commits, 51 files, MERGEABLE). **After merge, this cold-open must be REWRITTEN from
+  `main`'s perspective** — it is currently branch-scoped.
+- 🟡 **Zigbee bulbs are NOT paired** (`devices_v15` = 1, coordinator only). Needs Garrett at the
+  panel; see §4d.
+- 🟡 **`listWeek` hides empty days.** FullCalendar's list view renders only days that HAVE
+  events. If "show all 7 day cells" is ever wanted, the built-in card cannot do it at any
+  `initial_view` — that needs a custom card.
+- 🟡 **Router 5 GHz ch 44 is still contested** (§6b). The Pi is parked on 2.4 GHz as a
+  workaround; changing the router's channel is the real fix and would let it use 5 GHz again.
+- 🟡 **`eth0` is DOWN.** A cable would end the Wi-Fi issue permanently.
+- 🟡 **The 212 photos (287 MB) exist ONLY on the Pi** — not in git (correctly). The 90 added
+  today are in Dropbox; the original 122 may have no second copy. Worth a backup.
+- 🟢 **`custom_cards/screensaver-card` typecheck has 3 PRE-EXISTING errors**
+  (`dist-browser-loadable.test.ts`, missing `@types/node`). Unrelated to any recent change —
+  don't chase them as a regression. `npm test` is clean: **109 passing**.
+- 🟢 **`dist/` is gitignored** — the built card is deployed to the Pi but never committed. After
+  editing the card: `npm run build`, copy to the Pi, **and bump the `?v=` cache-buster** in
+  `.storage/lovelace_resources` (now **v11**), or the panel serves the cached bundle.
+
 
 - **Orphaned entities** (§7) — 2 sensors + 6 buttons per kid. Harmless; worth cleaning.
 - **Chore Champion `6/250` un-zeroed** for Rowan, partly from the Aug-19 phantom. Early Riser
@@ -511,6 +671,13 @@ Does not apply to revspecs (`git diff main...HEAD` has no absolute form).
 (outside the repo; `MEMORY.md` there is the index)
 
 Most relevant to this branch:
+- 🔴 `zha-must-use-ttyusb-in-docker.md` — **read before touching the ZHA serial path** (§4d)
+- 🔴 `pi-wifi-cochannel-interference.md` — **read before diagnosing any Pi connectivity** (§6b)
+- `screensaver-photos-folder-and-formats.md` — folder, formats, HEIC trap, shuffle-bag ordering
+- `calendar-card-only-three-views.md` — the 3 valid `initial_view` values
+- `kiosk-spinner-after-screensaver.md` — a stuck card is the long-lived renderer, not HA
+- `entity-registry-is-not-live-state.md` — query the recorder DB to prove an entity is gone
+- `reward-delete-drops-pending-claims.md` — `delete_reward` ignores `pending_count`
 - `reward-visibility-needs-1-0-8.md` — now RESOLVED (the prune shipped); still the reference
   for why `assigned_user_ids` is inert on 1.0.7
 - 🔴 `entity-registry-is-not-live-state.md` — **read before verifying that any entity is gone**;
