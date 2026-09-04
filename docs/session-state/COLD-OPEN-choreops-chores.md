@@ -608,6 +608,11 @@ Does not apply to revspecs (`git diff main...HEAD` has no absolute form).
 ## 8. Carry-forwards
 
 **From 2026-09-04 (this session):**
+- 🔴 **AdGuard is BUILT but NOT IN SERVICE — the router still needs pointing at
+  `192.168.1.113` for DNS.** Flagged by the concurrent AdGuard session; recorded here because
+  §7b documents the build while carry-forwards is where a fresh session looks for what is still
+  open. Until that cutover happens, none of the blocking or scheduling actually applies to any
+  device. Independent of the PR merge.
 - 🔴 **PR #4 is OPEN and unmerged** — https://github.com/NewLexicon/KitcheCom/pull/4
   (99 commits, 51 files, MERGEABLE). **After merge, this cold-open must be REWRITTEN from
   `main`'s perspective** — it is currently branch-scoped.
@@ -619,8 +624,24 @@ Does not apply to revspecs (`git diff main...HEAD` has no absolute form).
 - 🟡 **Router 5 GHz ch 44 is still contested** (§6b). The Pi is parked on 2.4 GHz as a
   workaround; changing the router's channel is the real fix and would let it use 5 GHz again.
 - 🟡 **`eth0` is DOWN.** A cable would end the Wi-Fi issue permanently.
-- 🟡 **The 212 photos (287 MB) exist ONLY on the Pi** — not in git (correctly). The 90 added
-  today are in Dropbox; the original 122 may have no second copy. Worth a backup.
+- 🟡 **The 212 photos (287 MB) exist ONLY on the Pi** — not in git (correctly). Backup status
+  **audited 2026-09-04 evening**, filename-by-filename against the Mac:
+  - the **90** added today → `.../Garrett/Photos/__KitchCom` ✅
+  - **97** of the original 122 → `.../Garrett/Mom's Photos` ✅
+  - 🔴 **25 of the original 122 are NOT in Dropbox** — they exist only as **HEIC in
+    `~/Downloads`** (`IMG_2816`, `IMG_2822`, `IMG_2823`, `IMG_2825`, `IMG_2832`, `IMG_2839`,
+    `IMG_2857`, `IMG_2869`, `IMG_2872`, `IMG_2881`, `IMG_2902`, `IMG_2908`, …). `~/Downloads`
+    is not a backup. **Move them into Dropbox** to close this.
+  - **0** of the 122 are missing from the Mac entirely.
+  ⚠️ A concurrent session reported this gap as CLOSED on 2026-09-04. It is not — that claim was
+  checked and is wrong. Re-audit rather than trusting either summary:
+  ```bash
+  # compare the Pi's filenames against the Dropbox tree
+  ssh kitchencom 'ls -1 /home/garrettdehart/homeassistant/media/photos' > /tmp/pi.txt
+  while read -r f; do stem="${f%.*}"; \
+    find "/Users/jdehart1/GSU Dropbox Dropbox/Jonathan DeHart/Garrett" -maxdepth 3 \
+      -iname "${stem}.*" -print -quit | grep -q . || echo "NOT BACKED UP: $f"; done < /tmp/pi.txt
+  ```
 - 🟢 **`custom_cards/screensaver-card` typecheck has 3 PRE-EXISTING errors**
   (`dist-browser-loadable.test.ts`, missing `@types/node`). Unrelated to any recent change —
   don't chase them as a regression. `npm test` is clean: **109 passing**.
