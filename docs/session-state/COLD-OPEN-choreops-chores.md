@@ -58,14 +58,13 @@ ahead-count: quote the command, not the answer.
 
 ## 2. Empirical state
 
-> **Provenance of the numbers below (be honest with yourself about this).**
-> Repo-side facts were re-verified at close on 2026-09-04 evening: **109 tests passing**,
-> **3 pre-existing typecheck errors**, `initial_view: listWeek` present, **PR #4 OPEN /
-> MERGEABLE**, **99 commits** ahead of `origin/main`.
-> **Pi-side facts** (212 photos, ZHA ch 15 / PAN 2701, Wi-Fi ch 10 @ 0% loss, card `?v=11`)
-> were verified earlier the same day **while the Pi was reachable**, and could NOT be
-> re-checked at close — the work VPN had captured the LAN route (see §6). Re-run the table
-> below before relying on them.
+> **All numbers below were re-verified at close on 2026-09-04 evening, Pi included.**
+> Repo-side: **109 tests passing**, **3 pre-existing typecheck errors**, `initial_view: listWeek`
+> present, **PR #4 OPEN / MERGEABLE**. Pi-side: **212 photos**, ZHA on **`/dev/ttyUSB0`**,
+> Wi-Fi **ch 10 @ 0% packet loss** (signal samples 59-67 — normal variance), card **`?v=11`**,
+> HA **200**.
+> ⚠️ An earlier draft of this note said the Pi-side numbers could not be checked because the
+> work VPN had captured the LAN route. The VPN was disconnected and they were all confirmed.
 
 
 
