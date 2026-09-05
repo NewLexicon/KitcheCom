@@ -51,6 +51,9 @@ export type MediaItem = {
   kind: "image" | "video";
   url?: string;
   resolvedAt?: number;
+  /** Set lazily the first time the image decodes; undefined until then.
+   *  Videos are never paired, so this stays undefined for them. */
+  orientation?: Orientation;
 };
 
 type BrowseChild = {
@@ -98,6 +101,111 @@ export function nextMediaIndex(current: number, count: number): number {
   return (current + 1) % count;
 }
 
+// ── Portrait pairing (2026-08-17) ────────────────────────────────────────────
+// WHY: the frame is a 1920x1080 LANDSCAPE panel. `object-fit: cover` fills it by
+// clipping the overflow, which on a portrait photo means the top and bottom --
+// usually where the subject is. Two portraits side by side fill the same frame
+// with no cropping at all, so pairing is preferred over letterboxing whenever a
+// partner is available.
+
+export type Orientation = "portrait" | "landscape" | "unknown";
+
+/** How a slot's images should be fitted to the frame.
+ *  `cover` fills and may crop (safe for landscape, which matches the frame).
+ *  `contain-blur` shows the whole image with a blurred copy of itself behind it,
+ *  used for a portrait with no partner so it is never cut. */
+export type SlotFit = "cover" | "contain-blur";
+
+export type Oriented = { contentId: string; orientation: Orientation };
+
+export type Slot = {
+  /** One contentId (solo) or two (a portrait pair). */
+  items: string[];
+  fit: SlotFit;
+  /** Index to plan from on the next tick; wraps to 0 at the end. */
+  nextIndex: number;
+  /** Partner contentIds pulled forward out of sequence. The caller records these
+   *  so they are not shown again when the cursor later reaches them. */
+  consumed: string[];
+};
+
+/** Classify by aspect ratio. Square counts as landscape: it fills the frame
+ *  without meaningful loss, and pairing squares would waste half the screen.
+ *  Non-finite or non-positive dimensions mean the image never decoded, which is
+ *  reported as `unknown` and never paired. Pure. */
+export function classifyOrientation(width: number, height: number): Orientation {
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return "unknown";
+  if (width <= 0 || height <= 0) return "unknown";
+  return height > width ? "portrait" : "landscape";
+}
+
+/** Decide what occupies the screen for one display tick.
+ *
+ *  A portrait pairs ONLY with an immediately-following portrait. It is never
+ *  paired with a landscape (wildly mismatched scale) nor with an `unknown`
+ *  (an undecodable image would leave half the frame blank). A portrait with no
+ *  partner falls back to `contain-blur` so it is shown whole.
+ *
+ *  Pure: no DOM, no clock, no network -- the whole policy is testable. */
+/** Decide what occupies the screen for one display tick.
+ *
+ *  A portrait SEEKS the next portrait ahead of it, skipping over landscapes, so
+ *  pairing does not depend on two portraits happening to be adjacent -- in a real
+ *  library (~20 portraits among ~122 photos) that almost never happens. The
+ *  partner is reported in `consumed` so the caller can skip it when the cursor
+ *  reaches it later, rather than showing it twice.
+ *
+ *  It never pairs with a landscape (mismatched scale) nor an `unknown` (an
+ *  undecodable image would blank half the frame), and never wraps around to an
+ *  earlier portrait (which would re-show it immediately next cycle). A portrait
+ *  with no partner ahead falls back to `contain-blur` so it is shown whole.
+ *
+ *  `shown` holds contentIds already consumed as partners. Pure. */
+export function planSlot(
+  items: Oriented[],
+  index: number,
+  shown: ReadonlySet<string> = new Set(),
+): Slot {
+  const n = items.length;
+  if (n === 0) return { items: [], fit: "cover", nextIndex: 0, consumed: [] };
+  let i = index >= 0 && index < n ? index : 0;
+  const wrap = (k: number) => (k >= n ? 0 : k);
+
+  // Walk forward past anything already shown as someone else's partner. Doing
+  // this HERE rather than returning an empty slot means the caller always gets
+  // something displayable: a run of consumed items would otherwise produce a
+  // burst of empty ticks and the slideshow would visibly stall.
+  let cursor = i;
+  for (let step = 0; step < n && shown.has(items[cursor].contentId); step++) {
+    cursor = wrap(cursor + 1);
+  }
+  // Every item has been consumed (all portraits paired): show from the cursor
+  // anyway rather than returning nothing.
+  const here = items[cursor];
+  i = cursor;
+
+  if (here.orientation === "portrait") {
+    // Seek forward only -- wrapping would pair with a portrait that is about to
+    // be shown again at the top of the next cycle.
+    for (let j = i + 1; j < n; j++) {
+      const cand = items[j];
+      if (shown.has(cand.contentId)) continue;
+      if (cand.orientation === "portrait") {
+        return {
+          items: [here.contentId, cand.contentId],
+          fit: "cover",
+          nextIndex: wrap(i + 1),
+          consumed: [cand.contentId],
+        };
+      }
+    }
+    return { items: [here.contentId], fit: "contain-blur", nextIndex: wrap(i + 1), consumed: [] };
+  }
+
+  // Landscape and unknown display solo, filling the frame.
+  return { items: [here.contentId], fit: "cover", nextIndex: wrap(i + 1), consumed: [] };
+}
+
 export type ScreensaverConfig = {
   mediaPath: string;
   photoDuration: number;
@@ -111,6 +219,11 @@ export type ScreensaverConfig = {
 };
 
 const PHOTO_DURATION_FLOOR = 2;
+
+// How far ahead to decode looking for a portrait partner. Each probe is a real
+// image fetch, so this bounds the work one tick can do: with no portrait within
+// this many places the image is shown solo (contained, never cropped) instead.
+export const PARTNER_SEEK_LIMIT = 40;
 
 // ── Activity bridge (M-10) ───────────────────────────────────────────────────
 // The button the screensaver package watches to clear idle and restart the
@@ -175,6 +288,59 @@ export function shouldReResolve(
   return now - resolvedAt >= threshold;
 }
 
+
+// ── Resume ordering across activations (2026-09-04) ──────────────────────────
+// Ordering used to be an independent reshuffle on EVERY activation, restarting at
+// index 0 of a fresh permutation. The start was genuinely random, but because each
+// activation drew independently, a photo could reappear in the very next session
+// while others waited: measured ~24% of a ~5-minute session repeated from the
+// previous one (122 photos at 10s, i.e. a 20-minute full pass against a 30-minute
+// idle timer, so a session rarely finishes a pass).
+//
+// Resuming the SAME shuffled order and cursor turns the sequence into a true
+// shuffle bag: every photo shows once before any shows twice, no matter how many
+// times the screensaver starts and stops. The first photo of the very first
+// activation is still random, because the order itself is shuffled.
+//
+// The order is only re-shuffled when the COLLECTION changes (photos added or
+// removed) — stale indices must not survive that. Identity is the set of
+// contentIds, so an unchanged folder resumes even though HA's browse order is
+// not guaranteed stable.
+//
+// Deliberately NOT an index-returning "bag": portrait pairing (planSlot) seeks
+// forward through _items and repositions the cursor itself, so it needs a stable
+// ordered array plus a positional cursor. Keeping that shape means pairing is
+// untouched. Closes the deferred "no-immediate-repeat on reshuffle" TODO.
+export function planResumeOrder(
+  fetched: MediaItem[],
+  previous: MediaItem[],
+  previousIndex: number,
+  shuffle: boolean,
+  rand: () => number,
+): { items: MediaItem[]; index: number; reshuffled: boolean } {
+  if (fetched.length === 0) return { items: [], index: -1, reshuffled: true };
+
+  const sameCollection =
+    previous.length === fetched.length &&
+    (() => {
+      const prevIds = new Set(previous.map((i) => i.contentId));
+      return fetched.every((i) => prevIds.has(i.contentId));
+    })();
+
+  if (sameCollection) {
+    // Keep the previous ORDER and cursor. `previous` carries resolved urls, so
+    // reusing those objects preserves the resolve cache too.
+    const index = previousIndex >= previous.length ? previous.length - 1 : previousIndex;
+    return { items: previous, index, reshuffled: false };
+  }
+
+  return {
+    items: shuffle ? shuffleOrder(fetched, rand) : fetched,
+    index: -1,
+    reshuffled: true,
+  };
+}
+
 // Fisher-Yates shuffle with injectable randomness (rand() -> [0,1)). Returns a NEW
 // array; does not mutate input. Injectable rand keeps it deterministically testable
 // (glue passes Math.random). Used for shuffle-bag photo ordering.
@@ -224,6 +390,12 @@ export class ScreensaverCard extends LitElement {
   private _items: MediaItem[] = [];
   private _index = 0;
   private _currentUrl = "";
+  // One url for a solo image/video, two for a portrait pair.
+  private _currentUrls: string[] = [];
+  /** contentIds already displayed as another portrait's partner. Prevents
+   *  showing the same photo twice in one pass. Cleared when the list reloads. */
+  private _pairedShown = new Set<string>();
+  private _currentFit: SlotFit = "cover";
   private _currentKind: "image" | "video" = "image";
   private _now = "";
   private _timer?: ReturnType<typeof setTimeout>;
@@ -334,9 +506,21 @@ export class ScreensaverCard extends LitElement {
     // Authoritative guard BEFORE mutating display state: if a stop happened during
     // collection, discard everything and bail.
     if (gen !== this._gen) { this._loopRunning = false; return; }
-    this._items = this._cfg.shuffle ? shuffleOrder(items, Math.random) : items;
+    // Resume the previous order+cursor when the folder is unchanged, so the
+    // sequence is a true shuffle bag across activations rather than an
+    // independent redraw each time (see planResumeOrder).
+    const plan = planResumeOrder(
+      items,
+      this._items,
+      this._index,
+      this._cfg.shuffle,
+      Math.random,
+    );
+    this._items = plan.items;
+    this._index = plan.index;
+    // Partner bookkeeping is only valid for the order it was built against.
+    if (plan.reshuffled) this._pairedShown.clear();
     this._mode = this._items.length === 0 ? "fallback" : "media";
-    this._index = -1;
     if (this._mode === "media") this._advance();
   }
 
@@ -348,6 +532,8 @@ export class ScreensaverCard extends LitElement {
     // so the per-item resolve cache survives. // TODO defer: no-immediate-repeat on reshuffle
     if (this._cfg.shuffle && next === 0 && this._index >= 0 && this._items.length > 1) {
       this._items = shuffleOrder(this._items, Math.random);
+      // New order means new pairings; old partner bookkeeping no longer applies.
+      this._pairedShown.clear();
     }
     this._index = next;
     const item = this._items[this._index];
@@ -371,12 +557,125 @@ export class ScreensaverCard extends LitElement {
     // so this item stays permanently skipped on future passes (shouldReResolve→false,
     // url still undefined). Intentional — a broken item must not freeze the loop (spec 4c).
     if (!item.url) return this._skip();
-    this._currentUrl = item.url;
-    this._currentKind = item.kind;
-    if (item.kind === "image") {
-      this._timer = setTimeout(() => this._advance(), this._cfg.photoDuration * 1000);
+
+    // Videos never pair: show solo, advance on 'ended'.
+    if (item.kind !== "image") {
+      this._currentUrls = [item.url];
+      this._currentFit = "cover";
+      this._currentKind = item.kind;
+      this._currentUrl = item.url;
+      return;
     }
-    // video advances on its 'ended' event (see render)
+
+    // Orientation is only knowable by decoding, and planSlot treats an unprobed
+    // item as "unknown" -- which it refuses to pair. Seeking a partner therefore
+    // requires probing AHEAD, not just the next item: with ~34 portraits among
+    // 122 photos a partner is typically several places away, and probing only
+    // item+1 left everything between unknown so pairing could never fire.
+    await this._ensureOrientation(item, gen);
+    if (gen !== this._gen) return;
+    if (item.orientation === "portrait") {
+      // Look ahead until a portrait partner is found. Bounded so a library with
+      // one lone portrait cannot decode the entire album on a single tick.
+      for (let j = this._index + 1; j < this._items.length && j <= this._index + PARTNER_SEEK_LIMIT; j++) {
+        const cand = this._items[j];
+        if (cand.kind !== "image") continue;
+        if (this._pairedShown.has(cand.contentId)) continue;
+        await this._ensureOrientation(cand, gen);
+        if (gen !== this._gen) return;
+        if (cand.orientation === "portrait") break;   // partner found
+      }
+    }
+
+    const oriented: Oriented[] = this._items.map((it) => ({
+      contentId: it.contentId,
+      orientation: it.kind === "image" ? (it.orientation ?? "unknown") : "landscape",
+    }));
+    const slot = planSlot(oriented, this._index, this._pairedShown);
+
+    // Map planned contentIds back to urls, RESOLVING the partner if needed.
+    // The partner was found by seeking ahead, so _advance() has never resolved
+    // it and its url is still undefined. Dropping it here silently collapsed
+    // every pair back to a single cover-fitted image -- i.e. the exact centre-
+    // crop this feature exists to prevent.
+    const urls: string[] = [];
+    for (const cid of slot.items) {
+      const found = this._items.find((it) => it.contentId === cid);
+      if (!found) continue;
+      if (!found.url) {
+        await this._resolveItem(found, gen);
+        if (gen !== this._gen) return;
+      }
+      if (found.url) urls.push(found.url);
+    }
+    if (urls.length === 0) return this._skip();
+
+    // A pair that lost its partner to a resolve failure must fall back to the
+    // uncropped presentation, not inherit the pair's "cover".
+    const solo = urls.length === 1;
+    this._currentUrls = urls;
+    this._currentFit = solo
+      ? (oriented[this._index]?.orientation === "portrait" ? "contain-blur" : slot.fit)
+      : "cover";
+    this._currentKind = "image";
+    this._currentUrl = urls[0];
+    // Remember any partner pulled forward out of sequence so the cursor skips it
+    // instead of showing the same photo again later in this pass.
+    for (const cid of slot.consumed) this._pairedShown.add(cid);
+    // _advance() increments at the top of the next tick, so store one BEFORE
+    // where planSlot wants the cursor to land. A pair does NOT skip the items
+    // between the two portraits -- they still get their own turn.
+    this._index = slot.nextIndex > 0 ? slot.nextIndex - 1 : this._items.length - 1;
+    this._timer = setTimeout(() => this._advance(), this._cfg.photoDuration * 1000);
+  }
+
+  /** Resolve a media item's playable url via HA, caching it on the item.
+   *  Extracted so a PARTNER found by seeking ahead can be resolved too -- the
+   *  main loop only ever resolved the item at the cursor. */
+  private async _resolveItem(item: MediaItem, gen: number): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
+    if (!shouldReResolve(item.resolvedAt, now)) return;
+    try {
+      const res = await this.hass?.callWS?.({
+        type: "media_source/resolve_media",
+        media_content_id: item.contentId,
+      });
+      if (gen !== this._gen) return;
+      item.url = res?.url;
+      item.resolvedAt = now;
+    } catch {
+      // Leave url undefined; the caller drops this item rather than failing.
+    }
+  }
+
+  /** Decode just enough of an image to learn its aspect ratio, then cache it on
+   *  the item. Never throws: a decode failure records "unknown", which the slot
+   *  planner shows solo rather than pairing. */
+  private async _ensureOrientation(item: MediaItem, gen: number): Promise<void> {
+    if (item.orientation !== undefined) return;
+    // A candidate found by seeking ahead has never been through the main loop,
+    // so it has no url yet. Resolving here is what makes look-ahead possible at
+    // all: without it every candidate stamped "unknown" -- permanently, since the
+    // value is cached -- and planSlot refuses to pair with unknown, so every
+    // portrait fell back to contain-blur no matter how many partners existed.
+    if (!item.url) {
+      await this._resolveItem(item, gen);
+      if (gen !== this._gen) return;
+    }
+    // Leave orientation UNSET on a resolve failure rather than caching "unknown":
+    // a transient failure would otherwise blacklist the photo for the session.
+    if (!item.url) return;
+    const url = item.url;
+    const o = await new Promise<Orientation>((resolve) => {
+      const probe = new Image();
+      // Do not let one unreachable file stall the slideshow forever.
+      const to = setTimeout(() => resolve("unknown"), 5000);
+      probe.onload = () => { clearTimeout(to); resolve(classifyOrientation(probe.naturalWidth, probe.naturalHeight)); };
+      probe.onerror = () => { clearTimeout(to); resolve("unknown"); };
+      probe.src = url;
+    });
+    if (gen !== this._gen) return;
+    item.orientation = o;
   }
 
   private _skip(): void {
@@ -390,6 +689,7 @@ export class ScreensaverCard extends LitElement {
     if (this._clock) clearInterval(this._clock);
     this._timer = this._clock = undefined;
     this._currentUrl = "";
+    this._currentUrls = [];
   }
 
   private _tickClock(): void {
@@ -416,10 +716,25 @@ export class ScreensaverCard extends LitElement {
     if (!this._active) return nothing;
     return html`
       <div class="overlay" style=${styleMap({ "--kb-intensity": String(this._cfg.kenBurnsIntensity) })}>
-        ${this._mode === "media" && this._currentUrl
+        ${this._mode === "media" && this._currentUrls.length
           ? this._currentKind === "image"
-            ? html`<img class="media kenburns" src=${this._currentUrl} @error=${this._skip} />`
-            : html`<video class="media" src=${this._currentUrl} autoplay muted
+            ? this._currentUrls.length > 1
+              // Two portraits share the frame: each takes half, cover-fitted.
+              // No Ken Burns here -- panning two images at once reads as jitter.
+              ? html`<div class="pair">
+                  ${this._currentUrls.map(
+                    (u) => html`<img class="half" src=${u} @error=${this._skip} />`,
+                  )}
+                </div>`
+              : this._currentFit === "contain-blur"
+                // A portrait with no partner: shown whole, with a blurred zoomed
+                // copy of itself filling the bars so the frame is never empty.
+                ? html`<div class="solo">
+                    <img class="backdrop" src=${this._currentUrls[0]} aria-hidden="true" />
+                    <img class="contained" src=${this._currentUrls[0]} @error=${this._skip} />
+                  </div>`
+                : html`<img class="media kenburns" src=${this._currentUrls[0]} @error=${this._skip} />`
+            : html`<video class="media" src=${this._currentUrls[0]} autoplay muted
                 @ended=${this._advance} @error=${this._skip}></video>`
           : html`<div class="fallback"></div>`}
         ${this._cfg.showClock ? html`<div class="clock">${this._now}</div>` : nothing}
@@ -431,6 +746,16 @@ export class ScreensaverCard extends LitElement {
     .overlay { position: fixed; inset: 0; background: #000; z-index: 9999;
       animation: fadein 0.8s ease; overflow: hidden; }
     .media { width: 100%; height: 100%; object-fit: cover; }
+    /* Two portraits side by side. A hairline gap keeps them from reading as one
+       mis-stitched panorama. */
+    .pair { display: flex; width: 100%; height: 100%; gap: 2px; }
+    .pair .half { flex: 1 1 0; min-width: 0; height: 100%; object-fit: cover; }
+    /* Lone portrait: whole image over a blurred, zoomed copy of itself. */
+    .solo { position: relative; width: 100%; height: 100%; overflow: hidden; }
+    .solo .backdrop { position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; filter: blur(28px) brightness(0.55); transform: scale(1.15); }
+    .solo .contained { position: relative; width: 100%; height: 100%;
+      object-fit: contain; }
     .kenburns { animation: kb 14s ease-in-out infinite alternate; }
     .fallback { width: 100%; height: 100%;
       background: linear-gradient(120deg,#0f1115,#1b2130,#243657,#1b2130);

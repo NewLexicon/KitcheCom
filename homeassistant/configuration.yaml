@@ -5,6 +5,20 @@
 
 homeassistant:
   packages: !include_dir_named packages
+  # 2026-08-17: the screensaver card browses media_source, whose DEFAULT root is
+  # the container's /media -- which is EMPTY (only /config is bind-mounted). The
+  # 26 photos live in /config/media, so media_source never saw them and the card
+  # rendered black for a month. Map source_dir_id "local" at the photo directory.
+  # The card builds media-source://media_source/local/<media_path> and coerces an
+  # empty media_path back to "media" (screensaver-card.ts:43), so photos MUST live
+  # in a subfolder, not at this root. kitchen.yaml sets media_path: photos, so the
+  # photos live at /config/media/photos/*.jpg.
+  media_dirs:
+    local: /config/media
+  # Set 2026-08-17: internal_url was unset, which makes the iOS companion app
+  # flaky about reconnecting on the home LAN. Parents approve ChoreOps claims
+  # from their phones, so app reliability is load-bearing now.
+  internal_url: "http://192.168.1.234:8123"
 
 frontend:
   themes: !include_dir_merge_named themes
@@ -14,6 +28,14 @@ lovelace:
   dashboards:
     kitchen-snapshot:
       mode: yaml
-      title: Kitchen (snapshot)
+      # 2026-08-17: renamed from "Kitchen (snapshot)". Despite the old name this is
+      # NOT a backup copy — there is no storage-mode default dashboard (no
+      # .storage/lovelace.lovelace) and the kiosk loads /kitchen-snapshot directly.
+      # It is the live dashboard.
+      # url_path stays kitchen-snapshot so start-kiosk-wayland.sh keeps working.
+      # Sidebar ORDER is a per-user frontend setting (drag it in sidebar edit mode),
+      # NOT a config key — `sidebar_order:` here fails check_config.
+      title: Kitchen
+      icon: mdi:home-heart
       filename: dashboards/kitchen.yaml
       show_in_sidebar: true

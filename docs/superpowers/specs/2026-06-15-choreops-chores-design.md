@@ -10,7 +10,7 @@
 
 ## 1. Goal & context
 
-Chores are the **#1 priority** of KitchenCOM (the household's primary motivation for the kitchen display: gamified family/kid chores). Replace the placeholder `todo.chores` local-to-do list with **ChoreOps** (`reference/ChoreOps-main`, v1.0.8, HA custom integration, quality_scale platinum), surfaced as a **Chores tab** on the live Wayland kiosk.
+Chores are the **#1 priority** of KitchenCOM (the household's primary motivation for the kitchen display: gamified family/kid chores). Replace the placeholder `todo.chores` local-to-do list with **ChoreOps** (`reference/ChoreOps-main`, v1.0.7, HA custom integration, quality_scale platinum), surfaced as a **Chores tab** on the live Wayland kiosk.
 
 **Already live (context):** Pi 5 running HA 2026.6.3 in Docker (`:stable`), Wayland/labwc kiosk showing the kitchen dashboard, weather + `todo.groceries` + `todo.chores` cards wired. ChoreOps replaces only the chores card; groceries stays.
 
@@ -41,7 +41,7 @@ These overturn casual claims made during brainstorming AND a wrong correction fr
 1. **Pre-flight (verify, don't assume):** `docker exec homeassistant python3 --version` ≥ 3.13; HA ≥ 2025.6 (already confirmed 2026.6.3 ✓).
 2. **Install HACS** → restart HA → complete GitHub **device-auth** in the UI (human-gated step).
 3. **Via HACS, install + pin:**
-   - ChoreOps `ccpk1/choreops` @ **v1.0.8** → `/config/custom_components/choreops/`. *(If no real v1.0.8 release tag exists, HACS pins to `main` HEAD; the offline copy at `reference/ChoreOps-main/custom_components/choreops/` is the deterministic fallback — prefer it for reproducibility.)*
+   - ChoreOps `ccpk1/choreops` @ **v1.0.7** → `/config/custom_components/choreops/`. *(If no real v1.0.7 release tag exists, HACS pins to `main` HEAD; the offline copy at `reference/ChoreOps-main/custom_components/choreops/` is the deterministic fallback — prefer it for reproducibility.)*
    - `custom:button-card` and `custom:auto-entities` → register both as Lovelace resources (module), like the screensaver card.
 4. **Restart HA** → ChoreOps appears in Settings → Devices & Services.
 
@@ -78,7 +78,7 @@ These overturn casual claims made during brainstorming AND a wrong correction fr
 - **Generation mechanism:** options-flow Dashboard Generator → writes to HA storage `cod-chores` (NOT a service, NOT hand-vendored). §2.1.
 - **Build approach:** Option 1 — generator + home-screen nav link; procedure version-controlled, artifact is instance state. §2.2 / §3.3.
 - **Entity-provisioning order:** assignees + chores created BEFORE running the Dashboard Generator (generator injects assignee identities). §3.2.
-- **v1.0.8 pin:** `hacs.json` has `hide_default_branch: true` → HACS uses release tags; pin to `v1.0.8`. Offline copy `reference/ChoreOps-main` is deterministic fallback.
+- **v1.0.7 pin:** `hacs.json` has `hide_default_branch: true` → HACS uses release tags; pin to `v1.0.7`. Offline copy `reference/ChoreOps-main` is deterministic fallback.
 - **HACS card resources:** HACS auto-registers frontend-card resources on install for storage-mode Lovelace; plan verifies via `.storage/lovelace_resources` and adds manually only if absent.
 - **Orphaned `local_todo` Chores list:** delete it (§3.3) so there's one chore surface.
 - **HACS GitHub device-auth:** explicit human-gated step in the plan (user authorizes in browser).
