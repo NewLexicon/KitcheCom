@@ -167,8 +167,9 @@ redemption the kid already spent points on. `prune_rewards.py` guards this; the 
 **Kitchen Pi** — `ssh kitchencom` @ `192.168.1.234` (reserved). **Moved ~10 ft on 2026-09-07**;
 now piled behind the ViewSonic with the brick and antenna. Wi-Fi is unaffected (-58 to -64 dBm,
 3.3% loss, tx-failure counter frozen). ⚠️ **Thermal headroom is reduced in that pile:** idle is
-~55 °C but 4-core load reaches the 80 °C soft limit in ~100 s and throttles at 82 °C
-(`throttled=0x80008`). **Not** a power fault — core voltage held 0.8960 V with no under-voltage
+~55 °C but 4-core load reaches the 80 °C soft limit in ~100 s and throttles, peaking at
+**83.4 °C** (`throttled=0x80008`). It plateaus there rather than running away, and cools to
+55 °C in ~90 s. **Not** a power fault — core voltage held 0.8960 V with no under-voltage
 events. Normal kiosk duty never gets near it; see `pi-thermal-headroom-in-the-pile.md`.
 ⚠️ The **Zigbee dongle is plugged straight into the Pi**, not on its extension cable — fine while
 the coordinator is alone, but move it clear before relying on paired bulbs. Pi 5, HA in **Docker** (there is
