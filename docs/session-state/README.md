@@ -164,7 +164,14 @@ redemption the kid already spent points on. `prune_rewards.py` guards this; the 
 
 ## 6. Hardware
 
-**Kitchen Pi** — `ssh kitchencom` @ `192.168.1.234` (reserved). Pi 5, HA in **Docker** (there is
+**Kitchen Pi** — `ssh kitchencom` @ `192.168.1.234` (reserved). **Moved ~10 ft on 2026-09-07**;
+now piled behind the ViewSonic with the brick and antenna. Wi-Fi is unaffected (-58 to -64 dBm,
+3.3% loss, tx-failure counter frozen). ⚠️ **Thermal headroom is reduced in that pile:** idle is
+~55 °C but 4-core load reaches the 80 °C soft limit in ~100 s and throttles at 82 °C
+(`throttled=0x80008`). **Not** a power fault — core voltage held 0.8960 V with no under-voltage
+events. Normal kiosk duty never gets near it; see `pi-thermal-headroom-in-the-pile.md`.
+⚠️ The **Zigbee dongle is plugged straight into the Pi**, not on its extension cable — fine while
+the coordinator is alone, but move it clear before relying on paired bulbs. Pi 5, HA in **Docker** (there is
 no `homeassistant.service`; use `docker restart homeassistant`). Runs labwc/Wayland; the kiosk is
 chromium launched from `~/.config/labwc/autostart` via
 `deploy/kiosk/start-kiosk-wayland.sh`, which supervises and respawns it. Needs its **own 27 W
@@ -220,7 +227,7 @@ nothing about it.
 ## 8. Memory layer
 
 `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memory/`
-(outside the repo; `MEMORY.md` there is the index — **48 entries**)
+(outside the repo; `MEMORY.md` there is the index — **49 entries**)
 
 Most relevant on `main`:
 - 🔴 `zha-must-use-ttyusb-in-docker.md` — before touching the ZHA serial path
