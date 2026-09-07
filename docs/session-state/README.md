@@ -70,7 +70,8 @@ Bluetooth stack, unrelated. Do not chase it.
 ## 3. Branches — what is live and what is parked
 
 `main` now carries the entire kitchen-panel arc. Every feature branch below is **behind main by
-~105 commits** and would need a rebase/merge before further work.
+105-106 commits** (`research/att-network-control` by 80) and would need a rebase/merge
+before further work.
 
 | Branch | Ahead | What it holds |
 |---|---|---|
@@ -136,7 +137,17 @@ row per `metadata_id`) to prove an entity is gone.
 
 **A stuck card after a long screensaver is the BROWSER, not HA.** The kiosk chromium had run
 ~2 days at 1.25 GB when it produced a permanent spinner. `pkill -TERM -f "chromium --js-flags"`
-— the launcher's supervisor loop respawns it in 3s. (10 h uptime = ~330 MB, which is healthy.)
+— the launcher's supervisor loop respawns it in 3s.
+
+⚠️ **Measure with PSS, not summed RSS.** The kiosk runs ~9 chromium processes that share
+memory; adding their RSS double-counts it and makes a healthy panel look near the spinner
+threshold. Verified 2026-09-07: summed RSS read **1272 MB** at 38 min uptime while true usage
+was **782 MB PSS** (largest renderer 367 MB, 6 GB free) — healthy. Use:
+```bash
+ssh kitchencom 'tot=0; for p in $(pgrep chromium); do tot=$((tot+$(awk "/^Pss:/{s+=\$2} END{print s+0}" /proc/$p/smaps_rollup))); done; echo "$((tot/1024)) MB PSS"'
+```
+Compare **PSS against the ~1.25 GB spinner figure**; the older "~330 MB at 10 h" note was a
+single-process RSS reading and is not comparable to it.
 
 **`kitchen.yaml` is contested** — sessions edit it live on the Pi. Always `diff` the Pi copy
 against the repo before deploying, and back up on the Pi first.
@@ -185,7 +196,8 @@ nothing about it.
 - 🟡 **Zigbee bulbs are NOT paired** (`devices_v15` = 1, coordinator only). Needs Garrett at the
   panel, in the bulbs' final fixtures. Then `feat/adaptive-lighting` can be finished.
 - 🟡 **`feat/choreops-chores` is merged and safe to delete**, locally and on origin.
-- 🟡 **Every other feature branch is ~105 commits behind main** and needs a rebase before work.
+- 🟡 **Every other feature branch is 105-106 commits behind main** (`research/att-network-control`
+  by 80) and needs a rebase before work.
 - 🟡 **`listWeek` hides empty days** — FullCalendar's list view renders only days with events.
   Showing all 7 cells would need a custom card.
 - 🟡 **Router 5 GHz ch 44 is still contested**; the Pi is parked on 2.4 GHz as a workaround.
