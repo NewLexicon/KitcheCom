@@ -1,11 +1,23 @@
 # Time-of-day LED colour (adaptive / "circadian" lighting).
 #
-# STATUS 2026-08-15: STAGED, NOT ACTIVE — BLOCKED ON A ZIGBEE COORDINATOR.
-# The bulbs are Third Reality ZL1 (Zigbee). This HA has no Zigbee radio and no
-# light entities (`light.*` count is 0 — the only switches are HACS pre-release
-# toggles), so the flux platform below is COMMENTED OUT; it cannot validate
-# against entities that do not exist. **Read §4 step 0 first — a USB Zigbee
-# dongle is required before any of this can run.**
+# STATUS 2026-09-07: STAGED, NOT ACTIVE — the coordinator gate is CLEARED;
+# now blocked only on PAIRING THE BULBS.
+#
+#   ✅ Zigbee coordinator installed and RUNNING — Sonoff ZBDongle-P (TI CC2652)
+#      on /dev/ttyUSB0, radio_type znp. Network FORMED: channel 15, PAN 2701.
+#      Verified 2026-09-07: HA's python holds the serial port open, and both
+#      coordinator endpoints enumerated (profile 260 HA + 49246 Green Power).
+#   ⛔ ZERO BULBS PAIRED — `devices_v15` holds 1 row, NWK 0, the coordinator
+#      itself. `light.*` entity count is still 0. The Third Reality ZL1s were
+#      still in the box as of 2026-09-07.
+#
+# So §2/§3 remain COMMENTED OUT: flux cannot validate against light entities
+# that do not exist yet. Everything else is ready. **Go to §4 step 1c** — steps
+# 0, 1a and 1b are already done; do not redo them, and do NOT re-form the
+# network (that would force re-pairing every device).
+#
+# ⚠️ Zigbee is on CHANNEL 15 and that is CORRECT — do not "fix" it to 25. Home
+# 2.4 GHz Wi-Fi is on ch 10; they do not overlap.
 #
 # Built with HA's BUILT-IN `flux` switch platform — no HACS dependency. Schema
 # verified against reference/core-dev/homeassistant/components/flux/switch.py
@@ -185,13 +197,28 @@ input_boolean:
 #    (branch `feat/irrigation`).
 #
 # 1. Onboard the LEDs and confirm entities exist:
-#    a. Plug the dongle into the Pi **via the shielded extension cable**.
-#       Confirm the Pi sees it — expect a CP210x/silabs serial device:
-#         ssh kitchencom 'ls -l /dev/serial/by-id/ 2>/dev/null; dmesg | tail -20'
-#       Use the stable `/dev/serial/by-id/...` path, NOT `/dev/ttyUSB0` — the
-#       ttyUSB number can move between reboots and silently break ZHA.
-#    b. Settings → Devices & Services → Add Integration → Zigbee Home Automation
-#       → select that by-id serial port → let it form a new network.
+#    ✅ STEPS 1a-1b ARE ALREADY DONE (verified 2026-09-07). The dongle is
+#       installed, ZHA is configured and RUNNING, and the network is FORMED:
+#       channel 15, PAN 2701, coordinator = TI CC2652 (radio_type znp).
+#       Skip to 1c — only the bulbs are missing.
+#
+#    a. ⚠️ **USE `/dev/ttyUSB0` — NOT the `/dev/serial/by-id/...` path.**
+#       This instruction was REVERSED on 2026-09-07. HA runs in **Docker** here,
+#       and `/dev/serial/by-id/` exists on the host but **NOT inside the
+#       container**. Pointing ZHA at a by-id path stops the radio **silently**:
+#       HA still returns 200 and logs zero errors, but `zigbee.db` never opens.
+#       The live config is `{"path": "/dev/ttyUSB0", "baudrate": 115200}`.
+#       (The by-id advice is correct for a bare-metal HA OS install; it is wrong
+#       for this deployment. See memory `zha-must-use-ttyusb-in-docker.md`.)
+#       Prove the radio is actually up — a live radio has BOTH:
+#         ssh kitchencom 'ls /home/garrettdehart/homeassistant/zigbee.db-wal'
+#         ssh kitchencom 'sudo bash -c "for f in /proc/[0-9]*/fd/*; do readlink \$f 2>/dev/null | grep -q ttyUSB && echo OPEN; done" | head -1'
+#       ⚠️ Do NOT use `lsof`/`fuser` for that check — neither is installed on the
+#       Pi, so both return empty and look like "port not open" (this cost time
+#       on 2026-09-07).
+#    b. Settings → Devices & Services → Zigbee Home Automation → **Add device**.
+#       (Do NOT re-add the integration or re-form the network — that would force
+#       re-pairing everything. The network already exists.)
 #    c. Pair each bulb (power-cycle an unprovisioned ZL1 to enter pairing mode).
 #       ⚠️ Pair bulbs **in their final fixtures**, not at a bench. Zigbee builds
 #       a mesh from where devices actually live; mains-powered bulbs act as
@@ -215,6 +242,16 @@ input_boolean:
 #    this file:
 #      docker exec homeassistant python -m homeassistant \
 #        --script check_config --config /config
+#    Exit code 0 with no "Testing configuration" errors = valid.
+#
+#    ⚠️ AFTER RESTARTING, WAIT ~60-90s BEFORE CONCLUDING A PACKAGE FAILED.
+#    HA answers HTTP 200 roughly 20s in, but new YAML entities do not exist yet
+#    — the Bluetooth stack (`bleak_retry_connector` ... `stop_discovery`) stalls
+#    the startup phase and logs "Something is blocking Home Assistant from
+#    wrapping up the start up phase". That Bluetooth traceback is KNOWN-BENIGN
+#    noise; do not chase it. Observed 2026-09-07: input_boolean.adaptive_lighting_enabled
+#    was absent at ~20s and present at ~60s, with no config change in between.
+#    Checking too early looks exactly like a silently-dropped package.
 #
 # 5. Turn on input_boolean.adaptive_lighting_enabled, turn a light ON (flux
 #    ignores lights that are off), and watch the colour move. With
