@@ -78,7 +78,7 @@ before further work.
 | `feat/choreops-chores` | 0 | **MERGED via PR #4.** Safe to delete. |
 | `fort-knox` | 40 | Grocy deployed to the Pi; SD-card swap postponed (reader + spare card missing) |
 | `feat/grocy-kitchen` | 9 | Grocy shopping card — deferred, a concurrent session owned `kitchen.yaml` |
-| `feat/adaptive-lighting` | 5 | Circadian lighting design + `homeassistant/packages/lighting.yaml`. ⚠️ **Its §4 step 1a is WRONG for this deployment** — see §5 |
+| `feat/adaptive-lighting` | 5 | Circadian lighting design + `homeassistant/packages/lighting.yaml`. ✅ **Step 1a FIXED 2026-09-07**; blocked only on pairing bulbs |
 | `feat/irrigation` | 1 | Rainwater capture design; shares the Zigbee coordinator gate |
 | `feat/panel-features` | 1 | Panel feature design — six items, half already built |
 | `research/att-network-control` | 1 | AT&T gateway cannot do per-device control — negative result, worth keeping |
@@ -115,8 +115,13 @@ Full detail: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/COLD-OPE
 `/dev/serial/by-id/` exists on the host but **not inside the container**. Pointing ZHA at it
 stops the radio **silently**: HA still returns 200, zero log errors, but `zigbee.db` never
 opens. Diagnostic — a live radio has `zigbee.db-wal`/`-shm` beside the db.
-⚠️ `homeassistant/packages/lighting.yaml` §4 step 1a on `feat/adaptive-lighting` still says to
-use the by-id path. **That instruction is wrong for this deployment.**
+✅ `homeassistant/packages/lighting.yaml` §4 step 1a on `feat/adaptive-lighting` **was** wrong
+(it said to use the by-id path); **corrected 2026-09-07** in `45455ad`.
+⚠️ **Do NOT use `lsof`/`fuser` to test whether the port is open** — neither is installed on the
+Pi, so both return empty and mimic a dead radio (this misled a session on 2026-09-07). Use
+`/proc` instead: `sudo bash -c 'for f in /proc/[0-9]*/fd/*; do readlink $f | grep -q ttyUSB &&
+echo OPEN; done'`. Also, a config entry's `state: None` on disk proves nothing — that field is
+not persisted, so **every** integration reads `None`.
 
 **Zigbee is on channel 15 — do NOT re-form to chase 25.** Home Wi-Fi 2.4 GHz is on ch 10; they
 do not overlap. Re-forming would force re-pairing every device for nothing.
@@ -193,8 +198,13 @@ nothing about it.
   `IMG_2872`, `IMG_2881`, `IMG_2902`, `IMG_2908`, …). `~/Downloads` is not a backup. **The 212
   photos are Pi-only and not in git** (correctly — binary content), so a fresh clone cannot
   reproduce the screensaver.
-- 🟡 **Zigbee bulbs are NOT paired** (`devices_v15` = 1, coordinator only). Needs Garrett at the
-  panel, in the bulbs' final fixtures. Then `feat/adaptive-lighting` can be finished.
+- 🟡 **Zigbee bulbs are NOT paired** (`devices_v15` = 1, coordinator only) — re-verified
+  2026-09-07. The **ZL1 bulbs are still in the box**. Everything else on `feat/adaptive-lighting`
+  is now READY: the coordinator gate is cleared (network formed, ch 15 / PAN 2701), the runbook's
+  wrong by-id step is fixed, and `input_boolean.adaptive_lighting_enabled` is deployed and live
+  on the Pi. Remaining work is physical: put the bulbs in their **final fixtures**, pair via
+  ZHA → **Add device** (do NOT re-form the network), then uncomment §2/§3 of
+  `homeassistant/packages/lighting.yaml` with the real entity_ids.
 - 🟡 **`feat/choreops-chores` is merged and safe to delete**, locally and on origin.
 - 🟡 **Every other feature branch is 105-106 commits behind main** (`research/att-network-control`
   by 80) and needs a rebase before work.
@@ -210,7 +220,7 @@ nothing about it.
 ## 8. Memory layer
 
 `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memory/`
-(outside the repo; `MEMORY.md` there is the index — **47 entries**)
+(outside the repo; `MEMORY.md` there is the index — **48 entries**)
 
 Most relevant on `main`:
 - 🔴 `zha-must-use-ttyusb-in-docker.md` — before touching the ZHA serial path
