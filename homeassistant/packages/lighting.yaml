@@ -1,20 +1,20 @@
 # Time-of-day LED colour (adaptive / "circadian" lighting).
 #
-# STATUS 2026-09-07: STAGED, NOT ACTIVE — the coordinator gate is CLEARED;
-# now blocked only on PAIRING THE BULBS.
+# STATUS 2026-09-07: ACTIVE — §2 and §3 are LIVE. Both gates are cleared.
 #
 #   ✅ Zigbee coordinator installed and RUNNING — Sonoff ZBDongle-P (TI CC2652)
 #      on /dev/ttyUSB0, radio_type znp. Network FORMED: channel 15, PAN 2701.
-#      Verified 2026-09-07: HA's python holds the serial port open, and both
-#      coordinator endpoints enumerated (profile 260 HA + 49246 Green Power).
-#   ⛔ ZERO BULBS PAIRED — `devices_v15` holds 1 row, NWK 0, the coordinator
-#      itself. `light.*` entity count is still 0. The Third Reality ZL1s were
-#      still in the box as of 2026-09-07.
+#   ✅ FIRST BULB PAIRED 2026-09-07 — Third Reality ZL1 (model 3RCB01057Z),
+#      NWK 49012, area Living Room, entity `light.third_reality_inc_3rcb01057z`.
+#      Paired in its final fixture, so it routes for the mesh from where it lives.
 #
-# So §2/§3 remain COMMENTED OUT: flux cannot validate against light entities
-# that do not exist yet. Everything else is ready. **Go to §4 step 1c** — steps
-# 0, 1a and 1b are already done; do not redo them, and do NOT re-form the
-# network (that would force re-pairing every device).
+# ⚠️ ONLY 1 OF 4 BULBS IS PLACED. The other three had no chosen fixture as of
+# 2026-09-07. Adding one is NOT a config rewrite: pair it, then append one line
+# to the `lights:` list in §2. Do not re-form the network to add a bulb.
+#
+# 🔭 MESH NOTE: with a single bulb there is no mesh redundancy — that one bulb is
+# the only router. Range problems for bulbs 2-4 are expected to EASE, not worsen,
+# as each added bulb extends the mesh.
 #
 # ⚠️ Zigbee is on CHANNEL 15 and that is CORRECT — do not "fix" it to 25. Home
 # 2.4 GHz Wi-Fi is on ch 10; they do not overlap.
@@ -52,9 +52,9 @@ input_boolean:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2. THE FLUX SWITCH  — ⚠️ COMMENTED OUT UNTIL REAL LIGHTS EXIST
+# 2. THE FLUX SWITCH  — ✅ LIVE as of 2026-09-07
 # ─────────────────────────────────────────────────────────────────────────────
-# Uncomment and replace the `lights:` list with your real entity_ids.
+# To add a bulb: pair it, then append its entity_id to the `lights:` list below.
 #
 # ⚠️ KEY NAMES ARE NOT WHAT THE DOCS ABBREVIATE THEM TO. The YAML keys are
 # `start_colortemp` / `sunset_colortemp` / `stop_colortemp` — NOT `start_ct`.
@@ -71,20 +71,22 @@ input_boolean:
 #   3000  warm white          — sunset
 #   2200  amber / candlelight — night, melatonin-friendly
 #
-# switch:
-#   - platform: flux
-#     name: Adaptive Lighting
-#     lights:
-#       - light.REPLACE_ME          # ← real entity_ids go here
-#     start_time: "06:30"           # omit to use sunrise instead
-#     stop_time: "22:30"
-#     start_colortemp: 4000
-#     sunset_colortemp: 3000
-#     stop_colortemp: 2200
-#     mode: mired                   # xy (default) | mired | rgb — see §4 note
-#     interval: 60                  # seconds between re-assertions
-#     transition: 30                # fade seconds; keeps changes unnoticeable
-#     disable_brightness_adjust: true   # colour only; leave brightness to humans
+switch:
+  - platform: flux
+    name: Adaptive Lighting
+    lights:
+      # Third Reality ZL1 (3RCB01057Z), Living Room. Paired 2026-09-07.
+      # Append further bulbs here as they are placed — one line each.
+      - light.third_reality_inc_3rcb01057z
+    start_time: "06:30"           # omit to use sunrise instead
+    stop_time: "22:30"
+    start_colortemp: 4000
+    sunset_colortemp: 3000
+    stop_colortemp: 2200          # = 454 mired: the ZL1's exact warm limit, no headroom below
+    mode: mired                   # CONFIRMED correct — see §4 step 2
+    interval: 60                  # seconds between re-assertions
+    transition: 30                # fade seconds; keeps changes unnoticeable
+    disable_brightness_adjust: true   # colour only; leave brightness to humans
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -94,47 +96,48 @@ input_boolean:
 # automations bind it to the input_boolean above so there is ONE thing to toggle
 # (and one thing on the dashboard), rather than two switches that can disagree.
 #
-# ⚠️ COMMENTED OUT alongside §2 — these reference switch.adaptive_lighting,
-# which does not exist until the flux platform is uncommented. An automation
-# pointing at a non-existent entity logs errors on every trigger.
+# ✅ LIVE alongside §2 as of 2026-09-07. These reference switch.adaptive_lighting,
+# which exists because the flux platform above is active. If you ever re-comment
+# §2, re-comment these too — an automation pointing at a non-existent entity
+# logs errors on every trigger.
 #
-# automation:
-#   - alias: "Lighting — start adaptive loop when enabled"
-#     trigger:
-#       - platform: state
-#         entity_id: input_boolean.adaptive_lighting_enabled
-#         to: "on"
-#     action:
-#       - service: switch.turn_on
-#         target:
-#           entity_id: switch.adaptive_lighting
-#
-#   - alias: "Lighting — stop adaptive loop when disabled"
-#     trigger:
-#       - platform: state
-#         entity_id: input_boolean.adaptive_lighting_enabled
-#         to: "off"
-#     action:
-#       - service: switch.turn_off
-#         target:
-#           entity_id: switch.adaptive_lighting
-#
-#   # Restore intent across restarts: input_boolean state survives a reboot, the
-#   # flux switch's does not. Without this, adaptive lighting silently stops
-#   # after every HA restart while the dashboard still shows "enabled".
-#   - alias: "Lighting — re-assert adaptive loop after restart"
-#     trigger:
-#       - platform: homeassistant
-#         event: start
-#     condition:
-#       - condition: state
-#         entity_id: input_boolean.adaptive_lighting_enabled
-#         state: "on"
-#     action:
-#       - delay: "00:00:30"        # let light integrations finish loading
-#       - service: switch.turn_on
-#         target:
-#           entity_id: switch.adaptive_lighting
+automation:
+  - alias: "Lighting — start adaptive loop when enabled"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.adaptive_lighting_enabled
+        to: "on"
+    action:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.adaptive_lighting
+
+  - alias: "Lighting — stop adaptive loop when disabled"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.adaptive_lighting_enabled
+        to: "off"
+    action:
+      - service: switch.turn_off
+        target:
+          entity_id: switch.adaptive_lighting
+
+  # Restore intent across restarts: input_boolean state survives a reboot, the
+  # flux switch's does not. Without this, adaptive lighting silently stops
+  # after every HA restart while the dashboard still shows "enabled".
+  - alias: "Lighting — re-assert adaptive loop after restart"
+    trigger:
+      - platform: homeassistant
+        event: start
+    condition:
+      - condition: state
+        entity_id: input_boolean.adaptive_lighting_enabled
+        state: "on"
+    action:
+      - delay: "00:00:30"        # let light integrations finish loading
+      - service: switch.turn_on
+        target:
+          entity_id: switch.adaptive_lighting
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -229,10 +232,16 @@ input_boolean:
 #      Developer Tools → States → your light → attribute `supported_color_modes`
 #      - `color_temp` present        → use `mode: mired`   (best colour accuracy)
 #      - only `hs` / `rgb` / `xy`    → use `mode: xy` or `rgb`
-#    ✅ LIKELY GOOD NEWS FOR THE ZL1: the box advertises **"Tunable White"** next
-#    to "Multi Color", so these should report `color_temp`, and `mode: mired`
-#    should be correct — real white-balance hardware rather than RGB faking warm
-#    white. Confirm the attribute anyway; if `color_temp` is absent, use `xy`.
+#    ✅ CONFIRMED 2026-09-07 FROM THE HARDWARE, not the box. The ZL1's
+#    ColorControl cluster (0x0300) reported:
+#      color_capabilities (0x400A) = 25 = 0b11001 → HueSat + XY + **ColorTemperature**
+#      color_temp_physical_min (0x400B) = 142 mired ≈ 7042K
+#      color_temp_physical_max (0x400C) = 454 mired ≈ **2202K**
+#    So `mode: mired` is correct — real white-balance hardware.
+#    ⚠️ The 454-mired warm limit means `stop_colortemp: 2200` sits exactly AT the
+#    bulb's floor. It works, but there is no headroom: asking for anything warmer
+#    (say 2000K) silently clamps to 2202K rather than erroring. If night light
+#    looks "not warm enough", that is the hardware limit, not a config fault.
 #    (The trap avoided: a colour-temp mode on an RGB-only bulb yields wrong
 #    colours rather than an error — cheap strips render 2200K as pink.)
 #
