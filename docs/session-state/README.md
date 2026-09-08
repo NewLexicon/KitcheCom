@@ -44,7 +44,10 @@ remembered SHA.
 
 ## 2. Empirical state
 
-All re-verified **2026-09-07 night**.
+All re-verified **2026-09-07 night**; the ChoreOps/panel rows re-verified **2026-09-08 midday**.
+
+⚠️ **Chore points are no longer 0.** Rowan **4.0**, Wystan **4.0** as of 2026-09-08 12:38 — the
+kids are earning. Read live state; do not assume the day-one reset numbers.
 
 | Check | Command | Expected |
 |---|---|---|
@@ -103,6 +106,46 @@ need a rebase/merge before further work. Verify rather than trust these counts:
 ---
 
 ## 4. What just shipped
+
+### 4a-ter. Chore claiming FIXED — panel claims now work (2026-09-08 midday, `b233a7c`, `55eb992`)
+
+**The bug the user reported: every chore sat at `pending`; tapping and confirming did nothing.**
+
+**Root cause — ChoreOps has TWO claim paths with different authorization:**
+- `choreops.claim_chore` (**service**) ALWAYS runs the participation check and **never consults
+  kiosk mode** (`is_kiosk_mode_enabled` appears nowhere in `services.py`).
+- The per-chore **claim button** skips that check when kiosk mode is on (`button.py:348`), and
+  `kiosk_mode: true` was already set.
+
+The panel called the **service**. The kiosk is the non-admin `Panel` user and the kids'
+`ha_user_id` is `''`, so every branch of `_has_participation_authority_for_target`
+(`auth_helpers.py:332`) returned False → `not_authorized_action` → state unchanged. Proven in the
+log at 11:47:56, not merely derived.
+
+**Fix:** `tap_action` now presses the chore's own claim button, read from the sensor's
+**`claim_button_eid`** attribute. That attribute comes from
+`entity_registry.async_get_entity_id()` on the unique_id, so it is structurally immune to the
+`_2`/`_3` and stale-slug traps — do **not** "improve" it by rebuilding the id from the slug.
+
+**Also shipped in the same arc:**
+- Claimed chores now leave Morning/Evening and appear under **Completed** as **"Review"**
+  (`mdi:clock-check-outline`, amber, full opacity); approved stay dimmed green with `+N pts`.
+- To-do tiles show the point value (`2 pts`) instead of `PENDING`.
+
+**Verified end-to-end 12:37-12:38:** Rowan 0.0 → **4.0**, Wystan 0.0 → **4.0**, 3 chores
+`approved`, 2 ledger entries each, **0 auth rejections since the fix**.
+
+⚠️ **Approve was deliberately left alone.** It uses `AUTH_ACTION_APPROVAL`, which has **no** kiosk
+bypass (`button.py:490`) — so kids still cannot self-approve at the panel and a parent approves as
+admin elsewhere. This preserves the `kiosk-admin-approval-hole` fix. Do not "unify" the two paths.
+
+⚠️ **The kids' `ha_user_id` has ALWAYS been `''`** — verified across every backup to July. It is
+**not** reset damage, and linking them is **not** needed now that the button path is used.
+
+⚠️ **A dashboard deploy does not reach the panel until the kiosk browser restarts.** The Pi's
+file was correct at 10:48 and the panel still called the old service at 11:47. `pkill -TERM -f
+"chromium --js-flags"` (over SSH — the supervisor respawns in ~3 s) cleared it. An HA restart does
+**not**; see `kiosk-service-worker-serves-stale-js`.
 
 ### 4a. Adaptive lighting — LIVE (merged `66d5872`, 2026-09-07 night)
 
@@ -331,6 +374,25 @@ nothing about it.
 
 ## 7. Carry-forwards
 
+- 🎯 **HARDWARE — the user's next topic (asked 2026-09-08).** Two decisions, both already
+  researched:
+  - **Mic: Home Assistant Voice Preview Edition (~$59-69).** Decided 2026-08-17, re-confirmed
+    2026-09-08. It is a **network satellite over Wi-Fi — it uses NO USB port**, sidestepping the
+    Pi's USB quirks entirely. Far-field dual mics, on-device wake word, own speaker, verified on
+    HA **Container** (which matters: there is no Add-on Store here). ⚠️ **No custom wake words** —
+    only "Okay Nabu" / "Hey Jarvis" / "Hey Mycroft".
+  - **USB hub: possibly not needed.** `lsusb -t` on 2026-09-08 shows **two chained Realtek
+    RTS5411 4-port USB 2.0 hubs and one of them is EMPTY**. Ask what is actually being plugged in
+    before buying. If replacing: a **powered** (own DC adapter) USB 3.0 hub with 4+ USB-A ports —
+    the Pi 5 browns out under load, and a hub in the path is **required** for touch to enumerate
+    at all (`viewsonic-touch-needs-hub`).
+  - ⚠️ **The "old printer cable" is CORRECT and needs no replacement.** USB-B is the
+    *device-side* connector the ViewSonic's touch upstream port uses; modern hubs correctly have
+    no USB-B port. Any USB-A→USB-B cable works. The touch panel enumerates at **12 M / 100 mA** —
+    a plain HID device that demands nothing special from a hub.
+  - ⚠️ **Do NOT move the Zigbee dongle onto the hub.** It is on its own bus on the extension
+    cable, which is where it should stay; USB 3.0 hubs are a known 2.4 GHz interference source.
+
 - 🔴 **AdGuard is BUILT but NOT IN SERVICE** — the router still needs pointing at
   **`192.168.1.113`** for DNS. Until then none of the blocking or scheduling applies to any
   device.
@@ -346,9 +408,12 @@ nothing about it.
 - 🟡 **Topology scan due ~12:00 on 2026-09-08** (4 h after the 08:09 HA restart). It refreshes
   `neighbors_v15`, which is currently **stale at LQI=0** — written before the dongle moved. Pull
   it then for the first complete mesh picture; nothing needs to be held open for it.
-- 🟡 **Wystan's bulb has not reported signal.** It reads `on` but was last seen 07:18 and its
-  RSSI/LQI still show `unknown` after being enabled. Probably just an idle bulb that has not
-  needed to talk; worth a look if it stays quiet. It also missed a flux write on 2026-09-07 (§7).
+- ✅ ~~**Wystan's bulb has not reported signal.**~~ **EXPLAINED 2026-09-08** — it is simply
+  **switched off at the wall**, which removes it from the mesh entirely (not a fault). It produced
+  210 `NWK_NO_ROUTE` errors 08:10 → 09:19 and then **stopped on its own** when ZHA marked it
+  `unavailable` and flux's `is_on()` guard began skipping it. **Do not add a flux availability
+  condition — it would duplicate a guard HA already has.** See
+  `flux-retries-are-self-limiting`. It rejoins by itself when powered back on.
 - 🟡 **Bulb 4 of 4 is unplaced.** Adding it is: pair via ZHA → **Add device** (do NOT re-form the
   network), append one line to the `lights:` list in `homeassistant/packages/lighting.yaml`, and
   copy one `tile` into the Lights section of `homeassistant/dashboards/kitchen.yaml`. Not a
@@ -378,20 +443,20 @@ nothing about it.
 
 ## 7b. What is the next move?
 
-🎯 **THE USER'S STATED NEXT TOPIC IS CHORES CHANGES** (said at close of the 2026-09-08 morning
-session; work deferred to the next day). Nothing was started — no branch cut, no scope agreed.
-**Ask what specifically needs changing** rather than assuming, then read
-`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/COLD-OPEN-choreops-chores.md` for the
-ChoreOps reference material, and §5 here for the `.storage` editing rules (HA must be STOPPED).
-⚠️ Note the system was **reset to day one on 2026-09-07** (§4a) — Rowan and Wystan both start at
-0 points, all chores `pending`. Kids may have begun earning against it, so **re-read live state
-before changing anything**; do not assume the reset numbers still hold.
+🎯 **CHORES ARE DONE AND WORKING** — the claim bug is fixed, verified with real points on the
+board (§4a-ter). The user's stated next topic is **hardware: a mic and a USB hub** (see §7).
+Nothing is half-built and nothing is blocked on a decision.
 
-Nothing is half-built and nothing is blocked on a decision. `main` is clean, pushed, and
-byte-identical to the Pi. Other options if chores is not the priority:
+For ChoreOps reference material read
+`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/COLD-OPEN-choreops-chores.md`, and §5
+here for the `.storage` editing rules (HA must be STOPPED).
+⚠️ **The kids have started earning** — Rowan 4.0, Wystan 4.0 as of 2026-09-08 12:38, three
+chores approved. **Re-read live state before touching anything**; the day-one reset numbers are
+already stale.
 
-1. **Physical, and the highest-value single action** — move the Zigbee dongle onto its USB
-   extension cable, and place **bulb 4** while you are there. Read first:
+`main` is clean, pushed (`55eb992`), and byte-identical to the Pi. Other options:
+
+1. **Place bulb 4** (the dongle move is DONE — §4a-bis; do not redo it). Read first:
    `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/homeassistant/packages/lighting.yaml` §4 (the
    activation checklist; steps 0/1a/1b are DONE — do **not** re-form the network).
    Then: pair → append one line to the `lights:` list in that file → copy one `tile` into the
@@ -425,7 +490,7 @@ is on `main`.
 ## 8. Memory layer
 
 `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memory/`
-(outside the repo; `MEMORY.md` there is the index — **54 entries**)
+(outside the repo; `MEMORY.md` there is the index — **56 entries**)
 
 Most relevant on `main`:
 - 🔴 `zha-must-use-ttyusb-in-docker.md` — before touching the ZHA serial path
@@ -445,6 +510,9 @@ Added 2026-09-07 (lighting/chores arc):
 - `zl1-color-temp-limits.md` — `mode: mired` confirmed; 2202 K is the warm floor
 - `lights-section-on-home.md` — 2-across via `grid_options.columns`, NOT `max_columns`
 - 🔴 `zha-suffixed-entity-ids-break-filters.md` — when a query says "none", suspect the query
+
+- 🔴 `choreops-claim-service-vs-button.md` — the SERVICE ignores kiosk mode; use the BUTTON
+- `flux-retries-are-self-limiting.md` — a bulb off at the wall: ~70 min of errors, then silence
 
 **Environment gotchas that cost time:**
 - **`timeout` does not exist on macOS** — use `ssh -o ConnectTimeout=N`.
