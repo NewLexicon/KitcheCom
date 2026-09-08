@@ -1,0 +1,73 @@
+# Time-of-day panel layouts — spec docs/superpowers/specs/2026-09-08-time-of-day-layouts-design.md
+#
+# Drives which of the three panel views (morning/afternoon/evening) the kiosk
+# should be showing. The actual navigation happens browser-side in
+# custom:tod-autonav-card — HA core has no remote view-switch service.
+
+input_datetime:
+  kitchen_morning_start:
+    name: Morning starts
+    has_date: false
+    has_time: true
+  kitchen_afternoon_start:
+    name: Afternoon starts
+    has_date: false
+    has_time: true
+  kitchen_evening_start:
+    name: Evening starts
+    has_date: false
+    has_time: true
+
+# Defer auto-nav briefly after any touch, so the layout is never yanked out
+# from under someone mid-tap.
+#
+# NOT timer.kitchen_inactivity: that one is THIRTY MINUTES (screensaver.yaml:25),
+# so reusing it would suppress auto-nav for half an hour after any glance at the
+# panel. It also wedges in `idle` when the screensaver safety switch is off
+# (screensaver.yaml:45-51). This timer is short and single-purpose.
+timer:
+  kitchen_nav_defer:
+    duration: "00:01:30"
+
+template:
+  - trigger:
+      # Re-evaluate every minute. Boundaries have minute resolution, so this is
+      # the coarsest trigger that can never miss one.
+      - platform: time_pattern
+        minutes: "*"
+      # ...and immediately at startup, so the sensor is never `unknown` for a
+      # minute after a restart.
+      - platform: homeassistant
+        event: start
+    sensor:
+      - name: Kitchen Time Of Day
+        unique_id: kitchen_time_of_day
+        state: >
+          {% set now_m = now().hour * 60 + now().minute %}
+          {% set morning = state_attr('input_datetime.kitchen_morning_start', 'timestamp') | default(18000, true) / 60 %}
+          {% set afternoon = state_attr('input_datetime.kitchen_afternoon_start', 'timestamp') | default(39600, true) / 60 %}
+          {% set evening = state_attr('input_datetime.kitchen_evening_start', 'timestamp') | default(66600, true) / 60 %}
+          {# Evening WRAPS past midnight, so the three boundaries are not simply
+             ascending. Test each window explicitly rather than assuming order. #}
+          {% if now_m >= evening or now_m < morning %}
+            evening
+          {% elif now_m >= afternoon %}
+            afternoon
+          {% else %}
+            morning
+          {% endif %}
+
+automation:
+  - alias: "Kitchen — hold auto-nav briefly after any touch"
+    id: kitchen_nav_defer_on_activity
+    mode: restart
+    # input_button (NOT input_boolean): ButtonEntity writes a fresh timestamp on
+    # every press, so the state always changes and this trigger fires each time.
+    # An input_boolean would silently no-op on the second consecutive press.
+    trigger:
+      - platform: state
+        entity_id: input_button.kitchen_activity
+    action:
+      - service: timer.start
+        target:
+          entity_id: timer.kitchen_nav_defer
