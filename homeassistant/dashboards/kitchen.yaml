@@ -10,9 +10,9 @@
 # together instead of leaving dead space.
 title: Kitchen
 views:
-  - title: Home
-    path: home
-    icon: mdi:home-heart
+  - title: Afternoon
+    path: afternoon
+    icon: mdi:white-balance-sunny
     type: sections
     max_columns: 3
     sections:
@@ -58,6 +58,11 @@ views:
             media_path: photos
             photo_duration: 10
             shuffle: true
+          # Invisible. Navigates the panel to the right time-of-day view.
+          # Present on all three time views; deliberately NOT on Schedule or
+          # Lists, so opening those manually is never overridden.
+          - type: custom:tod-autonav-card
+            view: afternoon
 
       # ---- Column 2: Rowan --------------------------------------------------
       - type: grid
