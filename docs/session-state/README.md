@@ -1,6 +1,7 @@
 # KitchenCOM — cold-open (`main`)
 
-**Last refreshed:** 2026-09-07 night, after **`feat/adaptive-lighting` merged** (`66d5872`).
+**Last refreshed:** 2026-09-08 morning. Repo unchanged since `8d0f863`; this refresh records
+**Pi-side runtime work only** (dongle relocation, signal sensors) plus a correction.
 **Read this first.** Everything below is verified, with the command that verifies it.
 
 > This is the **project-wide** cold-open, written from `main`'s perspective. Feature branches
@@ -55,6 +56,7 @@ All re-verified **2026-09-07 night**.
 | Dashboard parses | `python3 -c "import yaml,io; yaml.safe_load(io.open('homeassistant/dashboards/kitchen.yaml',encoding='utf-8'))"` | no output |
 | Zigbee devices | see §5 recorder-DB snippet, or count `devices_v15` | **4** (coordinator + 3 bulbs) |
 | Light entities | `light.*` in `core.entity_registry` | **3** |
+| Signal sensors | RSSI/LQI rows, `disabled_by` | **6 enabled, 0 disabled** |
 | Repo == Pi | `diff homeassistant/dashboards/kitchen.yaml <(ssh kitchencom 'sudo cat …/dashboards/kitchen.yaml')` | no output |
 
 **No project-wide test suite / typecheck / build.** The only test suite is
@@ -127,6 +129,39 @@ requests **clamp silently**, so "not warm enough at night" is a hardware limit, 
 ⚠️ **The adaptive loop is ALL-OR-NOTHING.** `input_boolean.adaptive_lighting_enabled` is a single
 global switch; flux has no per-bulb opt-out and re-asserts colour every 60 s on every entity in
 the `lights:` list — including the kids' rooms. To exempt a bulb, remove it from that list.
+
+### 4a-bis. Zigbee RF work — 2026-09-08 morning (Pi-side only, no commits)
+
+- **Dongle relocated to its extension cable, ~5 ft from the Pi** — this closes the red
+  carry-forward. Verified by the kernel, not by assertion: `usb 1-2: USB disconnect, device
+  number 2` at 07:51:13 → re-enumeration as **device number 3** at 07:51:22 → `cp210x converter
+  now attached to ttyUSB0`. Same serial, **same `/dev/ttyUSB0`**, so ZHA's pinned path stayed
+  valid and no HA restart was needed.
+- **All 6 RSSI/LQI sensors enabled** (2 per bulb) by clearing `disabled_by: integration` in
+  `core.entity_registry` with HA stopped.
+- **Topology scan needs no action** — it already runs automatically. Verified in the installed
+  zigpy 1.5.1 source on the Pi: `CONF_TOPO_SCAN_PERIOD_DEFAULT = 4 * 60` minutes and
+  `CONF_TOPO_SCAN_ENABLED_DEFAULT = True` (`zigpy/config/defaults.py:49-50`). There is **no
+  manual trigger reachable without an API token** — modern ZHA exposes the scan as a websocket
+  command, not a service or button.
+
+**Signal baseline (2026-09-08 ~08:38).** No pre-move baseline exists, so this is a starting
+mark, **not** evidence the move helped — do not claim an improvement from it.
+
+| Bulb | LQI | note |
+|---|---|---|
+| Living Room | **69** | steady |
+| Rowan | **69** | recovered from 36 |
+| Wystan | not yet reported | `on` but quiet since 07:18 |
+
+⚠️ **A freshly-rejoined bulb reports a pessimistic first LQI.** Rowan's read **36** thirty
+seconds after rejoining and settled to **69** within ~15 minutes. Do not act on the first
+reading after a rejoin.
+
+⚠️ **A bulb switched off at the wall leaves the mesh entirely** — it stops routing for other
+devices and cannot receive flux colour updates. Rowan's was off overnight (last seen 22:08,
+`unavailable` for 10 h) and rejoined on its own at 08:23:57 with no re-pairing. This is normal,
+but with only 3 bulbs each dark one measurably weakens the mesh.
 
 ### 4b. Kitchen panel (PR #4, 100 commits, 2026-06-15 → 09-04)
 
@@ -203,6 +238,17 @@ dashboard landed); `main` has had the real file since `592be89`. Use
 `git show <ref>:path` inside a shell `for` loop mangled the ref and reported **0 lines for every
 branch**. A 0 there means the command is broken, not that the file is missing.
 
+**Suffixed entity ids break naive `endswith` filters — TWICE now.** ZHA disambiguates identical
+model slugs with `_2`/`_3`, so a bulb's signal sensors are `sensor.…_rssi`, `sensor.…_rssi_2`,
+`sensor.…_rssi_3`. A filter matching ids that *end* in `_rssi`/`_lqi` silently returns only the
+first bulb. On 2026-09-08 that produced a confident, wrong claim that "only bulb 1 has RSSI/LQI
+sensors — ZHA creates them inconsistently." **All three bulbs have identical 11-entity sets.**
+Match with a regex allowing the optional suffix: `re.compile(r"_(rssi|lqi)(_\d+)?$")`, or group
+by `device_id` from `core.device_registry`.
+⚠️ **This is the same failure shape as the branch-count loop below** — a broken query read as a
+real result. When a query returns "none" or "zero" for something that ought to exist, suspect the
+query first. Verify per-device before explaining an absence away.
+
 **Flux entities NEVER appear in `core.entity_registry`.** `switch.adaptive_lighting` has no
 `unique_id`, so it is never registered — polling the registry for it returns nothing no matter
 how long you wait, which looks exactly like a silently-dropped YAML package (especially right
@@ -246,10 +292,12 @@ now piled behind the ViewSonic with the brick and antenna. Wi-Fi is unaffected (
 **83.4 °C** (`throttled=0x80008`). It plateaus there rather than running away, and cools to
 55 °C in ~90 s. **Not** a power fault — core voltage held 0.8960 V with no under-voltage
 events. Normal kiosk duty never gets near it; see `pi-thermal-headroom-in-the-pile.md`.
-🔴 The **Zigbee dongle is STILL plugged straight into the Pi**, not on its extension cable. This
-was tolerable while the coordinator was alone; **three bulbs now depend on it**, so this has been
-promoted from a nicety to a real carry-forward — do it before placing bulb 4 somewhere distant,
-since that is when range actually gets tested. Moving it also helps the thermal pile above. Pi 5, HA in **Docker** (there is
+✅ **The Zigbee dongle is now on its extension cable, ~5 ft from the Pi** (2026-09-08 07:51,
+kernel-verified — see §4a-bis). Target separation was 30 cm minimum / 50 cm-1 m ideal, to get the
+antenna clear of the Pi's USB3 controller and 2.4 GHz Wi-Fi radio; 5 ft comfortably exceeds it.
+⚠️ **After any re-plug, confirm the path is still `/dev/ttyUSB0` and ONLY that.** Re-enumeration
+as `ttyUSB1` kills the radio silently, because ZHA's path is pinned (it must be — `by-id` does
+not exist inside the Docker container). Check `ls /dev/ttyUSB*` and `dmesg -T | tail`. Pi 5, HA in **Docker** (there is
 no `homeassistant.service`; use `docker restart homeassistant`). Runs labwc/Wayland; the kiosk is
 chromium launched from `~/.config/labwc/autostart` via
 `deploy/kiosk/start-kiosk-wayland.sh`, which supervises and respawns it. Needs its **own 27 W
@@ -263,7 +311,11 @@ Better long-term: change the router's 5 GHz channel away from 44, or plug in eth
 (**`eth0` is DOWN**).
 
 **Zigbee** — ITead **ZBDongle-P** (CC2652P; the CP210x bridge → `ttyUSB` is the -P
-discriminator). On the Pi's root hub, **not** on the extension cable (see above).
+discriminator). On the Pi's **root hub via the 1.5 m extension cable** (see above).
+⚠️ **Do NOT move the dongle onto a USB hub.** Its problem is RF proximity, not connectivity, and
+a hub adds a failure point to the subsystem with the nastiest failure mode — a hub-induced
+re-enumeration to `ttyUSB1` takes the mesh down with no error. The touchscreen is what needs a
+hub; the dongle wants a direct port plus distance.
 **3 Third Reality ZL1 bulbs paired** (2026-09-07), NWK 49012 / 56913 / 56469, all reporting
 `color_capabilities = 25` over 142-454 mired. Entity ids are the ZHA slugs
 `light.third_reality_inc_3rcb01057z{,_2,_3}` — the UI renames changed display names only.
@@ -288,9 +340,14 @@ nothing about it.
   `IMG_2872`, `IMG_2881`, `IMG_2902`, `IMG_2908`, …). `~/Downloads` is not a backup. **The 212
   photos are Pi-only and not in git** (correctly — binary content), so a fresh clone cannot
   reproduce the screensaver.
-- 🔴 **Move the Zigbee dongle to its extension cable.** Three bulbs now route through a radio
-  sitting flush against the Pi's USB3/Wi-Fi — the single most common ZHA complaint. Pairs
-  naturally with the thermal-pile fix (§6).
+- ✅ ~~**Move the Zigbee dongle to its extension cable.**~~ **DONE 2026-09-08**, ~5 ft, kernel-
+  verified (§4a-bis).
+- 🟡 **Topology scan due ~12:00 on 2026-09-08** (4 h after the 08:09 HA restart). It refreshes
+  `neighbors_v15`, which is currently **stale at LQI=0** — written before the dongle moved. Pull
+  it then for the first complete mesh picture; nothing needs to be held open for it.
+- 🟡 **Wystan's bulb has not reported signal.** It reads `on` but was last seen 07:18 and its
+  RSSI/LQI still show `unknown` after being enabled. Probably just an idle bulb that has not
+  needed to talk; worth a look if it stays quiet. It also missed a flux write on 2026-09-07 (§7).
 - 🟡 **Bulb 4 of 4 is unplaced.** Adding it is: pair via ZHA → **Add device** (do NOT re-form the
   network), append one line to the `lights:` list in `homeassistant/packages/lighting.yaml`, and
   copy one `tile` into the Lights section of `homeassistant/dashboards/kitchen.yaml`. Not a
@@ -298,7 +355,8 @@ nothing about it.
   what is live.
 - 🟡 **Areas still need creating in the UI** — bulb 2 sits in the generic `Bedroom` (rename it to
   "Wystan's Bedroom") and bulb 3 has **no area at all** (create "Rowan's Bedroom"). Cosmetic:
-  flux targets entity_ids, not areas. Area edits are UI-only (see §5).
+  flux targets entity_ids, not areas. Area edits are UI-only (see §5). Re-confirmed 2026-09-08:
+  bulb 3's `area_id` is still `None`.
 - 🟢 **Watch bulb 2 (Wystan) on the adaptive loop.** In the first verified run, bulbs 1 and 3 got
   writes at 21:14:21 but bulb 2 did not — consistent with flux skipping lights that are off, or a
   colour already at target. Not diagnosed as a fault; worth a look if it never shifts.
@@ -319,8 +377,17 @@ nothing about it.
 
 ## 7b. What is the next move?
 
+🎯 **THE USER'S STATED NEXT TOPIC IS CHORES CHANGES** (said at close of the 2026-09-08 morning
+session; work deferred to the next day). Nothing was started — no branch cut, no scope agreed.
+**Ask what specifically needs changing** rather than assuming, then read
+`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/COLD-OPEN-choreops-chores.md` for the
+ChoreOps reference material, and §5 here for the `.storage` editing rules (HA must be STOPPED).
+⚠️ Note the system was **reset to day one on 2026-09-07** (§4a) — Rowan and Wystan both start at
+0 points, all chores `pending`. Kids may have begun earning against it, so **re-read live state
+before changing anything**; do not assume the reset numbers still hold.
+
 Nothing is half-built and nothing is blocked on a decision. `main` is clean, pushed, and
-byte-identical to the Pi. Pick whichever of these fits the session:
+byte-identical to the Pi. Other options if chores is not the priority:
 
 1. **Physical, and the highest-value single action** — move the Zigbee dongle onto its USB
    extension cable, and place **bulb 4** while you are there. Read first:
@@ -357,7 +424,7 @@ is on `main`.
 ## 8. Memory layer
 
 `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memory/`
-(outside the repo; `MEMORY.md` there is the index — **53 entries**)
+(outside the repo; `MEMORY.md` there is the index — **54 entries**)
 
 Most relevant on `main`:
 - 🔴 `zha-must-use-ttyusb-in-docker.md` — before touching the ZHA serial path
@@ -376,6 +443,7 @@ Added 2026-09-07 (lighting/chores arc):
 - 🔴 `flux-entities-not-in-registry.md` — why `switch.adaptive_lighting` is never in the registry
 - `zl1-color-temp-limits.md` — `mode: mired` confirmed; 2202 K is the warm floor
 - `lights-section-on-home.md` — 2-across via `grid_options.columns`, NOT `max_columns`
+- 🔴 `zha-suffixed-entity-ids-break-filters.md` — when a query says "none", suspect the query
 
 **Environment gotchas that cost time:**
 - **`timeout` does not exist on macOS** — use `ssh -o ConnectTimeout=N`.
