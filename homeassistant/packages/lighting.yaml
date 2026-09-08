@@ -8,7 +8,8 @@
 #      NWK 49012, area Living Room, entity `light.third_reality_inc_3rcb01057z`.
 #      Paired in its final fixture, so it routes for the mesh from where it lives.
 #
-# ⚠️ 2 OF 4 BULBS PLACED (Living Room + Wystan's Bedroom, both 2026-09-07).
+# ⚠️ 3 OF 4 BULBS PLACED (Living Room, Wystan's Bedroom, Rowan's Bedroom —
+# all 2026-09-07). All three report color_capabilities=25 and 142-454 mired.
 # Adding one is NOT a config rewrite: pair it, then append one line to the
 # `lights:` list in §2. Do not re-form the network to add a bulb.
 #
@@ -89,6 +90,9 @@ switch:
       # or paired out of order after a fresh start, `_2` can land on a DIFFERENT
       # physical bulb. Confirm by area (device_registry area_id) before trusting it.
       - light.third_reality_inc_3rcb01057z_2
+      # Third Reality ZL1 (3RCB01057Z), Rowan's Bedroom. Paired 2026-09-07. NWK 56469.
+      # Same positional-suffix caveat as `_2` above.
+      - light.third_reality_inc_3rcb01057z_3
       # Append further bulbs here as they are placed — one line each.
     start_time: "06:30"           # omit to use sunrise instead
     stop_time: "22:30"
