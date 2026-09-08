@@ -2,6 +2,6 @@
   "name": "kitchencom",
   "private": true,
   "scripts": {
-    "validate:yaml": "yamllint -c .yamllint homeassistant/"
+    "validate:yaml": "python3 -m yamllint -c .yamllint homeassistant/"
   }
 }
