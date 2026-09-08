@@ -22,14 +22,15 @@ close-out commit cannot name its own SHA, and stamping it is itself a commit, so
 converges). `6613fce` and everything below it will not move:
 
 ```
+2179800 docs: cold-open — adaptive lighting live, ChoreOps reset, repo/Pi reconciled
+66d5872 Merge feat/adaptive-lighting: adaptive lighting live on three ZL1 bulbs
 ff11b5f feat(panel): add the Lights section to Home — 2-across tiles + master switch
-66733d0 docs: correct the stress-test peak — 83.4 C, and it plateaus
 6613fce Merge PR #4: Kitchen panel — chores end-to-end, calendar, screensaver, daily quotes
 ```
 
-The tip as of this refresh was `66d5872` (the adaptive-lighting merge), but **re-run
-`git log --oneline -1` rather than trusting that** — see the note above about why the tip is
-not frozen.
+Everything above is frozen and verifiable. The **tip is deliberately not stamped here** — a
+close-out commit cannot name its own SHA, and stamping it is itself a commit, so the loop never
+converges. Get the tip from `git log --oneline -1`, which §1 already calls authoritative.
 
 ⚠️ **This checkout is SHARED — `main` lives in the `.worktrees/main-merge` worktree**, not the
 repo root (the root has `feat/choreops-chores` checked out). Two Claude sessions worked this
