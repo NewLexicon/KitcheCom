@@ -53,6 +53,11 @@ views:
               - calendar.rebdinatl_gmail_com
               - calendar.birthdays
               - calendar.holidays_in_united_states
+              # Dinner plan, straight from Grocy's own ICS feed
+              # (/api/calendar/ical). Events read "Meal plan recipe: Tacos" or
+              # "Meal plan note: Leftovers night" — BOTH shapes appear, so a
+              # meal added by voice shows up here with no extra wiring.
+              - calendar.grocy_calendar
           # Renders nothing unless idle (packages/screensaver.yaml).
           - type: custom:screensaver-card
             media_path: photos
@@ -1900,6 +1905,11 @@ views:
               - calendar.rebdinatl_gmail_com
               - calendar.birthdays
               - calendar.holidays_in_united_states
+              # Dinner plan, straight from Grocy's own ICS feed
+              # (/api/calendar/ical). Events read "Meal plan recipe: Tacos" or
+              # "Meal plan note: Leftovers night" — BOTH shapes appear, so a
+              # meal added by voice shows up here with no extra wiring.
+              - calendar.grocy_calendar
 
   # ==========================================================================
   # LISTS — groceries + todo, room to grow
