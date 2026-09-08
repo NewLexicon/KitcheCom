@@ -384,15 +384,19 @@ nothing about it.
     Pi's USB quirks entirely. Far-field dual mics, on-device wake word, own speaker, verified on
     HA **Container** (which matters: there is no Add-on Store here). ⚠️ **No custom wake words** —
     only "Okay Nabu" / "Hey Jarvis" / "Hey Mycroft".
-  - **USB hub: possibly not needed.** `lsusb -t` on 2026-09-08 shows **two chained Realtek
-    RTS5411 4-port USB 2.0 hubs and one of them is EMPTY**. Ask what is actually being plugged in
-    before buying. If replacing: a **powered** (own DC adapter) USB 3.0 hub with 4+ USB-A ports —
-    the Pi 5 browns out under load, and a hub in the path is **required** for touch to enumerate
-    at all (`viewsonic-touch-needs-hub`).
-  - ⚠️ **The "old printer cable" is CORRECT and needs no replacement.** USB-B is the
-    *device-side* connector the ViewSonic's touch upstream port uses; modern hubs correctly have
-    no USB-B port. Any USB-A→USB-B cable works. The touch panel enumerates at **12 M / 100 mA** —
-    a plain HID device that demands nothing special from a hub.
+  - **USB hub: buy nothing. 🔴 DO NOT REPLACE THE HUB OR THE CABLE.** The current
+    **powered hub + old USB-B printer cable** was the ONLY combination that worked after a long
+    session of trying many cables (`viewsonic-touch-needs-hub`). It is hard-won, not a stopgap.
+    A spare already exists in the chain: `lsusb -t` shows **two chained Realtek RTS5411 hubs and
+    the second (`3-2.4`) is EMPTY with 4 free ports**. Plug into that.
+    Working topology: `Pi → hub 3-2 → port 1 → touch (3-2.1)`; empty hub on port 4.
+  - ⚠️ **The "old printer cable" is CORRECT and must stay.** USB-B is the *device-side*
+    connector a touch panel's upstream port uses; modern hubs correctly have no USB-B port —
+    you want a spare **USB-A** port and keep the A→B cable.
+  - ⚠️ **Do NOT reason from the panel's power draw.** It enumerates at 12 M / 100 mA, which
+    looks undemanding and invites "any hub will do". Draw-once-enumerated says nothing about why
+    enumeration FAILS without a hub. That mistake was made on 2026-09-08 and produced a bad
+    "buy a USB 3.0 hub" recommendation — the user corrected it from experience.
   - ⚠️ **Do NOT move the Zigbee dongle onto the hub.** It is on its own bus on the extension
     cable, which is where it should stay; USB 3.0 hubs are a known 2.4 GHz interference source.
 
