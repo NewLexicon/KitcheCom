@@ -8,13 +8,19 @@
 #      NWK 49012, area Living Room, entity `light.third_reality_inc_3rcb01057z`.
 #      Paired in its final fixture, so it routes for the mesh from where it lives.
 #
-# ⚠️ ONLY 1 OF 4 BULBS IS PLACED. The other three had no chosen fixture as of
-# 2026-09-07. Adding one is NOT a config rewrite: pair it, then append one line
-# to the `lights:` list in §2. Do not re-form the network to add a bulb.
+# ⚠️ 2 OF 4 BULBS PLACED (Living Room + Wystan's Bedroom, both 2026-09-07).
+# Adding one is NOT a config rewrite: pair it, then append one line to the
+# `lights:` list in §2. Do not re-form the network to add a bulb.
 #
-# 🔭 MESH NOTE: with a single bulb there is no mesh redundancy — that one bulb is
-# the only router. Range problems for bulbs 2-4 are expected to EASE, not worsen,
-# as each added bulb extends the mesh.
+# ⚠️ THE ADAPTIVE LOOP IS ALL-OR-NOTHING. `input_boolean.adaptive_lighting_enabled`
+# is a SINGLE GLOBAL switch — flux has no per-bulb opt-out. Every entity in the
+# §2 `lights:` list gets colour re-asserted every `interval` (60s). In a child's
+# bedroom that means a hand-set bedtime colour is overridden within a minute.
+# If that becomes a problem, the fix is to REMOVE that bulb from the list (not to
+# look for a per-bulb setting — there isn't one).
+#
+# 🔭 MESH NOTE: each mains-powered bulb is also a router, so range for bulbs 3-4
+# should EASE as more are placed, not worsen.
 #
 # ⚠️ Zigbee is on CHANNEL 15 and that is CORRECT — do not "fix" it to 25. Home
 # 2.4 GHz Wi-Fi is on ch 10; they do not overlap.
@@ -75,9 +81,15 @@ switch:
   - platform: flux
     name: Adaptive Lighting
     lights:
-      # Third Reality ZL1 (3RCB01057Z), Living Room. Paired 2026-09-07.
-      # Append further bulbs here as they are placed — one line each.
+      # Third Reality ZL1 (3RCB01057Z), Living Room. Paired 2026-09-07. NWK 49012.
       - light.third_reality_inc_3rcb01057z
+      # Third Reality ZL1 (3RCB01057Z), Wystan's Bedroom. Paired 2026-09-07.
+      # ⚠️ The `_2` suffix is HA disambiguating two IDENTICAL model slugs — it is
+      # positional, NOT stable identity. If this bulb is ever removed and re-paired,
+      # or paired out of order after a fresh start, `_2` can land on a DIFFERENT
+      # physical bulb. Confirm by area (device_registry area_id) before trusting it.
+      - light.third_reality_inc_3rcb01057z_2
+      # Append further bulbs here as they are placed — one line each.
     start_time: "06:30"           # omit to use sunrise instead
     stop_time: "22:30"
     start_colortemp: 4000
