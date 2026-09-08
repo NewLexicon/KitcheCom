@@ -1803,6 +1803,67 @@ views:
             grid_options:
               rows: 4
 
+      # ---- Lights ------------------------------------------------------------
+      # Added 2026-09-07. Self-contained: the Home view stays max_columns: 3, so
+      # nothing above reflows. Cards sit 2-across via grid_options.columns (a
+      # `sections` view measures in 12 sub-columns, so 6 = half width).
+      #
+      # `tile` is a BUILT-IN card — no HACS resource needed. The brightness slider
+      # is the built-in `light-brightness` feature, confirmed present in this
+      # deployment's shipped frontend bundle (hass_frontend/frontend_latest, HA
+      # 2026.6.3) rather than assumed from version number.
+      #
+      # ⚠️ Entity_ids are the ZHA slugs, NOT the friendly names. The bulbs were
+      # renamed in the UI on 2026-09-07 (Living Room Lamp / Wystan's / Rowan's),
+      # which changes ONLY the display name — `light.third_reality_inc_3rcb01057z*`
+      # is what the config must reference. The `_2`/`_3` suffixes are positional
+      # disambiguation of identical model slugs; confirm by area before trusting.
+      - type: grid
+        cards:
+          - type: heading
+            heading: Lights
+            heading_style: title
+            icon: mdi:lightbulb-group
+          - type: tile
+            entity: light.third_reality_inc_3rcb01057z
+            name: Living Room
+            icon: mdi:sofa
+            features_position: bottom
+            features:
+              - type: light-brightness
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: light.third_reality_inc_3rcb01057z_2
+            name: Wystan
+            icon: mdi:bed
+            features_position: bottom
+            features:
+              - type: light-brightness
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: light.third_reality_inc_3rcb01057z_3
+            name: Rowan
+            icon: mdi:bed
+            features_position: bottom
+            features:
+              - type: light-brightness
+            grid_options:
+              columns: 6
+          # Bulb 4 goes here when placed — copy a tile, bump the suffix.
+          #
+          # The adaptive-lighting master switch. It is ALL-OR-NOTHING: flux has no
+          # per-bulb opt-out, and re-asserts colour on every bulb in the §2
+          # `lights:` list every 60s. Kept beside the bulbs so it is obvious which
+          # lights it governs.
+          - type: tile
+            entity: input_boolean.adaptive_lighting_enabled
+            name: Adaptive Colour
+            icon: mdi:theme-light-dark
+            grid_options:
+              columns: 6
+
   # ==========================================================================
   # SCHEDULE — the full calendar
   # ==========================================================================
