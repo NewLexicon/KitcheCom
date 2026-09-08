@@ -43,10 +43,24 @@ template:
       - name: Kitchen Time Of Day
         unique_id: kitchen_time_of_day
         state: >
+          {# Each boundary falls back INDEPENDENTLY to its intended default when the
+             helper is unset. An unset input_datetime reports timestamp = 0 (NOT
+             None), and 0 is falsy, so `| default(x, true)` does fire — but only
+             per-helper. Verified on the Pi 2026-09-08: all three read
+             state 00:00:00 / timestamp 0 immediately after first deploy.
+
+             This matters because a PARTIAL set is otherwise silently broken: set
+             morning to 05:00 and leave the other two at 0, and `now_m >= evening`
+             is trivially true, so the sensor returns `evening` at every hour of
+             the day. Keeping the fallbacks per-boundary means a half-configured
+             set still degrades to sane defaults rather than one wrong answer. #}
           {% set now_m = now().hour * 60 + now().minute %}
-          {% set morning = state_attr('input_datetime.kitchen_morning_start', 'timestamp') | default(18000, true) / 60 %}
-          {% set afternoon = state_attr('input_datetime.kitchen_afternoon_start', 'timestamp') | default(39600, true) / 60 %}
-          {% set evening = state_attr('input_datetime.kitchen_evening_start', 'timestamp') | default(66600, true) / 60 %}
+          {% set morning = (state_attr('input_datetime.kitchen_morning_start', 'timestamp') | default(0, true)) / 60 %}
+          {% set afternoon = (state_attr('input_datetime.kitchen_afternoon_start', 'timestamp') | default(0, true)) / 60 %}
+          {% set evening = (state_attr('input_datetime.kitchen_evening_start', 'timestamp') | default(0, true)) / 60 %}
+          {% set morning = morning if morning > 0 else 300 %}
+          {% set afternoon = afternoon if afternoon > 0 else 660 %}
+          {% set evening = evening if evening > 0 else 1110 %}
           {# Evening WRAPS past midnight, so the three boundaries are not simply
              ascending. Test each window explicitly rather than assuming order. #}
           {% if now_m >= evening or now_m < morning %}
