@@ -23,9 +23,10 @@ close-out commit cannot name its own SHA, and stamping it is itself a commit, so
 converges). `6613fce` and everything below it will not move:
 
 ```
+977d9cf docs: cold-open — dongle relocated, signal sensors enabled, one correction
+8d0f863 docs: cold-start sanity-check fix-ups — freeze the prefix through 2179800
 2179800 docs: cold-open — adaptive lighting live, ChoreOps reset, repo/Pi reconciled
 66d5872 Merge feat/adaptive-lighting: adaptive lighting live on three ZL1 bulbs
-ff11b5f feat(panel): add the Lights section to Home — 2-across tiles + master switch
 6613fce Merge PR #4: Kitchen panel — chores end-to-end, calendar, screensaver, daily quotes
 ```
 
