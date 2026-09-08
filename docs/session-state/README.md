@@ -23,6 +23,16 @@ close-out commit cannot name its own SHA, and stamping it is itself a commit, so
 converges). `6613fce` and everything below it will not move:
 
 ```
+68a5820 feat(kroger): add an OAuth test harness to prove the flows before building
+b6863e2 docs: no pantry inventory — record barcodes for identity only
+300affe docs: Kroger API findings — Products is the search API, not Catalog
+de78070 feat(grocy): add a rest_command to push a recipe's missing items to the list
+8a45788 docs: capture the grocery-ordering scope decision and the deferred store routing
+55e58d1 feat(panel): show the Grocy meal plan on both calendar views
+108928d docs: design — voice for todo lists, grocery lists, and the Grocy meal plan
+422d55d docs: correct the USB hub advice — do not replace the hub or the cable
+c3208fe docs: cold-open §1 — extend the frozen prefix through this session's commits
+3a57b0d docs: cold-open — chore claiming fixed, hardware decisions, bulb finding
 55eb992 fix(panel): shorten the awaiting-review label to "Review"
 b233a7c feat(panel): claim via kiosk buttons, show points, route claimed to Completed
 f1c4851 docs: cold-start sanity-check fix-ups — freeze the prefix through 977d9cf
