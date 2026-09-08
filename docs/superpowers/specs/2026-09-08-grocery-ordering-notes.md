@@ -21,8 +21,9 @@ Amazon / Costco yourself.
 | Stores defined | **0** |
 | Stock tracked | **0 products** |
 
-⚠️ **The last two rows are the blocker for everything deferred.** With no stock data,
-"not-fulfilled" currently means "everything", and no rule can know whether we already have chicken.
+⚠️ **No stock is tracked, and that is DELIBERATE (2026-09-08).** "Not-fulfilled" therefore means
+"everything", which is the intended behaviour: the list is a full candidate list and the human
+prunes it at ordering time. Do not treat 0-stock as a gap to be fixed.
 
 ---
 
@@ -43,8 +44,13 @@ that is exactly what is missing today.
 
 **Prerequisites before this is worth attempting:**
 1. Define shopping locations (Kroger, Costco, Amazon) — currently 0.
-2. Set `shopping_location_id` on the staples.
-3. **Actually track stock** for those staples — the hard part, and a habit change, not a config change.
+2. Set `shopping_location_id` on the staples (or on their `product_barcodes` rows).
+
+⚠️ **Item 3 was "actually track stock" — that is now RULED OUT.** The household decided
+(2026-09-08) **not to keep a pantry inventory**: they assume they need everything and delete what
+they already have when ordering. So no routing rule can ever ask "do we already have chicken?" —
+**the human is the stock sensor.** Design accordingly, and do not revive inventory tracking as a
+prerequisite.
 
 **Explicitly NOT decided:** whether the fallback duplicate ("also add chicken to Kroger") should be
 automatic or offered. Do not assume; ask.

@@ -72,10 +72,32 @@ plus allergen and nutrition data.
 
 `filter.term=chicken` returns many products. Nothing can decide *which* one is meant.
 
-**Recommended: store the chosen UPC on the Grocy product, once.** Grocy products have a barcode
-field. Seeding it is tedious but makes every later run exact and removes substitution guesswork —
-the user picks the product, not a matching heuristic. Search then becomes a one-time seeding aid
-rather than a per-order gamble.
+**Solution: scan the barcode when groceries are unpacked** (user's approach, 2026-09-08).
+`POST /objects/product_barcodes {product_id, barcode}` records the mapping and — **verified live**
+— causes **no stock movement whatsoever** (stock stayed at 0 products; the probe row was deleted).
+
+Each product is scanned **once, ever**; after that the mapping is permanent. Grocy's web UI has a
+camera scanner and is bound to `0.0.0.0:9283`, so a phone on the LAN can do it with no extra
+hardware.
+
+`product_barcodes` also carries **`shopping_location_id`**, so a barcode can record which store the
+item is bought at — relevant to the deferred Costco routing, and it needs no inventory data.
+
+⚠️ **NO PANTRY INVENTORY IS BEING KEPT — this is a deliberate decision (2026-09-08).** The
+household assumes it needs everything, and deletes what it already has at ordering time. Therefore:
+- Do **not** propose `add` / `consume` / `inventory` scanning workflows. Only the barcode↔product
+  mapping is wanted.
+- Do **not** rely on Grocy's "not fulfilled" stock check meaning anything — with 0 stock it always
+  returns every ingredient, which is the intended behaviour here.
+- The deferred Costco routing **cannot** be driven by stock data. Any future design must assume
+  the human decides what is already on hand.
+
+⚠️ **Kroger store-brand UPCs are not in Open Food Facts.** `GET /stock/barcodes/external-lookup/`
+resolved a national brand (Coca-Cola) with name, units and image, but returned `null` for a Kroger
+store-brand UPC. Store brands need the product name entered once by hand.
+
+⚠️ **Unverified:** that a barcode scanned from a package matches the UPC Kroger's API expects.
+Should match for national brands; confirm early once credentials exist rather than assuming.
 
 ## Order of work (unchanged by these findings)
 
