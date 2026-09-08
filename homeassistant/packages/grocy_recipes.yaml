@@ -51,3 +51,29 @@ rest_command:
     headers:
       GROCY-API-KEY: !secret grocy_api_key
     content_type: "application/json"
+
+  # ── WRITE (added 2026-09-08) ────────────────────────────────────────────────
+  # Push a recipe's missing ingredients onto the Grocy shopping list.
+  #
+  # This is GROCY'S OWN endpoint, not something assembled here — it reads the
+  # recipe, checks stock, and adds only what is NOT already fulfilled. Do not
+  # reimplement that logic by iterating recipes_pos_resolved.
+  #
+  # VERIFIED 2026-09-08 against the live container: POST returns 204 and adding
+  # recipe 1 (Tacos) created 4 shopping-list rows (the probe rows were deleted).
+  #
+  # ⚠️ "Not fulfilled" is only meaningful once stock is tracked. Grocy currently
+  # reports 0 products in stock, so TODAY this adds EVERY ingredient. That is
+  # correct behaviour for an empty stock, not a bug — see
+  # docs/superpowers/specs/2026-09-08-grocery-ordering-notes.md.
+  #
+  # ⚠️ This WRITES to a list the household actually uses. When testing, delete
+  # the rows afterwards (DELETE /api/objects/shopping_list/{id}) rather than
+  # leaving probe data on a real shopping list.
+  grocy_add_recipe_to_shoplist:
+    url: !secret grocy_add_recipe_to_shoplist_url
+    method: POST
+    headers:
+      GROCY-API-KEY: !secret grocy_api_key
+    content_type: "application/json"
+    payload: "{}"
