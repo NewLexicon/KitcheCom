@@ -23,6 +23,9 @@ close-out commit cannot name its own SHA, and stamping it is itself a commit, so
 converges). `6613fce` and everything below it will not move:
 
 ```
+55eb992 fix(panel): shorten the awaiting-review label to "Review"
+b233a7c feat(panel): claim via kiosk buttons, show points, route claimed to Completed
+f1c4851 docs: cold-start sanity-check fix-ups — freeze the prefix through 977d9cf
 977d9cf docs: cold-open — dongle relocated, signal sensors enabled, one correction
 8d0f863 docs: cold-start sanity-check fix-ups — freeze the prefix through 2179800
 2179800 docs: cold-open — adaptive lighting live, ChoreOps reset, repo/Pi reconciled
