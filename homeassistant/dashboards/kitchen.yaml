@@ -115,10 +115,14 @@ views:
             filter:
               include:
                 - entity_id: sensor.rowan_choreops_chore_status_brush_teeth
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -134,21 +138,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -156,10 +154,14 @@ views:
                                 + ' done for Rowan?'; ]]]
 
                 - entity_id: sensor.rowan_choreops_chore_status_feed_cats_morning
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -175,21 +177,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -197,10 +193,14 @@ views:
                                 + ' done for Rowan?'; ]]]
 
                 - entity_id: sensor.rowan_choreops_chore_status_plants
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -216,21 +216,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -273,10 +267,14 @@ views:
             filter:
               include:
                 - entity_id: sensor.rowan_choreops_chore_status_night_brush
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -292,21 +290,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -314,10 +306,14 @@ views:
                                 + ' done for Rowan?'; ]]]
 
                 - entity_id: sensor.rowan_choreops_chore_status_fishy_evening
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -333,21 +329,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -355,10 +345,14 @@ views:
                                 + ' done for Rowan?'; ]]]
 
                 - entity_id: sensor.rowan_choreops_chore_status_cook_dinner
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -374,21 +368,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -396,10 +384,14 @@ views:
                                 + ' done for Rowan?'; ]]]
 
                 - entity_id: sensor.rowan_choreops_chore_status_set_the_table
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -415,21 +407,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -437,10 +423,14 @@ views:
                                 + ' done for Rowan?'; ]]]
 
                 - entity_id: sensor.rowan_choreops_chore_status_wash_dishes
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -456,21 +446,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -478,10 +462,14 @@ views:
                                 + ' done for Rowan?'; ]]]
 
                 - entity_id: sensor.rowan_choreops_chore_status_trash
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -497,21 +485,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -519,10 +501,14 @@ views:
                                 + ' done for Rowan?'; ]]]
 
                 - entity_id: sensor.rowan_choreops_chore_status_recycling
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -538,21 +524,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -560,10 +540,14 @@ views:
                                 + ' done for Rowan?'; ]]]
 
                 - entity_id: sensor.rowan_choreops_chore_status_laundry
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -579,21 +563,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -601,10 +579,14 @@ views:
                                 + ' done for Rowan?'; ]]]
 
                 - entity_id: sensor.rowan_choreops_chore_status_clean_room
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -620,21 +602,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Rowan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -677,10 +653,21 @@ views:
             filter:
               include:
                 - entity_id: sensor.rowan_choreops_chore_status_*
-                  state: /^(completed|approved)$/
+                  state: /^(claimed|claimed_in_part|completed|approved)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const s = entity.state;
+                            if (s === 'claimed' || s === 'claimed_in_part')
+                              return 'Awaiting review';
+                            const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? 'Approved' : '+' + (+p) + ' pts'; ]]]
+                    icon: >
+                      [[[ const s = entity.state;
+                            return (s === 'claimed' || s === 'claimed_in_part')
+                              ? 'mdi:clock-check-outline' : 'mdi:check-circle'; ]]]
                     size: 32px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -688,12 +675,24 @@ views:
                       [[[ return entity.attributes.friendly_name
                             .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
                     styles:
-                      card: [height: 84px, border-radius: 12px, opacity: 0.5]
+                      card: [height: 84px, border-radius: 12px]
                       name: [font-size: 11px, white-space: normal, padding-top: 3px, line-height: 1.15]
                       state: [font-size: 9px, text-transform: uppercase, opacity: 0.7]
                     state:
+                      # Done but NOT yet reviewed — full opacity + amber so the
+                      # parent can see at a glance what is waiting on them.
+                      - value: claimed
+                        styles:
+                          card: [border: 2px solid var(--warning-color)]
+                          icon: [color: var(--warning-color)]
+                      - value: claimed_in_part
+                        styles:
+                          card: [border: 2px solid var(--warning-color)]
+                          icon: [color: var(--warning-color)]
+                      # Reviewed and approved — dimmed; it is a record, not a task.
                       - operator: default
                         styles:
+                          card: [opacity: 0.5]
                           icon: [color: var(--success-color)]
                     tap_action:
                       action: more-info
@@ -1012,10 +1011,14 @@ views:
             filter:
               include:
                 - entity_id: sensor.wystan_choreops_chore_status_brush_teeth
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1031,21 +1034,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1053,10 +1050,14 @@ views:
                                 + ' done for Wystan?'; ]]]
 
                 - entity_id: sensor.wystan_choreops_chore_status_fishy_morning
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1072,21 +1073,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1094,10 +1089,14 @@ views:
                                 + ' done for Wystan?'; ]]]
 
                 - entity_id: sensor.wystan_choreops_chore_status_plants
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1113,21 +1112,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1170,10 +1163,14 @@ views:
             filter:
               include:
                 - entity_id: sensor.wystan_choreops_chore_status_night_brush
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1189,21 +1186,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1211,10 +1202,14 @@ views:
                                 + ' done for Wystan?'; ]]]
 
                 - entity_id: sensor.wystan_choreops_chore_status_feed_cats_evening
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1230,21 +1225,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1252,10 +1241,14 @@ views:
                                 + ' done for Wystan?'; ]]]
 
                 - entity_id: sensor.wystan_choreops_chore_status_set_the_table
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1271,21 +1264,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1293,10 +1280,14 @@ views:
                                 + ' done for Wystan?'; ]]]
 
                 - entity_id: sensor.wystan_choreops_chore_status_wash_dishes
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1312,21 +1303,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1334,10 +1319,14 @@ views:
                                 + ' done for Wystan?'; ]]]
 
                 - entity_id: sensor.wystan_choreops_chore_status_trash
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1353,21 +1342,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1375,10 +1358,14 @@ views:
                                 + ' done for Wystan?'; ]]]
 
                 - entity_id: sensor.wystan_choreops_chore_status_recycling
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1394,21 +1381,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1416,10 +1397,14 @@ views:
                                 + ' done for Wystan?'; ]]]
 
                 - entity_id: sensor.wystan_choreops_chore_status_laundry
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1435,21 +1420,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1457,10 +1436,14 @@ views:
                                 + ' done for Wystan?'; ]]]
 
                 - entity_id: sensor.wystan_choreops_chore_status_clean_room
-                  state: /^(pending|due|overdue|claimed)$/
+                  state: /^(pending|due|overdue)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? '' : (+p) + ' pts'; ]]]
                     size: 42px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1476,21 +1459,15 @@ views:
                         styles:
                           card: [border: 2px solid var(--error-color)]
                           icon: [color: var(--error-color)]
-                      - value: claimed
-                        styles:
-                          card: [border: 2px solid var(--warning-color)]
-                          icon: [color: var(--warning-color)]
                       - operator: default
                         styles:
                           card: [border: 2px solid var(--primary-color)]
                     tap_action:
                       action: call-service
-                      service: choreops.claim_chore
+                      service: button.press
                       service_data:
-                        user_name: Wystan
-                        chore_name: >
-                          [[[ return entity.attributes.friendly_name
-                                .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
+                        entity_id: >
+                          [[[ return entity.attributes.claim_button_eid; ]]]
                       confirmation:
                         text: >
                           [[[ return 'Mark ' + entity.attributes.friendly_name
@@ -1533,10 +1510,21 @@ views:
             filter:
               include:
                 - entity_id: sensor.wystan_choreops_chore_status_*
-                  state: /^(completed|approved)$/
+                  state: /^(claimed|claimed_in_part|completed|approved)$/
                   options:
                     type: custom:button-card
                     show_state: true
+                    state_display: >
+                      [[[ const s = entity.state;
+                            if (s === 'claimed' || s === 'claimed_in_part')
+                              return 'Awaiting review';
+                            const p = entity.attributes.default_points;
+                            return (p === undefined || p === null)
+                              ? 'Approved' : '+' + (+p) + ' pts'; ]]]
+                    icon: >
+                      [[[ const s = entity.state;
+                            return (s === 'claimed' || s === 'claimed_in_part')
+                              ? 'mdi:clock-check-outline' : 'mdi:check-circle'; ]]]
                     size: 32px
                     # Strip the "Rowan (ChoreOps) Chore Status - " prefix; the
                     # column header already names the kid.
@@ -1544,12 +1532,24 @@ views:
                       [[[ return entity.attributes.friendly_name
                             .replace(/^.*Chore Status\s*[-–]\s*/, ''); ]]]
                     styles:
-                      card: [height: 84px, border-radius: 12px, opacity: 0.5]
+                      card: [height: 84px, border-radius: 12px]
                       name: [font-size: 11px, white-space: normal, padding-top: 3px, line-height: 1.15]
                       state: [font-size: 9px, text-transform: uppercase, opacity: 0.7]
                     state:
+                      # Done but NOT yet reviewed — full opacity + amber so the
+                      # parent can see at a glance what is waiting on them.
+                      - value: claimed
+                        styles:
+                          card: [border: 2px solid var(--warning-color)]
+                          icon: [color: var(--warning-color)]
+                      - value: claimed_in_part
+                        styles:
+                          card: [border: 2px solid var(--warning-color)]
+                          icon: [color: var(--warning-color)]
+                      # Reviewed and approved — dimmed; it is a record, not a task.
                       - operator: default
                         styles:
+                          card: [opacity: 0.5]
                           icon: [color: var(--success-color)]
                     tap_action:
                       action: more-info
