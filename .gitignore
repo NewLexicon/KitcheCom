@@ -49,3 +49,6 @@ venv/
 
 # Vendored reference collections (design link lists), cloned 2026-09-01. Not ours.
 git/
+
+# Kroger OAuth tokens — never commit
+tools/kroger/.kroger_*_token
