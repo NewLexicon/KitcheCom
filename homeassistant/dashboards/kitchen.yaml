@@ -2213,6 +2213,100 @@ views:
               rows: 4
 
   # ==========================================================================
+  # EVENING (18:30–05:00) — what to expect tomorrow.
+  # Runs to 05:00 deliberately: a night-owl or early-riser should see tomorrow.
+  # ==========================================================================
+  - title: Evening
+    path: evening
+    icon: mdi:weather-night
+    type: sections
+    max_columns: 3
+    sections:
+      # ---- Column 1: tomorrow ----------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Tomorrow
+            heading_style: title
+            icon: mdi:calendar-arrow-right
+          # TOMORROW-OFFSET: this shows TODAY, not tomorrow.
+          #
+          # The stock calendar card has NO date-offset option — its config is
+          # exactly {entities, initial_view, title, theme} (verified in
+          # reference/frontend-dev/src/panels/lovelace/cards/types.ts:53-58),
+          # and initial_view: dayGridDay always opens on today.
+          #
+          # Showing tomorrow needs a custom card, which is deliberately out of
+          # scope here and folded into the work-week calendar spec. Until then
+          # this column is structurally right but a day early.
+          - type: calendar
+            initial_view: dayGridDay
+            grid_options:
+              rows: 12
+            entities:
+              - calendar.family
+              - calendar.deharts
+              - calendar.garrett_dehart
+              - calendar.rebdinatl_gmail_com
+              - calendar.birthdays
+              - calendar.holidays_in_united_states
+          # Renders nothing unless idle (packages/screensaver.yaml). Present on
+          # all three time views so the activity bridge — which is what feeds
+          # timer.kitchen_nav_defer — keeps working when this view is showing.
+          - type: custom:screensaver-card
+            media_path: photos
+            photo_duration: 10
+            shuffle: true
+          - type: custom:tod-autonav-card
+            view: evening
+
+      # ---- Column 2: reminders ---------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Reminders
+            heading_style: title
+            icon: mdi:bell-outline
+          - type: todo-list
+            entity: todo.reminders
+
+      # ---- Column 3: the week + weather ------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: This Week
+            heading_style: title
+            icon: mdi:calendar-week
+            tap_action:
+              action: navigate
+              navigation_path: /kitchen-snapshot/schedule
+          - type: calendar
+            # listWeek = this week's events as an agenda list. The card supports
+            # ONLY dayGridMonth, dayGridDay and listWeek — anything else
+            # silently falls back to month.
+            initial_view: listWeek
+            grid_options:
+              rows: 8
+            entities:
+              - calendar.family
+              - calendar.deharts
+              - calendar.garrett_dehart
+              - calendar.rebdinatl_gmail_com
+              - calendar.birthdays
+              - calendar.holidays_in_united_states
+          - type: heading
+            heading: Weather
+            heading_style: title
+            icon: mdi:weather-partly-cloudy
+          - type: weather-forecast
+            entity: weather.forecast_home
+            forecast_type: daily
+            show_current: true
+            show_forecast: true
+            grid_options:
+              rows: 4
+
+  # ==========================================================================
   # SCHEDULE — the full calendar
   # ==========================================================================
   - title: Schedule
