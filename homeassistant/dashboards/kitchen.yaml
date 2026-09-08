@@ -660,7 +660,7 @@ views:
                     state_display: >
                       [[[ const s = entity.state;
                             if (s === 'claimed' || s === 'claimed_in_part')
-                              return 'Awaiting review';
+                              return 'Review';
                             const p = entity.attributes.default_points;
                             return (p === undefined || p === null)
                               ? 'Approved' : '+' + (+p) + ' pts'; ]]]
@@ -1517,7 +1517,7 @@ views:
                     state_display: >
                       [[[ const s = entity.state;
                             if (s === 'claimed' || s === 'claimed_in_part')
-                              return 'Awaiting review';
+                              return 'Review';
                             const p = entity.attributes.default_points;
                             return (p === undefined || p === null)
                               ? 'Approved' : '+' + (+p) + ' pts'; ]]]
