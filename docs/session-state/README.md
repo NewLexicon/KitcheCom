@@ -49,8 +49,13 @@ remembered SHA.
 
 All re-verified **2026-09-07 night**; the ChoreOps/panel rows re-verified **2026-09-08 midday**.
 
-⚠️ **Chore points are no longer 0.** Rowan **4.0**, Wystan **4.0** as of 2026-09-08 12:38 — the
-kids are earning. Read live state; do not assume the day-one reset numbers.
+⚠️ **Chore points are no longer 0.** Rowan **4.0**, Wystan **4.0** (re-verified 14:40) — the kids
+are earning. Read live state; do not assume the day-one reset numbers.
+
+Re-verified at close 2026-09-08 14:40: Pi up 1 d 5 h · HA **200** · card tests **109 passing** ·
+14 chores · `kitchen.yaml` and `grocy_recipes.yaml` both **byte-identical repo↔Pi**.
+The only non-benign log ERROR is a `NWK_NO_ROUTE` burst against bulb `_3` (Rowan's, now switched
+off at the wall) — self-limiting, see `flux-retries-are-self-limiting`.
 
 | Check | Command | Expected |
 |---|---|---|
@@ -109,6 +114,47 @@ need a rebase/merge before further work. Verify rather than trust these counts:
 ---
 
 ## 4. What just shipped
+
+### 4a-quater. Grocy, voice and Kroger groundwork — 2026-09-08 afternoon
+
+**Shipped:**
+- **Grocy meal plan is on both calendar views** (`55e58d1`). `calendar.grocy_calendar` already
+  existed but was on neither card. ⚠️ Home uses `listWeek`, which renders **only days that have
+  events**, so an empty week looks like a broken deploy — it is not.
+- **`rest_command.grocy_add_recipe_to_shoplist`** (`de78070`) — pushes a recipe's missing items to
+  the shopping list. Wraps **Grocy's own** stock-aware endpoint; do not reimplement it by
+  iterating `recipes_pos_resolved`. `check_config` passes. **Activate with
+  `rest_command.reload` — no restart needed. NOT YET RUN.**
+- **Kroger OAuth harness** at `tools/kroger/` (`68a5820`) — proves both auth flows once
+  credentials exist. Error paths tested against live Kroger; success path untested.
+
+**Designs written (no code):**
+- `docs/superpowers/specs/2026-09-08-voice-lists-and-meal-plan-design.md`
+- `docs/superpowers/specs/2026-09-08-grocery-ordering-notes.md`
+- `docs/superpowers/specs/2026-09-08-kroger-api-findings.md`
+
+**Verified live against Grocy 4.6.0 (probes cleaned up afterwards):**
+| Fact | Detail |
+|---|---|
+| Meal plan POST | `type: recipe` and `type: note` both accepted; ICS feed shows both |
+| Recipe → list | `POST /api/recipes/{id}/add-not-fulfilled-products-to-shoppinglist` → 204 |
+| Barcode mapping | `POST /objects/product_barcodes` records identity with **zero stock movement** |
+| External lookup | Resolves national brands (Coca-Cola) but **`null` for Kroger store brands** |
+| Real recipes | **4** (Tacos, Chicken Fried Rice, Pasta Pomodoro, Cheesy Beef Skillet) + **4 date-named artifacts** that must never match a spoken phrase |
+
+⚠️ **NO PANTRY INVENTORY IS BEING KEPT — deliberate household decision.** They assume they need
+everything and delete what they have at ordering time. So: never propose `add`/`consume` scanning;
+0 products in stock is **intended**; and no future rule may ask "do we already have chicken?" —
+**the human is the stock sensor.**
+
+⚠️ **Kroger: Products is the search API, NOT Catalog.** Catalog V2 has no free-text parameter at
+all. `/v1/products?filter.term=` is the search. Also: the **public** Cart API is a single
+write-only `PUT` (cannot list/amend/delete); only **Partner** can delete an item. Neither cart spec
+declares a `refreshUrl` — **that is the biggest unknown and must be proven first.**
+
+⚠️ **A live-data lesson:** a probe POST to `add-not-fulfilled-products-to-shoppinglist` added 4 real
+rows to the household's actual shopping list (deleted afterwards). Meal-plan probes had used a
+far-future date to stay clear of real data; apply that same care to every Grocy write.
 
 ### 4a-ter. Chore claiming FIXED — panel claims now work (2026-09-08 midday, `b233a7c`, `55eb992`)
 
@@ -377,29 +423,19 @@ nothing about it.
 
 ## 7. Carry-forwards
 
-- 🎯 **HARDWARE — the user's next topic (asked 2026-09-08).** Two decisions, both already
-  researched:
-  - **Mic: Home Assistant Voice Preview Edition (~$59-69).** Decided 2026-08-17, re-confirmed
-    2026-09-08. It is a **network satellite over Wi-Fi — it uses NO USB port**, sidestepping the
-    Pi's USB quirks entirely. Far-field dual mics, on-device wake word, own speaker, verified on
-    HA **Container** (which matters: there is no Add-on Store here). ⚠️ **No custom wake words** —
-    only "Okay Nabu" / "Hey Jarvis" / "Hey Mycroft".
-  - **USB hub: buy nothing. 🔴 DO NOT REPLACE THE HUB OR THE CABLE.** The current
-    **powered hub + old USB-B printer cable** was the ONLY combination that worked after a long
-    session of trying many cables (`viewsonic-touch-needs-hub`). It is hard-won, not a stopgap.
-    A spare already exists in the chain: `lsusb -t` shows **two chained Realtek RTS5411 hubs and
-    the second (`3-2.4`) is EMPTY with 4 free ports**. Plug into that.
-    Working topology: `Pi → hub 3-2 → port 1 → touch (3-2.1)`; empty hub on port 4.
-  - ⚠️ **The "old printer cable" is CORRECT and must stay.** USB-B is the *device-side*
-    connector a touch panel's upstream port uses; modern hubs correctly have no USB-B port —
-    you want a spare **USB-A** port and keep the A→B cable.
-  - ⚠️ **Do NOT reason from the panel's power draw.** It enumerates at 12 M / 100 mA, which
-    looks undemanding and invites "any hub will do". Draw-once-enumerated says nothing about why
-    enumeration FAILS without a hub. That mistake was made on 2026-09-08 and produced a bad
-    "buy a USB 3.0 hub" recommendation — the user corrected it from experience.
-  - ⚠️ **Do NOT move the Zigbee dongle onto the hub.** It is on its own bus on the extension
-    cable, which is where it should stay; USB 3.0 hubs are a known 2.4 GHz interference source.
-
+- ✅ **HARDWARE — SETTLED 2026-09-08.** **Voice PE ordered.** **Buy no USB hub.**
+  - 🔴 **DO NOT REPLACE THE USB HUB OR THE PRINTER CABLE.** That powered-hub + old USB-B cable
+    combination was the ONLY one that worked after a long session of cable-swapping. A spare
+    4-port hub (`3-2.4`) is already in the chain and **empty** — plug into that.
+    Do **not** reason from the panel's 12 M / 100 mA draw: that is what it pulls once enumerated
+    and says nothing about why enumeration fails without a hub. See `viewsonic-touch-needs-hub`.
+  - **Voice PE** is a **Wi-Fi satellite — no USB at all**, so it cannot disturb that chain. Wake
+    word runs on the device and STT goes to Gemini, so the "offload speech processing on weaker
+    hardware" warning on HA's Voice PE page does not apply here (Pi 5 / 8 GB, load ~0.3, and the
+    expensive step is already offloaded). No custom wake words.
+- 🟡 **Kroger developer app not yet registered.** Blocks all grocery-ordering work. See §7b.
+- 🟡 **`rest_command.grocy_add_recipe_to_shoplist` has never been run.** Needs
+  `rest_command.reload` first. See §7b.
 - 🔴 **AdGuard is BUILT but NOT IN SERVICE** — the router still needs pointing at
   **`192.168.1.113`** for DNS. Until then none of the blocking or scheduling applies to any
   device.
@@ -450,39 +486,57 @@ nothing about it.
 
 ## 7b. What is the next move?
 
-🎯 **CHORES ARE DONE AND WORKING** — the claim bug is fixed, verified with real points on the
-board (§4a-ter). The user's stated next topic is **hardware: a mic and a USB hub** (see §7).
-Nothing is half-built and nothing is blocked on a decision.
+Nothing is half-built and nothing is blocked on a decision. Two threads are **waiting on the
+outside world**, and one small thing is ready to run.
 
-For ChoreOps reference material read
-`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/COLD-OPEN-choreops-chores.md`, and §5
-here for the `.storage` editing rules (HA must be STOPPED).
-⚠️ **The kids have started earning** — Rowan 4.0, Wystan 4.0 as of 2026-09-08 12:38, three
-chores approved. **Re-read live state before touching anything**; the day-one reset numbers are
-already stale.
+### 🎯 Ready right now — activate and test the recipe→shopping-list command (2 min)
 
-`main` is clean, pushed (`55eb992`), and byte-identical to the Pi. Other options:
+Built, deployed, `check_config`-clean, but **never actually run**:
+
+1. Call **`rest_command.reload`** (Developer Tools → Actions). **No HA restart needed.**
+2. Call **`rest_command.grocy_add_recipe_to_shoplist`** with `recipe_id: 1` (Tacos).
+3. Check Grocy's shopping list — expect **4 rows** (all ingredients, because no stock is tracked).
+4. ⚠️ **Delete the test rows afterwards** — that is the household's real list.
+   `DELETE /api/objects/shopping_list/{id}`.
+
+### ⏳ Waiting on hardware — voice
+
+The **HA Voice Preview Edition was ordered 2026-09-08**. Nothing can be built or tested until it
+arrives. When it does, the design is ready:
+`/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/docs/superpowers/specs/2026-09-08-voice-lists-and-meal-plan-design.md`
+
+**First implementation step is a verification, not code:** confirm which `todo.*` entities accept
+`todo.add_item`. `supported_features` is **not in the recorder**, so it must be read live.
+
+### ⏳ Waiting on the user — Kroger credentials
+
+The user was going to register an app at **developer.kroger.com**. When they have a client id and
+secret, run the harness and paste the output:
+
+```bash
+cd /Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/tools/kroger
+export KROGER_CLIENT_ID=... KROGER_CLIENT_SECRET=...
+python3 kroger_auth.py client && python3 kroger_auth.py search milk
+python3 kroger_auth.py authorize      # open URL, approve, copy ?code=
+python3 kroger_auth.py exchange CODE
+python3 kroger_auth.py refresh        # <- THE decisive result
+```
+
+**Interpret it as:** `REFRESH WORKS` → viable, store and renew silently. `NO REFRESH TOKEN` →
+re-consent every `expires_in`, and the design must change. Read
+`/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/tools/kroger/README.md` first.
+
+### Other standing options
 
 1. **Place bulb 4** (the dongle move is DONE — §4a-bis; do not redo it). Read first:
-   `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/homeassistant/packages/lighting.yaml` §4 (the
-   activation checklist; steps 0/1a/1b are DONE — do **not** re-form the network).
-   Then: pair → append one line to the `lights:` list in that file → copy one `tile` into the
-   Lights section of
-   `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/homeassistant/dashboards/kitchen.yaml`
-   → deploy to the Pi → `check_config` → restart → verify via the recorder DB (§5).
-
-2. **Two-minute UI cleanup** — rename the `Bedroom` area to "Wystan's Bedroom" and create
+   `/Users/jdehart1/___Code_DEV/KitchenCOM/.worktrees/main-merge/homeassistant/packages/lighting.yaml` §4.
+2. **Two-minute UI cleanup** — rename the `Bedroom` area to "Wystan's Bedroom", create
    "Rowan's Bedroom" for bulb 3. UI-only; see §5.
-
 3. **The oldest 🔴 carry-forward** — point the router's DNS at AdGuard (`192.168.1.113`).
-   Nothing AdGuard does applies to any device until this happens.
+4. **Back up the 25 single-copy HEICs** out of `~/Downloads` (§7).
 
-4. **Backup the 25 single-copy HEICs** out of `~/Downloads` (§7).
-
-⚠️ **Both paths above are in the `main-merge` worktree, NOT the repo root.** The root has
-`feat/choreops-chores` checked out, which predates the lighting merge — `lighting.yaml` does not
-exist there at all. Reading the root copy of `kitchen.yaml` on that branch is likewise not what
-is on `main`.
+⚠️ **Paths above are in the `main-merge` worktree, NOT the repo root.** The root has
+`feat/choreops-chores` checked out, which predates the lighting merge.
 
 **Mandatory pre-flights, whatever you pick:**
 - `git branch --show-current` — this checkout is **shared**; `main` lives in
@@ -497,7 +551,7 @@ is on `main`.
 ## 8. Memory layer
 
 `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memory/`
-(outside the repo; `MEMORY.md` there is the index — **56 entries**)
+(outside the repo; `MEMORY.md` there is the index — **57 entries**)
 
 Most relevant on `main`:
 - 🔴 `zha-must-use-ttyusb-in-docker.md` — before touching the ZHA serial path
@@ -520,6 +574,7 @@ Added 2026-09-07 (lighting/chores arc):
 
 - 🔴 `choreops-claim-service-vs-button.md` — the SERVICE ignores kiosk mode; use the BUTTON
 - `flux-retries-are-self-limiting.md` — a bulb off at the wall: ~70 min of errors, then silence
+- 🔴 `grocy-api-write-endpoints.md` — verified Grocy writes; **probes must never hit the real list**
 
 **Environment gotchas that cost time:**
 - **`timeout` does not exist on macOS** — use `ssh -o ConnectTimeout=N`.
