@@ -1,3 +1,5 @@
+import { LitElement, html, css, type PropertyValues, type TemplateResult } from "lit";
+
 // Invisible auto-nav card for the time-of-day panel layouts.
 // Spec: docs/superpowers/specs/2026-09-08-time-of-day-layouts-design.md
 //
@@ -40,4 +42,72 @@ export function shouldNavigate(hass: HassLike | undefined, view: string): boolea
   if (defer === "active") return false;
 
   return true;
+}
+
+/**
+ * Navigate the Lovelace panel to `path`.
+ *
+ * pushState + a `location-changed` event is how HA's own frontend navigates
+ * (see reference/frontend-dev/). A plain location.assign() would be a full page
+ * reload: white flash, websocket reconnect, several seconds of blank panel.
+ */
+export function navigateTo(path: string): void {
+  window.history.pushState(null, "", path);
+  window.dispatchEvent(new CustomEvent("location-changed", { bubbles: true, composed: true }));
+}
+
+export class TodAutonavCard extends LitElement {
+  static properties = {
+    hass: { attribute: false },
+  };
+
+  // Renders nothing and occupies no space. This card is pure behaviour.
+  static styles = css`
+    :host {
+      display: none;
+    }
+  `;
+
+  hass?: HassLike;
+  private _view = "";
+  private _basePath = "/kitchen-snapshot";
+
+  setConfig(config: Record<string, unknown>): void {
+    const view = typeof config.view === "string" ? config.view : "";
+    if (!(VIEWS as readonly string[]).includes(view)) {
+      throw new Error(
+        `tod-autonav-card: "view" must be one of ${VIEWS.join(", ")} (got ${JSON.stringify(config.view)})`,
+      );
+    }
+    this._view = view;
+    if (typeof config.base_path === "string" && config.base_path) {
+      this._basePath = config.base_path;
+    }
+  }
+
+  // Zero rows in a sections layout.
+  getCardSize(): number {
+    return 0;
+  }
+
+  getGridOptions(): Record<string, number> {
+    return { rows: 0, columns: 1 };
+  }
+
+  updated(changed: PropertyValues): void {
+    if (!changed.has("hass")) return;
+    if (!shouldNavigate(this.hass, this._view)) return;
+
+    const target = this.hass?.states?.[TOD_SENSOR]?.state;
+    if (!target) return;
+    navigateTo(`${this._basePath}/${target}`);
+  }
+
+  render(): TemplateResult {
+    return html``;
+  }
+}
+
+if (!customElements.get("tod-autonav-card")) {
+  customElements.define("tod-autonav-card", TodAutonavCard);
 }
