@@ -1,0 +1,13 @@
+services:
+  grocy-sandbox:
+    image: lscr.io/linuxserver/grocy:latest
+    container_name: grocy-sandbox
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - ./grocy-config:/config
+    ports:
+      - "9284:80"      # 9284, NOT the Pi's 9283 — keeps this sandbox distinct
+    restart: "no"
