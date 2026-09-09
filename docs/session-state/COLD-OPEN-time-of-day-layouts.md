@@ -12,9 +12,18 @@
 
 ## 0. Read this first — two things that will bite you
 
-**① The branch is NOT PUSHED.** All 14 commits exist only on this Mac. Among them
-is `07527cd`, the ONLY copy in git of 1932 lines of live Pi dashboard work
+**① The branch is NOT PUSHED** (re-verified 2026-09-09 — `git ls-remote` still
+returns empty). Every commit on it exists only on this Mac. Among them is
+`07527cd`, the ONLY copy in git of 1932 lines of live Pi dashboard work
 (the claim-button fix, the Grocy calendar) that exists on no other branch.
+
+How many that is — ask, don't trust a frozen number (it said "14" and was 16 by
+the next session):
+
+```bash
+git rev-list --count 189fbc9..HEAD
+```
+
 **Push early:**
 
 ```bash
@@ -48,6 +57,7 @@ before every commit.
 **Stable PREFIX** — immutable, will not move:
 
 ```
+70ddfdb docs: cold-open refreshed for the post-deploy state
 229f9ee fix(panel): time-of-day sensor broke if boundaries were only partly set
 a4188bf fix(panel): rebuild kitchen.yaml from the LIVE Pi file, not the repo copy
 07527cd docs: snapshot the LIVE Pi kitchen.yaml before the time-of-day deploy
@@ -67,6 +77,11 @@ acf4c73 design: time-of-day panel layouts (morning/afternoon/evening)
 The tip is deliberately **not** stamped — a close-out commit cannot name its own
 SHA, and stamping it is itself a commit, so the loop never converges. Ask
 `git log`. Same for the ahead-count: quote the command, not the answer.
+
+Everything above the tip is frozen: as each close-out commit becomes history, it
+gets folded into the prefix and the tip stays delegated. `70ddfdb` was folded in
+on 2026-09-09 this way. **Do not "helpfully" stamp the current tip** — that
+restarts precisely the loop this note exists to stop.
 
 ---
 
