@@ -1,7 +1,8 @@
 # COLD OPEN — `feat/time-of-day-layouts`
 
-**Refreshed:** 2026-09-08 late evening, after the deploy.
-**Feature is DEPLOYED and running on the Pi.** One visual check remains.
+**Refreshed:** 2026-09-09, after a short light-mode scoping session.
+**Feature is DEPLOYED and running on the Pi.** One visual check remains (§4a).
+**A second, unstarted piece of work now lives on this branch: light mode (§4b).**
 
 > Cut from `feat/choreops-chores` (base `189fbc9`), NOT from main.
 > `docs/session-state/COLD-OPEN-choreops-chores.md` still covers everything
@@ -147,10 +148,17 @@ Three dashboard views the panel switches between on fixed clock boundaries:
 
 ---
 
-## 4. The next move — ONE visual check at the panel
+## 4. The next move
 
-Everything else is verified. This is the only open item, and it needs eyes on the
-physical screen.
+Two open items. **§4a** is a leftover from the deploy and needs eyes on the
+physical panel. **§4b** is new work the user wants to finish next session — if
+you are starting fresh and the panel is already known-good, **go straight to §4b.**
+
+---
+
+## 4a. The visual check at the panel
+
+Left over from the time-of-day deploy. Needs eyes on the physical screen.
 
 **After the reboot, touch the panel** (a touch, not a mouse move — the wake path
 is `input_button.kitchen_activity`, pressed by the kiosk's touch handler).
@@ -179,6 +187,55 @@ three back to unset, which is equally correct (§5).
 - Plan: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/plans/2026-09-08-time-of-day-layouts.md`
 - Spec: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/specs/2026-09-08-time-of-day-layouts-design.md`
 - Live snapshot: `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/pi-snapshots/kitchen.yaml.live-20260908-1331`
+
+---
+
+## 4b. Light mode — scoped, NOT started
+
+**Read first (absolute path):**
+`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-09-09-light-mode-step1-findings.md`
+
+That file is the complete Step-1 context exploration. **Everything below is a
+summary of it — read it, don't work from this section alone.**
+
+**What the user actually wants.** Not a light conversion. The ask was revised
+mid-session to: **keep the current dark palette exactly as-is, add a light theme
+beside it, and switch between them.** Dark is the known-good state and must
+survive byte-identical.
+
+**Four decisions are locked. Do not re-ask them:**
+
+| | |
+|---|---|
+| Theme model | Both. Light added alongside dark. |
+| Switch | `input_select` + automation calling `frontend.set_theme` |
+| Light palette | **Warm / paper** — off-white and warm greys, not pure white |
+| Branch | **this one**, not main |
+
+**The finding that shapes the work:** `homeassistant/themes/kitchencom.yaml` is
+only 6 colors, but `kitchen.yaml` hardcodes **54 more that bypass the theme
+system entirely.** A theme switch cannot touch them. So the work is two phases:
+
+1. **Extract** — replace each literal with `var(--kc-*, <current>)`. Mechanical,
+   **zero visual change; "dark looks byte-identical" is the gate.**
+2. **Define** — declare the vars in both themes, pick warm-paper values, add the
+   `input_select` + automation.
+
+The four accent hues (`#4fc3f7` ×22, `#ba68c8` ×22, `#ffd54f` ×12, `#7e57c2` ×6)
+are pastels tuned for near-black and **must be re-picked by hand — find-and-replace
+produces an unreadable panel.** Six `rgba(255,255,255,0.13)` progress-bar troughs
+must *invert*, not re-tone.
+
+**Where to resume: Step 2 of the `superpowers:brainstorming` checklist.** Steps
+3–9 follow (design → spec → user approval → `writing-plans`).
+**No implementation until the user approves a design — hard gate in the skill.**
+The visual companion was offered and accepted but never produced; a palette
+decision is genuinely visual, so honor it rather than skipping.
+
+**One open question for the user:** should the screensaver follow the light theme
+or stay dark always? It runs full-screen in a dark kitchen at night. Findings-doc
+§8 recommends exempting it, but it is the user's call and it decides whether
+`screensaver-card.ts` is touched at all.
 
 ---
 
@@ -216,6 +273,14 @@ Caught by diffing counts against live.
 that the live Pi has. Any "is component X loaded?" answered from the repo is
 wrong. Not reconciled.
 
+**The two `validate:yaml` false positives will MOVE when light mode lands.** They
+sit on `#4fc3f755` / `#ba68c855` (currently 488 and 1384) — the exact values the
+light-mode extraction rewrites. Expect new line numbers, and possibly a different
+count if the extraction changes how many 8-digit hex values remain inline. The
+rule (`missing starting space in comment`) and the cause (yamllint reading
+hex-with-alpha as a comment) stay the same. **Identify by pattern, never by
+number, and don't read the nonzero exit as damage.**
+
 **The work-week calendar spec is not written.** Schoolwork/tests/dinner on a
 work-week grid; the event-tagging decision (dedicated calendars vs. summary
 prefixes) is deferred to that design. A verified voice write path already exists
@@ -239,3 +304,12 @@ In `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memo
 - `calendar-card-only-three-views.md` — only dayGridMonth/dayGridDay/listWeek
 - `choreops-claim-service-vs-button.md` — the SERVICE is rejected in kiosk mode; use the button
 - `concurrent-sessions-branch-hazard.md` — verify the branch before every commit
+
+For the light-mode work (§4b) specifically:
+
+- `markdown-card-strips-inline-css.md` — **why the colors are trapped in
+  `button-card` style blocks in the first place.** No HACS/card-mod on the Pi, and
+  markdown cards strip inline CSS, so `custom:button-card` is the only styling
+  path. Read before proposing any "just use card-mod" shortcut — it does not exist here.
+- `choreops-source-vendored-locally.md` — `reference/ChoreOps-main/` is read-only
+  upstream (91 color literals across 10 files). **Not ours to theme. Excluded.**
