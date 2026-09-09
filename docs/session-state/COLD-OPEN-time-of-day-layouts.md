@@ -1,8 +1,11 @@
 # COLD OPEN — `feat/time-of-day-layouts`
 
-**Refreshed:** 2026-09-09, after a short light-mode scoping session.
-**Feature is DEPLOYED and running on the Pi.** One visual check remains (§4a).
+**Refreshed:** 2026-09-09 morning — the branch was pushed (§0①) and the Pi could
+not be re-verified from the office network (§2).
+**Feature is DEPLOYED and running on the Pi.** One visual check remains (§4a) and
+it needs a human at the physical panel — it cannot be closed over SSH.
 **A second, unstarted piece of work now lives on this branch: light mode (§4b).**
+**The branch is now pushed; that long-standing warning is retired.**
 
 > Cut from `feat/choreops-chores` (base `189fbc9`), NOT from main.
 > `docs/session-state/COLD-OPEN-choreops-chores.md` still covers everything
@@ -12,23 +15,29 @@
 
 ## 0. Read this first — two things that will bite you
 
-**① The branch is NOT PUSHED** (re-verified 2026-09-09 — `git ls-remote` still
-returns empty). Every commit on it exists only on this Mac. Among them is
-`07527cd`, the ONLY copy in git of 1932 lines of live Pi dashboard work
-(the claim-button fix, the Grocy calendar) that exists on no other branch.
+**① The branch IS PUSHED — resolved 2026-09-09.** This was the standing
+single-point-of-failure at the top of every prior cold-open; it is closed.
+`origin/feat/time-of-day-layouts` exists and tracks local, 0/0 divergence.
+Critically, `07527cd` — the ONLY copy in git of 1932 lines of live Pi dashboard
+work (the claim-button fix, the Grocy calendar), on no other branch — is now on
+the remote. A dead disk on this Mac no longer loses it.
 
-How many that is — ask, don't trust a frozen number (it said "14" and was 16 by
-the next session):
+Confirm in one line (expect the two SHAs to match, and `0	0`):
+
+```bash
+git ls-remote origin refs/heads/feat/time-of-day-layouts; git rev-parse HEAD
+git rev-list --left-right --count origin/feat/time-of-day-layouts...HEAD
+```
+
+Nothing has been merged and no PR was opened — this is a pushed feature branch,
+still cut from `189fbc9`, not from main. How far ahead it is: ask, don't trust a
+frozen number (it said "14" and was 16 by the next session):
 
 ```bash
 git rev-list --count 189fbc9..HEAD
 ```
 
-**Push early:**
-
-```bash
-git push -u origin feat/time-of-day-layouts
-```
+Later sessions: a plain `git push` now suffices; the upstream is set.
 
 **② A REBOOT IS PENDING and it is safe.** The Pi was going to be rebooted before
 the panel could be checked. Nothing in this feature needs a clean shutdown:
@@ -120,14 +129,27 @@ Re-verify with (the script lives in the repo; `/tmp` does NOT survive the reboot
 ssh kitchencom 'python3 -' < deploy/checks/check-tod-entities.py
 ```
 
+**Re-verification was ATTEMPTED on 2026-09-09 morning and was not possible.**
+The Mac was on the corporate network (`en19`, gateway `10.48.73.1`, local
+`10.200.40.220`); `ssh kitchencom` timed out and the tailnet address
+`100.91.117.105` dropped 100% of pings. That is the documented office pattern, so
+**no Pi fault is implied and nothing was diagnosed or changed.** The table above
+therefore remains a 2026-09-08 21:46 reading, not a present-tense claim — treat
+it as the last known good state and re-run the script below from the home LAN.
+
 ⚠️ **If `ssh kitchencom` times out, check YOUR network before suspecting the Pi:**
 ```bash
 route -n get default | grep -E 'interface|gateway'   # a 10.x gateway = corporate net
-ipconfig getifaddr en0
+ipconfig getifaddr en0        # may be empty — the office link came up on en19, not en0
 ```
 A corporate `10.x` network cannot reach `192.168.1.234`, and Tailscale is blocked
-there. This happened on 2026-09-09 and is a known pattern
+there. This happened on 2026-09-08 AND again on 2026-09-09 and is a known pattern
 (memory: `pi-unreachable-from-office`).
+
+**macOS has no `timeout(1)`** — `timeout 10 ssh ...` dies with
+`command not found`, which looks like a network failure but is a missing binary.
+Use ssh's own `-o ConnectTimeout=6` (and `ping -t`) instead of installing
+coreutils.
 
 ---
 
