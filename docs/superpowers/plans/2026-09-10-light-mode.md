@@ -838,6 +838,21 @@ KitchenCOM Light:
 Exactly 14 `kc-*` keys, matching the dark theme. Text, page and card grounds are
 handled by the base keys above, not by `kc-*` vars.
 
+> ⚠️ **Do NOT collapse `--kc-trough-fill` into `--kc-hero-fg`.** In the *dark*
+> theme both are `#4fc3f7`, so it looks like a redundant duplicate — a Task 6
+> reviewer nearly recommended deleting it on exactly that reasoning before
+> checking here. They are deliberately different in light: `kc-trough-fill` is
+> `#4f46e5` and `kc-hero-fg` is `#3730a3`. It is a separate role (the fill of
+> the three hero progress bars), coincidentally equal in dark and independently
+> tunable in light.
+>
+> The related asymmetry is also intentional: the three *remind* bars use
+> `--kc-remind-fg` rather than a `kc-remind-trough-fill` of their own, so
+> remind's bar fill and its text share one variable while hero's do not. That
+> was a deliberate choice to avoid a 15th variable (see Task 6 Step 5). If the
+> light palette ever wants a purple bar that differs from purple text, add the
+> variable then — and update both themes plus the gate's used==defined count.
+
 > **`kc-hero-glow: "none"`** — `text-shadow: 0 0 20px none` is invalid CSS and the
 > declaration is simply dropped, which is exactly the intent. On white a glow
 > renders as a smudge.
