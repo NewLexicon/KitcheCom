@@ -57,7 +57,7 @@ decisions; E/F would have reversed one.**
 input_select.kitchen_theme  ──▶  automation  ──▶  frontend.set_theme
    (Dark | Light)                                        │
                                                          ▼
-                            themes/  kitchencom.yaml         (dark, +20 vars)
+                            themes/  kitchencom.yaml         (dark, +14 vars)
                                      kitchencom-light.yaml   (new)
                                               │
                                               ▼
@@ -86,7 +86,7 @@ provably zero-risk, and it is non-negotiable: see the §8 check for bare `var()`
 |---|---|---|
 | Switch entity + automation | `homeassistant/packages/theme.yaml` | **new** |
 | Light palette | `homeassistant/themes/kitchencom-light.yaml` | **new** |
-| Dark palette | `homeassistant/themes/kitchencom.yaml` | +20 var definitions; **0 changes to the 9 existing keys** |
+| Dark palette | `homeassistant/themes/kitchencom.yaml` | +14 var definitions; **0 changes to the 9 existing keys** |
 | Panel | `homeassistant/dashboards/kitchen.yaml` | 80 literals → `var()` |
 | Screensaver | `custom_cards/screensaver-card/src/screensaver-card.ts` | **none** |
 
@@ -139,7 +139,7 @@ the bulk edit.
 
 ---
 
-## 5. Variable scheme — 20 variables
+## 5. Variable scheme — 14 variables
 
 **Named by role, never by colour.** `--kc-hero-fg`, not `--kc-blue`. Roles
 survive a palette change; colour names become lies the moment you re-tone.
@@ -180,14 +180,21 @@ would lose that on any future palette.
 | `--kc-trough` | `rgba(255,255,255,0.13)` | `#e4e4f0` |
 | `--kc-trough-fill` | `#4fc3f7` | `#4f46e5` |
 
-### Group D — Text and page (6 vars)
+### Group D — Text and page: **NOT NEEDED**
 
-Body text, secondary text, page ground, card border, card shadow, and header
-ground — wired to the theme's existing `primary-text-color` family so they stay
-consistent with HA's own chrome.
+Originally scoped as 6 vars. **Dropped after measurement:** the dark theme's
+text and ground colours (`#e8edf6`, `#cdd6e6`, `#0f1115`, `#1b2130`) appear
+**zero times** in `kitchen.yaml`. The panel already inherits those roles from
+HA's standard `primary-text-color` / `primary-background-color` /
+`card-background-color`, which the light theme overrides directly as ordinary
+base keys.
 
-**Mist ground values:** page `#f6f6fb`, card `#ffffff`, border `#dcdcea`,
-shadow `0 1px 3px rgba(30,30,60,.07)`, body text `#5b5b73`.
+Defining `kc-*` vars for them would leave 6 keys **defined but unused**, failing
+check 4 — the same defect as the phantom glow vars above. Caught by dry-running
+the extraction before writing the plan.
+
+**Mist base-key values** (plain HA keys, not `kc-*`): page `#f6f6fb`,
+card `#ffffff`, primary text `#2e2e42`, secondary text `#5b5b73`.
 
 ---
 
@@ -227,7 +234,7 @@ Rationale: it runs full-screen in a dark kitchen at night; a white screensaver a
 ### Phase 1 — Extract (zero visual change)
 
 Replace all 80 literals with `var(--kc-*, <current dark value>)` and define the
-20 vars in `kitchencom.yaml` at their **current** values.
+14 vars in `kitchencom.yaml` at their **current** values.
 
 **No light theme exists yet.** If anything looks different, it is a Phase 1 bug,
 diagnosed with no light colour present to confuse it.
@@ -236,13 +243,27 @@ diagnosed with no light colour present to confuse it.
 
 | # | Check | Command | Expected |
 |---|---|---|---|
-| 1 | No literals left | `grep -oiE '#[0-9a-f]{3,8}\|rgba?\(' homeassistant/dashboards/kitchen.yaml \| wc -l` | 80 → **0** |
+| 1 | No *unwrapped* literals | see §8.2 — a literal is compliant only inside a `var(..., <literal>)` fallback | **0 unwrapped** |
 | 2 | Every var has a fallback | `grep -o 'var(--kc-[a-z0-9-]*)' homeassistant/dashboards/kitchen.yaml \| wc -l` | **0** |
 | 3 | Lint improves | `npm run validate:yaml` | 2 errors → **0** |
-| 4 | Vars balance | used in `kitchen.yaml` vs. defined in `kitchencom.yaml` | **20 = 20** |
+| 4 | Vars balance | used in `kitchen.yaml` vs. defined in `kitchencom.yaml` | **14 = 14** |
 | 5 | Cards build | `cd custom_cards/tod-autonav-card && npm test` | **14 pass** |
 | 6 | Screensaver untouched | `git diff --stat -- custom_cards/screensaver-card` | **empty** |
 | 7 | Visual | panel at the kitchen, all 5 views | **indistinguishable** |
+
+#### 8.2 Check 1 counts unwrapped literals, not all literals
+
+Every extracted site **keeps its dark value as the fallback**, so a naive
+literal count can never reach zero — after a correct extraction 74 hex strings
+remain, all of them inside `var(...)`. The check must therefore strip the
+compliant ones first:
+
+```bash
+sed 's/var(--kc-[a-z0-9-]*, *\([^)]*\))/VAR/g' homeassistant/dashboards/kitchen.yaml \
+  | grep -oiE '#[0-9a-f]{3,8}|rgba?\(' | wc -l
+```
+
+Expect **0**. Anything reported is a literal that was missed.
 
 **Check 2 is the important one.** A bare `var(--kc-hero-fg)` with no fallback
 renders *nothing* when undefined — a blank card, not an error. The regex matches
@@ -262,7 +283,7 @@ grep -oE '^\s+kc-[a-z0-9-]+' homeassistant/themes/kitchencom.yaml \
 diff /tmp/used /tmp/defined && echo "BALANCED"
 ```
 
-Expect `BALANCED` and 20 lines in each file. A var used but not defined silently
+Expect `BALANCED` and 14 lines in each file. A var used but not defined silently
 falls back (invisible in dark, wrong in light); one defined but unused is dead
 weight.
 
@@ -277,12 +298,26 @@ homeassistant/dashboards/kitchen.yaml
 ```
 
 Both are the `text-shadow: 0 0 20px #…55` glow lines — yamllint reads
-hex-with-alpha as a comment. Both become `var(--kc-*-glow, …)`, which contains no
-`#`.
+hex-with-alpha as a comment.
 
-The cold-open predicted these errors would **move** to new line numbers. They
-will instead **disappear**. This gives Phase 1 a sharper signal than "looks the
-same": **if `validate:yaml` is not clean, extraction missed a glow site.**
+**Wrapping them in `var()` does NOT clear the error.** The fallback preserves the
+literal, and `text-shadow` is an *unquoted* scalar, so yamllint still sees
+` #4fc3f755)` and still calls it a comment — it merely moves to a later column
+(62 and 64). Verified by dry-running the extraction before writing the plan.
+
+The fix is to **quote the whole value**:
+
+```yaml
+- text-shadow: "0 0 20px var(--kc-hero-glow, #4fc3f755)"
+```
+
+With both glow lines quoted, `validate:yaml` is fully clean. So Phase 1 does get
+a sharper signal than "looks the same" — **if `validate:yaml` is not clean,
+either a glow site was missed or its value was left unquoted** — but it comes
+from the quoting, not from `var()`.
+
+(The cold-open predicted these errors would *move*. Left alone they do exactly
+that; quoting is what removes them.)
 
 > Note: `npm run validate:yaml` currently **exits 0** despite printing 2 errors.
 > Do not use exit status as the gate — compare the printed error list.
@@ -291,7 +326,7 @@ same": **if `validate:yaml` is not clean, extraction missed a glow site.**
 
 Only after Phase 1's gate passes:
 
-1. `themes/kitchencom-light.yaml` — the 20 vars at Mist values, plus the 9 base
+1. `themes/kitchencom-light.yaml` — the 14 vars at Mist values, plus the 9 base
    HA keys (`primary-background-color` etc.) re-toned for light.
 2. `packages/theme.yaml` — `input_select.kitchen_theme` (options `Dark`,
    `Light`) and an automation on its state change calling `frontend.set_theme`.
@@ -311,6 +346,7 @@ provably attributable to the light theme, never to the extraction.
 | JS-block substitution breaks a template literal | The 12 JS sites are a separate work item (§4.2); check 5 + visual |
 | Accents unreadable on white | Mist values measured: **min 5.02:1** on `#ffffff`, all AA-clear |
 | Dark drifts during extraction | Check 7 is the gate; dark theme's 9 existing keys are never edited |
+| An unquoted scalar swallows a fallback as a comment | The two `text-shadow` sites are quoted during extraction; `validate:yaml` catches any that are not |
 | `kitchen.yaml` drift vs. the Pi | **`deploy/deploy-dashboard.sh` enforces this** — it refuses to deploy unless the live file matches a recorded baseline, backs up on both ends, runs `check_config`, and rolls back on failure. See §11. |
 
 ### 9.1 Accessibility note (pre-existing, not introduced)
