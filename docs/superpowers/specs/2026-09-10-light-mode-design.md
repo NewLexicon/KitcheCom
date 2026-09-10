@@ -311,7 +311,7 @@ provably attributable to the light theme, never to the extraction.
 | JS-block substitution breaks a template literal | The 12 JS sites are a separate work item (§4.2); check 5 + visual |
 | Accents unreadable on white | Mist values measured: **min 5.02:1** on `#ffffff`, all AA-clear |
 | Dark drifts during extraction | Check 7 is the gate; dark theme's 9 existing keys are never edited |
-| `kitchen.yaml` drift vs. the Pi | **Diff against the live Pi file before deploying.** See carry-forwards in the cold-open — the repo copy has been 1932 lines behind before. |
+| `kitchen.yaml` drift vs. the Pi | **`deploy/deploy-dashboard.sh` enforces this** — it refuses to deploy unless the live file matches a recorded baseline, backs up on both ends, runs `check_config`, and rolls back on failure. See §11. |
 
 ### 9.1 Accessibility note (pre-existing, not introduced)
 
@@ -336,3 +336,52 @@ work. Recorded so it is not mistaken for a light-mode regression.
   (`sensor.kitchen_time_of_day` already exists and could drive it later — a
   natural V2, deliberately not now.)
 - The E/F card restructure (hairline border + tinted icon square).
+
+
+---
+
+## 11. Deploying `kitchen.yaml`
+
+There was **no deploy script** before this work — every update was a manual
+`scp`. That is the root cause of the 2026-09-08 incident in which the live file
+was found 1932 lines ahead of the repo. The safety check existed only as a habit.
+
+`deploy/deploy-dashboard.sh` replaces the habit with a mechanism.
+
+| Stage | Behaviour |
+|---|---|
+| 1. Reachability | `ssh -o ConnectTimeout=8`; on failure prints the corporate-network check (macOS has no `timeout(1)`) |
+| 2. Drift gate | md5 live vs. repo vs. recorded baseline. **Unknown drift = exit 2, nothing written** |
+| 3. Backup | Pi-side `backups/kitchen.yaml.bak-<ts>` **and** a repo-side `docs/pi-snapshots/` copy |
+| 4. Deploy | `scp`, then re-hash and roll back if the copy is not byte-exact |
+| 5. Validate | `docker exec homeassistant python -m homeassistant --script check_config` — **rolls back on failure** |
+| 6. Reload | none needed |
+
+Modes: `--check` (compare only), `--adopt` (bless live as baseline), `--pull`
+(take the Pi's version into the repo).
+
+### 11.1 Facts established while building it
+
+- **HA runs as a Docker container; there is no `ha` CLI on this Pi.** The
+  reload/validate path is `docker exec`, not `ha core restart`.
+- **`~/homeassistant` is bind-mounted to `/config`**, so an `scp` to the host is
+  immediately visible inside the container.
+- **`kitchen.yaml` is a `mode: yaml` dashboard** (`configuration.yaml:29-30`),
+  which HA re-reads per browser fetch. **No restart is required to deploy it** —
+  the panel picks it up on next load. This makes Phase 1's
+  extract-verify-iterate loop cheap.
+- **The baseline file is gitignored** — it is per-machine state, not shared
+  config.
+- **As of 2026-09-10 the repo and Pi are byte-identical** (md5
+  `eae7034812b8065e2b8e19da856b9325`, 2423 lines, 80 colour literals on both).
+  The extraction starts from a clean, verified base.
+
+### 11.2 Test status
+
+Verified live: reachability, drift detection, the **drift refusal** (exit 2,
+nothing written), `--adopt`, md5 on both ends, and `check_config` (exit 0).
+
+**Not yet exercised:** the write stages (3-6) against the live panel, and the
+`check_config` rollback branch — the smoke test was declined as it would have
+written to the live dashboard. **Run the first real deploy with a human at the
+panel, with `--check` immediately beforehand.**
