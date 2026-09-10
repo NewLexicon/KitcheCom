@@ -91,9 +91,9 @@ views:
             styles:
               card:
                 - height: 32px
-                - background: "#ffd54f22"
+                - background: "var(--kc-chore-tint, #ffd54f22)"
                 - border: none
-                - border-left: "4px solid #ffd54f"
+                - border-left: "4px solid var(--kc-chore-fg, #ffd54f)"
                 - border-radius: 8px
                 - margin-top: 6px
               name:
@@ -101,7 +101,7 @@ views:
                 - font-weight: 700
                 - letter-spacing: 1px
                 - text-transform: uppercase
-                - color: "#ffd54f"
+                - color: "var(--kc-chore-fg, #ffd54f)"
                 - justify-self: start
                 - padding-left: 10px
           - type: custom:auto-entities
@@ -243,9 +243,9 @@ views:
             styles:
               card:
                 - height: 32px
-                - background: "#ffd54f22"
+                - background: "var(--kc-chore-tint, #ffd54f22)"
                 - border: none
-                - border-left: "4px solid #ffd54f"
+                - border-left: "4px solid var(--kc-chore-fg, #ffd54f)"
                 - border-radius: 8px
                 - margin-top: 6px
               name:
@@ -253,7 +253,7 @@ views:
                 - font-weight: 700
                 - letter-spacing: 1px
                 - text-transform: uppercase
-                - color: "#ffd54f"
+                - color: "var(--kc-chore-fg, #ffd54f)"
                 - justify-self: start
                 - padding-left: 10px
           - type: custom:auto-entities
@@ -495,9 +495,9 @@ views:
             styles:
               card:
                 - height: 32px
-                - background: "#ffd54f22"
+                - background: "var(--kc-chore-tint, #ffd54f22)"
                 - border: none
-                - border-left: "4px solid #ffd54f"
+                - border-left: "4px solid var(--kc-chore-fg, #ffd54f)"
                 - border-radius: 8px
                 - margin-top: 6px
               name:
@@ -505,7 +505,7 @@ views:
                 - font-weight: 700
                 - letter-spacing: 1px
                 - text-transform: uppercase
-                - color: "#ffd54f"
+                - color: "var(--kc-chore-fg, #ffd54f)"
                 - justify-self: start
                 - padding-left: 10px
           - type: custom:auto-entities
@@ -647,9 +647,9 @@ views:
             styles:
               card:
                 - height: 32px
-                - background: "#7e57c222"
+                - background: "var(--kc-weather-tint, #7e57c222)"
                 - border: none
-                - border-left: "4px solid #7e57c2"
+                - border-left: "4px solid var(--kc-weather-fg, #7e57c2)"
                 - border-radius: 8px
                 - margin-top: 6px
               name:
@@ -657,7 +657,7 @@ views:
                 - font-weight: 700
                 - letter-spacing: 1px
                 - text-transform: uppercase
-                - color: "#7e57c2"
+                - color: "var(--kc-weather-fg, #7e57c2)"
                 - justify-self: start
                 - padding-left: 10px
           - type: custom:auto-entities
@@ -1391,9 +1391,9 @@ views:
             styles:
               card:
                 - height: 32px
-                - background: "#ffd54f22"
+                - background: "var(--kc-chore-tint, #ffd54f22)"
                 - border: none
-                - border-left: "4px solid #ffd54f"
+                - border-left: "4px solid var(--kc-chore-fg, #ffd54f)"
                 - border-radius: 8px
                 - margin-top: 6px
               name:
@@ -1401,7 +1401,7 @@ views:
                 - font-weight: 700
                 - letter-spacing: 1px
                 - text-transform: uppercase
-                - color: "#ffd54f"
+                - color: "var(--kc-chore-fg, #ffd54f)"
                 - justify-self: start
                 - padding-left: 10px
           - type: custom:auto-entities
@@ -1543,9 +1543,9 @@ views:
             styles:
               card:
                 - height: 32px
-                - background: "#7e57c222"
+                - background: "var(--kc-weather-tint, #7e57c222)"
                 - border: none
-                - border-left: "4px solid #7e57c2"
+                - border-left: "4px solid var(--kc-weather-fg, #7e57c2)"
                 - border-radius: 8px
                 - margin-top: 6px
               name:
@@ -1553,7 +1553,7 @@ views:
                 - font-weight: 700
                 - letter-spacing: 1px
                 - text-transform: uppercase
-                - color: "#7e57c2"
+                - color: "var(--kc-weather-fg, #7e57c2)"
                 - justify-self: start
                 - padding-left: 10px
           - type: custom:auto-entities
