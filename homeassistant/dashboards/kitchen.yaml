@@ -473,9 +473,9 @@ views:
             styles:
               card:
                 - height: 56px
-                - background: "#4fc3f722"
+                - background: "var(--kc-hero-tint, #4fc3f722)"
                 - border: none
-                - border-left: "5px solid #4fc3f7"
+                - border-left: "5px solid var(--kc-hero-fg, #4fc3f7)"
                 - border-radius: 8px
                 - box-shadow: none
               name:
@@ -484,8 +484,8 @@ views:
                 - font-size: 34px
                 - font-weight: 800
                 - letter-spacing: 0.5px
-                - color: "#4fc3f7"
-                - text-shadow: 0 0 20px #4fc3f755
+                - color: "var(--kc-hero-fg, #4fc3f7)"
+                - text-shadow: "0 0 20px var(--kc-hero-glow, #4fc3f755)"
           - type: custom:button-card
             name: ☀ Morning
             show_icon: false
@@ -1033,9 +1033,9 @@ views:
             styles:
               card:
                 - height: 32px
-                - background: "#4fc3f722"
+                - background: "var(--kc-hero-tint, #4fc3f722)"
                 - border: none
-                - border-left: "4px solid #4fc3f7"
+                - border-left: "4px solid var(--kc-hero-fg, #4fc3f7)"
                 - border-radius: 8px
                 - box-shadow: none
               name:
@@ -1045,7 +1045,7 @@ views:
                 - font-weight: 700
                 - letter-spacing: 1px
                 - text-transform: uppercase
-                - color: "#4fc3f7"
+                - color: "var(--kc-hero-fg, #4fc3f7)"
           - type: custom:auto-entities
             card:
               type: grid
@@ -1113,9 +1113,9 @@ views:
             styles:
               card:
                 - height: 32px
-                - background: "#4fc3f722"
+                - background: "var(--kc-hero-tint, #4fc3f722)"
                 - border: none
-                - border-left: "4px solid #4fc3f7"
+                - border-left: "4px solid var(--kc-hero-fg, #4fc3f7)"
                 - border-radius: 8px
                 - box-shadow: none
               name:
@@ -1125,7 +1125,7 @@ views:
                 - font-weight: 700
                 - letter-spacing: 1px
                 - text-transform: uppercase
-                - color: "#4fc3f7"
+                - color: "var(--kc-hero-fg, #4fc3f7)"
           - type: grid
             columns: 3
             square: false
@@ -1145,7 +1145,7 @@ views:
                 styles:
                   card: [height: 66px, background: '#ffffff0d', border: none, box-shadow: none, border-radius: 10px]
                   name: [font-size: 10px, opacity: 0.65, text-transform: uppercase, letter-spacing: 0.5px]
-                  label: [font-size: 22px, font-weight: 800, color: '#4fc3f7', padding-top: 2px]
+                  label: [font-size: 22px, font-weight: 800, color: 'var(--kc-hero-fg, #4fc3f7)', padding-top: 2px]
               - type: custom:button-card
                 entity: sensor.rowan_choreops_chores
                 name: Completed
@@ -1161,7 +1161,7 @@ views:
                 styles:
                   card: [height: 66px, background: '#ffffff0d', border: none, box-shadow: none, border-radius: 10px]
                   name: [font-size: 10px, opacity: 0.65, text-transform: uppercase, letter-spacing: 0.5px]
-                  label: [font-size: 22px, font-weight: 800, color: '#4fc3f7', padding-top: 2px]
+                  label: [font-size: 22px, font-weight: 800, color: 'var(--kc-hero-fg, #4fc3f7)', padding-top: 2px]
               - type: custom:button-card
                 entity: sensor.rowan_choreops_points
                 name: Multiplier
@@ -1177,7 +1177,7 @@ views:
                 styles:
                   card: [height: 66px, background: '#ffffff0d', border: none, box-shadow: none, border-radius: 10px]
                   name: [font-size: 10px, opacity: 0.65, text-transform: uppercase, letter-spacing: 0.5px]
-                  label: [font-size: 22px, font-weight: 800, color: '#4fc3f7', padding-top: 2px]
+                  label: [font-size: 22px, font-weight: 800, color: 'var(--kc-hero-fg, #4fc3f7)', padding-top: 2px]
           - type: custom:button-card
             entity: sensor.rowan_choreops_achievement_progress_7_day_streak
             name: 7-Day Streak
@@ -1223,9 +1223,9 @@ views:
                 - justify-self: end
                 - font-size: 11px
                 - font-weight: 700
-                - color: "#4fc3f7"
+                - color: "var(--kc-hero-fg, #4fc3f7)"
               icon:
-                - color: "#4fc3f7"
+                - color: "var(--kc-hero-fg, #4fc3f7)"
                 - opacity: 0.9
               custom_fields:
                 bar:
@@ -1277,9 +1277,9 @@ views:
                 - justify-self: end
                 - font-size: 11px
                 - font-weight: 700
-                - color: "#4fc3f7"
+                - color: "var(--kc-hero-fg, #4fc3f7)"
               icon:
-                - color: "#4fc3f7"
+                - color: "var(--kc-hero-fg, #4fc3f7)"
                 - opacity: 0.9
               custom_fields:
                 bar:
@@ -1331,9 +1331,9 @@ views:
                 - justify-self: end
                 - font-size: 11px
                 - font-weight: 700
-                - color: "#4fc3f7"
+                - color: "var(--kc-hero-fg, #4fc3f7)"
               icon:
-                - color: "#4fc3f7"
+                - color: "var(--kc-hero-fg, #4fc3f7)"
                 - opacity: 0.9
               custom_fields:
                 bar:
