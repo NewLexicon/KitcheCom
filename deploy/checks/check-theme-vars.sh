@@ -13,6 +13,12 @@ FAIL=0
 ok()  { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 bad() { printf '  \033[31m✗\033[0m %s\n' "$*"; FAIL=1; }
 
+# Without these guards a missing/renamed file makes every check read empty and
+# the gate reports PASS — the one failure mode this gate must never have, since
+# Tasks 2-7 rely on it to prove dark is unchanged. Mirrors deploy-dashboard.sh.
+[ -f "$PANEL" ] || { bad "missing panel file: $PANEL"; exit 1; }
+[ -f "$THEME" ] || { bad "missing theme file: $THEME"; exit 1; }
+
 echo "Check 1 — no UNWRAPPED colour literals left in the panel"
 # Every extracted site keeps its dark value as a var() fallback, so a naive
 # literal count can never reach zero. Strip the compliant ones first, then
