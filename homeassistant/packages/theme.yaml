@@ -1,0 +1,42 @@
+# Theme switching for the kitchen panel.
+#
+# frontend.set_theme is a FRONTEND service: it applies to every browser
+# connected to this HA instance, not just the kitchen panel. That is the intent
+# here — one wall display — but it is why this is an input_select rather than a
+# per-device setting.
+#
+# Theme names must match the top-level keys of the theme files exactly:
+#   KitchenCOM        -> themes/kitchencom.yaml       (dark)
+#   KitchenCOM Light  -> themes/kitchencom-light.yaml (Mist)
+# A typo silently applies HA's default theme rather than erroring.
+
+input_select:
+  kitchen_theme:
+    name: Kitchen Theme
+    options:
+      - Dark
+      - Light
+    initial: Dark
+    icon: mdi:theme-light-dark
+
+automation:
+  - id: kitchen_theme_apply
+    alias: "Kitchen: apply the selected theme"
+    description: >
+      Applies the theme when the selector changes, and re-applies it on HA
+      start — frontend.set_theme does not survive a restart on its own.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.kitchen_theme
+      - platform: homeassistant
+        event: start
+    action:
+      - service: frontend.set_theme
+        data:
+          name: >
+            {% if states('input_select.kitchen_theme') == 'Light' %}
+            KitchenCOM Light
+            {% else %}
+            KitchenCOM
+            {% endif %}

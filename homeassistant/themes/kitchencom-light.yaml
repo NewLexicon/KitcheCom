@@ -1,0 +1,43 @@
+KitchenCOM Light:
+  # Mist — cool light-lavender ground, white cards, indigo-forward accents.
+  # Chosen 2026-09-10 over three warm-paper candidates (Linen / Parchment /
+  # Cream); see docs/superpowers/specs/2026-09-10-light-mode-design.md §2.1.
+  #
+  # Contrast measured against #ffffff cards: minimum 5.02:1, all AA-clear.
+  # (For reference, the dark theme's weakest accent is 3.63:1 — below AA.)
+
+  # --- HA base keys (mirror of the dark theme's 10) ---
+  primary-color: "#4f46e5"
+  accent-color: "#4f46e5"
+  primary-background-color: "#f6f6fb"
+  secondary-background-color: "#ffffff"
+  card-background-color: "#ffffff"
+  primary-text-color: "#2e2e42"
+  secondary-text-color: "#5b5b73"
+  ha-card-border-radius: "14px"
+  app-header-background-color: "#ffffff"
+  app-header-text-color: "#2e2e42"
+
+  # --- the 14 kc-* overrides ---
+  # Accents are re-picked by hand, not derived. The dark pastels are tuned for
+  # a near-black ground and are unreadable on white. Tints drop from 22 (13%)
+  # to 1f (12%) because a light ground needs less separation to read.
+  kc-hero-fg: "#3730a3"
+  kc-hero-tint: "#4f46e51f"
+  kc-hero-glow: "none"
+  kc-remind-fg: "#7e22ce"
+  kc-remind-tint: "#9333ea1f"
+  kc-remind-glow: "none"
+  kc-chore-fg: "#b45309"
+  kc-chore-tint: "#d977061f"
+  kc-weather-fg: "#4f46e5"
+  kc-weather-tint: "#6366f11f"
+  # Surfaces INVERT rather than re-tone: in dark these are white-at-low-alpha
+  # lifting a card off a near-black page; on a light ground that trick is
+  # invisible, so they become solid white above the grey page.
+  kc-surface-1: "#ffffff"
+  kc-surface-2: "#ffffff"
+  kc-trough: "#e4e4f0"
+  # Deliberately NOT equal to kc-hero-fg here, though the two are identical in
+  # dark. This is the fill of the three hero progress bars; it is its own role.
+  kc-trough-fill: "#4f46e5"
