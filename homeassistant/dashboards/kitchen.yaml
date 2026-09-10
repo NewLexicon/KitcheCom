@@ -83,7 +83,7 @@ views:
             heading_style: title
             icon: mdi:broom
           - type: custom:button-card
-            name: ☀ Morning
+            name: ☀ Rowan — Morning
             show_icon: false
             show_state: false
             tap_action:
@@ -235,7 +235,7 @@ views:
             sort:
               method: none
           - type: custom:button-card
-            name: ☀ Morning
+            name: ☀ Wystan — Morning
             show_icon: false
             show_state: false
             tap_action:
