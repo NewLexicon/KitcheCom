@@ -1369,9 +1369,9 @@ views:
             styles:
               card:
                 - height: 56px
-                - background: "#ba68c822"
+                - background: "var(--kc-remind-tint, #ba68c822)"
                 - border: none
-                - border-left: "5px solid #ba68c8"
+                - border-left: "5px solid var(--kc-remind-fg, #ba68c8)"
                 - border-radius: 8px
                 - box-shadow: none
               name:
@@ -1380,8 +1380,8 @@ views:
                 - font-size: 34px
                 - font-weight: 800
                 - letter-spacing: 0.5px
-                - color: "#ba68c8"
-                - text-shadow: 0 0 20px #ba68c855
+                - color: "var(--kc-remind-fg, #ba68c8)"
+                - text-shadow: "0 0 20px var(--kc-remind-glow, #ba68c855)"
           - type: custom:button-card
             name: ☀ Morning
             show_icon: false
@@ -1890,9 +1890,9 @@ views:
             styles:
               card:
                 - height: 32px
-                - background: "#ba68c822"
+                - background: "var(--kc-remind-tint, #ba68c822)"
                 - border: none
-                - border-left: "4px solid #ba68c8"
+                - border-left: "4px solid var(--kc-remind-fg, #ba68c8)"
                 - border-radius: 8px
                 - box-shadow: none
               name:
@@ -1902,7 +1902,7 @@ views:
                 - font-weight: 700
                 - letter-spacing: 1px
                 - text-transform: uppercase
-                - color: "#ba68c8"
+                - color: "var(--kc-remind-fg, #ba68c8)"
           - type: custom:auto-entities
             card:
               type: grid
@@ -1970,9 +1970,9 @@ views:
             styles:
               card:
                 - height: 32px
-                - background: "#ba68c822"
+                - background: "var(--kc-remind-tint, #ba68c822)"
                 - border: none
-                - border-left: "4px solid #ba68c8"
+                - border-left: "4px solid var(--kc-remind-fg, #ba68c8)"
                 - border-radius: 8px
                 - box-shadow: none
               name:
@@ -1982,7 +1982,7 @@ views:
                 - font-weight: 700
                 - letter-spacing: 1px
                 - text-transform: uppercase
-                - color: "#ba68c8"
+                - color: "var(--kc-remind-fg, #ba68c8)"
           - type: grid
             columns: 3
             square: false
@@ -2002,7 +2002,7 @@ views:
                 styles:
                   card: [height: 66px, background: '#ffffff0d', border: none, box-shadow: none, border-radius: 10px]
                   name: [font-size: 10px, opacity: 0.65, text-transform: uppercase, letter-spacing: 0.5px]
-                  label: [font-size: 22px, font-weight: 800, color: '#ba68c8', padding-top: 2px]
+                  label: [font-size: 22px, font-weight: 800, color: 'var(--kc-remind-fg, #ba68c8)', padding-top: 2px]
               - type: custom:button-card
                 entity: sensor.wystan_choreops_chores
                 name: Completed
@@ -2018,7 +2018,7 @@ views:
                 styles:
                   card: [height: 66px, background: '#ffffff0d', border: none, box-shadow: none, border-radius: 10px]
                   name: [font-size: 10px, opacity: 0.65, text-transform: uppercase, letter-spacing: 0.5px]
-                  label: [font-size: 22px, font-weight: 800, color: '#ba68c8', padding-top: 2px]
+                  label: [font-size: 22px, font-weight: 800, color: 'var(--kc-remind-fg, #ba68c8)', padding-top: 2px]
               - type: custom:button-card
                 entity: sensor.wystan_choreops_points
                 name: Multiplier
@@ -2034,7 +2034,7 @@ views:
                 styles:
                   card: [height: 66px, background: '#ffffff0d', border: none, box-shadow: none, border-radius: 10px]
                   name: [font-size: 10px, opacity: 0.65, text-transform: uppercase, letter-spacing: 0.5px]
-                  label: [font-size: 22px, font-weight: 800, color: '#ba68c8', padding-top: 2px]
+                  label: [font-size: 22px, font-weight: 800, color: 'var(--kc-remind-fg, #ba68c8)', padding-top: 2px]
           - type: custom:button-card
             entity: sensor.wystan_choreops_achievement_progress_7_day_streak
             name: 7-Day Streak
@@ -2080,9 +2080,9 @@ views:
                 - justify-self: end
                 - font-size: 11px
                 - font-weight: 700
-                - color: "#ba68c8"
+                - color: "var(--kc-remind-fg, #ba68c8)"
               icon:
-                - color: "#ba68c8"
+                - color: "var(--kc-remind-fg, #ba68c8)"
                 - opacity: 0.9
               custom_fields:
                 bar:
@@ -2134,9 +2134,9 @@ views:
                 - justify-self: end
                 - font-size: 11px
                 - font-weight: 700
-                - color: "#ba68c8"
+                - color: "var(--kc-remind-fg, #ba68c8)"
               icon:
-                - color: "#ba68c8"
+                - color: "var(--kc-remind-fg, #ba68c8)"
                 - opacity: 0.9
               custom_fields:
                 bar:
@@ -2188,9 +2188,9 @@ views:
                 - justify-self: end
                 - font-size: 11px
                 - font-weight: 700
-                - color: "#ba68c8"
+                - color: "var(--kc-remind-fg, #ba68c8)"
               icon:
-                - color: "#ba68c8"
+                - color: "var(--kc-remind-fg, #ba68c8)"
                 - opacity: 0.9
               custom_fields:
                 bar:
