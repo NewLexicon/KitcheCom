@@ -12,3 +12,22 @@ KitchenCOM:
   # Glanceable headers
   app-header-background-color: "#0f1115"
   app-header-text-color: "#e8edf6"
+  # --- Light-mode extraction (Phase 1) -------------------------------------
+  # These are the CURRENT dark values. Defining them changes nothing; it lets
+  # kitchen.yaml reference them so a second theme can override them.
+  # HA maps every theme key `foo` to CSS `var(--foo)`
+  # (frontend: src/common/dom/apply_themes_on_element.ts:176).
+  kc-hero-fg: "#4fc3f7"
+  kc-hero-tint: "#4fc3f722"
+  kc-hero-glow: "#4fc3f755"
+  kc-remind-fg: "#ba68c8"
+  kc-remind-tint: "#ba68c822"
+  kc-remind-glow: "#ba68c855"
+  kc-chore-fg: "#ffd54f"
+  kc-chore-tint: "#ffd54f22"
+  kc-weather-fg: "#7e57c2"
+  kc-weather-tint: "#7e57c222"
+  kc-surface-1: "#ffffff0d"
+  kc-surface-2: "#ffffff08"
+  kc-trough: "rgba(255,255,255,0.13)"
+  kc-trough-fill: "#4fc3f7"
