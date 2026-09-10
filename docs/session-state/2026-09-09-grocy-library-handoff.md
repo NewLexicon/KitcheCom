@@ -1,5 +1,10 @@
 # COLD OPEN — Grocy food library (2026-09-09 evening → tonight at home)
 
+> **⚠ SUPERSEDED 2026-09-10 — the import described below is DONE.**
+> The library is live on the Pi (34 recipes / 117 products, verified).
+> Read `docs/session-state/2026-09-10-grocy-import-complete.md` instead.
+> This doc is retained for the decision rationale in sections 3 and 4.
+
 **What this session did:** built the family's Grocy recipe/meal-planning library
 from scratch, in a **local sandbox on the Mac**, because the Pi was unreachable
 from the office AND the Pi holds the family's REAL food data. The library is now
