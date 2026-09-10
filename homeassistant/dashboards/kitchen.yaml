@@ -1197,9 +1197,9 @@ views:
                 [[[ var pct = Number(entity.state);
                     if (isNaN(pct)) pct = 0;
                     return `<div style="width:100%;height:6px;border-radius:3px;
-                      background:rgba(255,255,255,0.13);overflow:hidden;">
+                      background:var(--kc-trough, rgba(255,255,255,0.13));overflow:hidden;">
                       <div style="width:${pct}%;height:100%;border-radius:3px;
-                      background:#4fc3f7;"></div></div>`; ]]]
+                      background:var(--kc-trough-fill, #4fc3f7);"></div></div>`; ]]]
             tap_action:
               action: none
             styles:
@@ -1251,9 +1251,9 @@ views:
                 [[[ var pct = Number(entity.state);
                     if (isNaN(pct)) pct = 0;
                     return `<div style="width:100%;height:6px;border-radius:3px;
-                      background:rgba(255,255,255,0.13);overflow:hidden;">
+                      background:var(--kc-trough, rgba(255,255,255,0.13));overflow:hidden;">
                       <div style="width:${pct}%;height:100%;border-radius:3px;
-                      background:#4fc3f7;"></div></div>`; ]]]
+                      background:var(--kc-trough-fill, #4fc3f7);"></div></div>`; ]]]
             tap_action:
               action: none
             styles:
@@ -1305,9 +1305,9 @@ views:
                 [[[ var pct = Number(entity.state);
                     if (isNaN(pct)) pct = 0;
                     return `<div style="width:100%;height:6px;border-radius:3px;
-                      background:rgba(255,255,255,0.13);overflow:hidden;">
+                      background:var(--kc-trough, rgba(255,255,255,0.13));overflow:hidden;">
                       <div style="width:${pct}%;height:100%;border-radius:3px;
-                      background:#4fc3f7;"></div></div>`; ]]]
+                      background:var(--kc-trough-fill, #4fc3f7);"></div></div>`; ]]]
             tap_action:
               action: none
             styles:
@@ -2054,9 +2054,9 @@ views:
                 [[[ var pct = Number(entity.state);
                     if (isNaN(pct)) pct = 0;
                     return `<div style="width:100%;height:6px;border-radius:3px;
-                      background:rgba(255,255,255,0.13);overflow:hidden;">
+                      background:var(--kc-trough, rgba(255,255,255,0.13));overflow:hidden;">
                       <div style="width:${pct}%;height:100%;border-radius:3px;
-                      background:#ba68c8;"></div></div>`; ]]]
+                      background:var(--kc-remind-fg, #ba68c8);"></div></div>`; ]]]
             tap_action:
               action: none
             styles:
@@ -2108,9 +2108,9 @@ views:
                 [[[ var pct = Number(entity.state);
                     if (isNaN(pct)) pct = 0;
                     return `<div style="width:100%;height:6px;border-radius:3px;
-                      background:rgba(255,255,255,0.13);overflow:hidden;">
+                      background:var(--kc-trough, rgba(255,255,255,0.13));overflow:hidden;">
                       <div style="width:${pct}%;height:100%;border-radius:3px;
-                      background:#ba68c8;"></div></div>`; ]]]
+                      background:var(--kc-remind-fg, #ba68c8);"></div></div>`; ]]]
             tap_action:
               action: none
             styles:
@@ -2162,9 +2162,9 @@ views:
                 [[[ var pct = Number(entity.state);
                     if (isNaN(pct)) pct = 0;
                     return `<div style="width:100%;height:6px;border-radius:3px;
-                      background:rgba(255,255,255,0.13);overflow:hidden;">
+                      background:var(--kc-trough, rgba(255,255,255,0.13));overflow:hidden;">
                       <div style="width:${pct}%;height:100%;border-radius:3px;
-                      background:#ba68c8;"></div></div>`; ]]]
+                      background:var(--kc-remind-fg, #ba68c8);"></div></div>`; ]]]
             tap_action:
               action: none
             styles:
