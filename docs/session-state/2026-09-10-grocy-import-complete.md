@@ -32,9 +32,11 @@ git rev-list --left-right --count origin/feat/time-of-day-layouts...HEAD   # exp
 ```
 
 **Stable prefix (immutable, verifiable):** `8e93b68` seeded the library →
-`a4a91bd` wrote the 09-09 handoff. This session added **no code commits** — the
-import writes to the Pi, not the repo — only this doc. Tip is delegated to `git log`
-per the anti-stamping rule.
+`a4a91bd` wrote the 09-09 handoff → `1824ea6` recorded the completed import (this
+doc). This session added **no code commits** — the import writes to the Pi, not the
+repo. **The tip is deliberately NOT frozen here**; `git log --oneline -1` is
+authoritative. If a commit landed after `1824ea6`, that is expected — do not
+"helpfully" re-stamp this line, that loop does not converge.
 
 ---
 
