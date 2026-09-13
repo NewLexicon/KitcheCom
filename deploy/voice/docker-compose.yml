@@ -1,0 +1,58 @@
+# KitchenCOM — local voice stack (Wyoming protocol) for HA Assist.
+#
+# WHY A SEPARATE STACK: the homeassistant container was created with a bare
+# `docker run` (no compose labels) and uses network_mode: host. Folding it into
+# a compose project would mean recreating a live family-panel container for no
+# benefit. These services stand alone; HA reaches them on localhost:<port>.
+#
+# PINNED, per the convention in grocy/docker-compose.yml — :latest moves silently.
+# All three publish arm64 (verified 2026-09-13 via `docker manifest inspect`).
+
+services:
+  whisper:
+    # Speech-to-text. `base` (not `tiny`): the primary users are kids, and child
+    # speech is the hard case for STT. Fall back to tiny only if latency annoys.
+    image: rhasspy/wyoming-whisper:3.8.0
+    container_name: wyoming-whisper
+    command: >-
+      --model base
+      --language en
+      --beam-size 1
+    volumes:
+      - ./whisper-data:/data
+    environment:
+      - TZ=America/New_York
+    ports:
+      - "10300:10300"
+    restart: unless-stopped
+
+  piper:
+    # Text-to-speech. lessac/medium is the standard en_US voice: natural enough
+    # for a kitchen speaker without the latency of the `high` variant on a Pi.
+    image: rhasspy/wyoming-piper:2.5.2
+    container_name: wyoming-piper
+    command: >-
+      --voice en_US-lessac-medium
+    volumes:
+      - ./piper-data:/data
+    environment:
+      - TZ=America/New_York
+    ports:
+      - "10200:10200"
+    restart: unless-stopped
+
+  openwakeword:
+    # Wake-word detection. Voice PE does wake-word ON-DEVICE by default, so this
+    # is here for (a) other satellites and (b) the option of switching the puck to
+    # server-side detection. Harmless if the puck never uses it.
+    image: rhasspy/wyoming-openwakeword:2.1.0
+    container_name: wyoming-openwakeword
+    command: >-
+      --preload-model ok_nabu
+    volumes:
+      - ./openwakeword-data:/data
+    environment:
+      - TZ=America/New_York
+    ports:
+      - "10400:10400"
+    restart: unless-stopped
