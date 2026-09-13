@@ -84,3 +84,62 @@ Don't chase it. `.234` is the Pi, per existing memory.
   work gets built against the Mac sandbox at `localhost:9284` first.
 - Voice PE is **2.4GHz-only**; home 2.4GHz is ch10, and a hidden AP on ch44 has
   caused trouble before (see memory `pi-wifi-cochannel-interference`).
+
+---
+
+## Wyoming integrations registered (2026-09-13, later in session)
+
+All three added to HA and confirmed in the registries:
+
+| Config entry | Host:port | Entity |
+|---|---|---|
+| faster-whisper | 127.0.0.1:10300 | `stt.faster_whisper` |
+| piper | 127.0.0.1:10200 | `tts.piper` |
+| openwakeword | 127.0.0.1:10400 | `wake_word.openwakeword` |
+
+### The "Failed to connect" false alarm — READ THIS BEFORE DEBUGGING A REPEAT
+
+The first Add-Integration attempt showed **"Failed to connect"** on
+localhost:10300. It was a **form-entry issue, not a backend problem** — the
+retry with identical infrastructure succeeded.
+
+Three theories were raised and **all three were DISPROVEN by test**. Do not
+re-chase them:
+
+1. ~~HA on a bridge network can't see the containers~~ — HA is `network_mode:
+   host`; `localhost` is correct.
+2. ~~`localhost` resolves to IPv6 `::1` and the containers are IPv4-only~~ —
+   `::1:10300` handshakes fine.
+3. ~~Wyoming protocol mismatch~~ — a real `Describe` handshake returned `info`.
+
+The decisive test, which should be the FIRST move if this recurs — it runs the
+exact function whose `None` return produces "Failed to connect":
+
+```bash
+ssh kitchencom 'docker exec homeassistant python -c "
+import asyncio
+from homeassistant.components.wyoming.data import WyomingService
+async def main():
+    svc = await WyomingService.create(\"127.0.0.1\", 10300)
+    print(svc, svc.get_name() if svc else None)
+asyncio.run(main())
+"'
+```
+It printed `faster-whisper` while the UI was still erroring — proving the
+backend healthy and isolating the fault to the form.
+
+## Carry-forwards / open items
+
+- **`calendar.family` is still a placeholder** in `packages/calendar.yaml` on the
+  Pi. The `KitchenAddCalendarEvent` intent_script is LIVE but points at a
+  non-existent calendar entity. See `deploy/CALENDAR_VOICE.md`.
+- **That intent assumed a GEMINI conversation agent.** Local Assist's default
+  agent does intent matching, not LLM parsing — it will NOT turn "add dentist
+  Tuesday at 3pm" into that intent. Decide later: keep Gemini for conversation,
+  or rebuild the intent for local.
+- **Pi DNS is `192.168.1.113` (the AdGuard box).** Old HA logs (July 12) show
+  `ClientConnectorDNSError` reaching met.no. Stale, possibly resolved — but it's
+  the thread to pull if the weather card is ever flaky.
+- **Thermal under real Whisper load is still unproven.** Idle after deploy was
+  60.9 C / `throttled=0x0`. Check `vcgencmd get_throttled` after the kids have
+  actually used it.
