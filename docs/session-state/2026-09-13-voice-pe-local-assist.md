@@ -143,3 +143,73 @@ backend healthy and isolating the fault to the form.
 - **Thermal under real Whisper load is still unproven.** Idle after deploy was
   60.9 C / `throttled=0x0`. Check `vcgencmd get_throttled` after the kids have
   actually used it.
+
+---
+
+## SSID migration attempt — FAILED and reverted (2026-09-14/15)
+
+**Outcome: reverted. The panel is back on `ThunderEnlighten`. The puck is still
+unprovisioned. Voice stack is untouched and healthy.**
+
+### Why any of this was attempted
+
+The Voice PE puck is **2.4GHz-only**. All three radios (2.4 ch10 + two 5GHz)
+broadcast ONE SSID `ThunderEnlighten`, so the BGW320-500's **band steering** kept
+handing the puck a 5GHz radio it cannot see. Improv BLE pairing succeeded; the
+wifi join then failed and the flow bounced back to the network-name field.
+
+Fix = make the names distinct. Garrett chose to rename **2.4GHz** (not 5GHz) to
+avoid every computer/TV relearning a network.
+
+### What actually happened
+
+1. Added `ThunderEnlighten-2G` to the netplan YAML **alongside** the existing AP
+   (so no stranding in either direction). Verified: both NM profiles generated,
+   both band-locked `bg`, PSK matched.
+2. Garrett renamed 2.4GHz at the gateway. The Pi appeared ONCE at `.234` (seen
+   from the wired AdGuard Pi) then vanished.
+3. ~20 minutes of false diagnosis followed — see the VPN trap below.
+4. Channel had auto-moved ch10 → ch7; pinned back to 10. Did not help.
+5. Reverted the SSID to `ThunderEnlighten`. Pi returned in <2 min. HA 200, all
+   five containers healthy.
+
+### Root cause (best available evidence)
+
+**The Pi lost power and rebooted mid-migration** (`who -b` = 17:38, no shutdown
+record, container uptimes reset 18h/46h → 4h). After the reboot the netplan YAML
+**no longer contained the `-2G` stanza at all** (`grep -c` = 0 in both files),
+though the already-generated `/run` NM profile lingered. So the Pi had no
+persistent config for the renamed network and could not rejoin.
+
+NOT interference, NOT the channel — both were chased and neither was the cause.
+
+### TWO TRAPS — both now in the memory layer
+
+1. **[[vpn-hides-the-whole-lan]]** — the work VPN (`utun11`) captures ALL of
+   192.168.1.0/24. Every host including the GATEWAY reads 100% loss while
+   internet still works and `en0` looks active. `ping -b en0` does NOT bypass it.
+   **Run `route -n get default` BEFORE diagnosing any unreachable-Pi symptom.**
+2. **[[pi-wifi-is-netplan-managed]]** — `nmcli con add` / `con mod` does not
+   persist; netplan owns wlan0 AND eth0. An `nmcli`-set eth0 DHCP method reverted
+   to `link-local` on reboot, which is why the ethernet rescue path evaporated.
+
+### State right now
+
+| Item | State |
+|---|---|
+| Pi | `192.168.1.234` on `ThunderEnlighten`, HA 200, 5 containers healthy |
+| netplan YAML | `-2G` stanza GONE (wiped by the reboot); backup at `.bak-presssid-20260914-172907` |
+| eth0 | DOWN / `link-local` (netplan reverted the DHCP change) |
+| Gateway 2.4GHz | `ThunderEnlighten`, channel pinned to **10** (was Automatic) |
+| Voice PE puck | still unprovisioned, still blinking |
+| Wyoming stack | healthy, untouched throughout |
+
+### Next move — DO NOT repeat the 2.4GHz rename
+
+Rename the **5GHz** SSID to `ThunderEnlighten-5G` instead. It never touches the
+Pi, so nothing can be stranded and no reboot can eat the config. Cost is
+rejoining phones/laptops/TVs once each.
+
+If the 2.4GHz rename is ever retried anyway: put the `-2G` stanza in the netplan
+YAML, **reboot the Pi deliberately first**, and confirm the stanza SURVIVES the
+reboot before touching the gateway.
