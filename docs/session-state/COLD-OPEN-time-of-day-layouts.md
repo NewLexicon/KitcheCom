@@ -67,6 +67,7 @@ before every commit.
 **Stable PREFIX** — immutable, will not move:
 
 ```
+68431f1 feat(grocy): week shopping list that sums shared ingredients
 f0d69c8 docs(voice): record the failed 2.4GHz SSID migration and two diagnostic traps
 f940509 docs(voice): record Wyoming registration + the "Failed to connect" false alarm
 c09e191 feat(voice): local Wyoming stack for HA Assist (whisper/piper/openwakeword)
