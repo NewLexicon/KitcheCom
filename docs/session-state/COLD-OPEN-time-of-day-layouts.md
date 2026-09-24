@@ -1,7 +1,8 @@
 # COLD OPEN — `feat/time-of-day-layouts`
 
-**Refreshed:** 2026-09-09 morning — the branch was pushed (§0①) and the Pi could
-not be re-verified from the office network (§2).
+**Refreshed:** 2026-09-24 — two NON-panel work items landed on this branch since
+the last refresh (ChoreOps auto-approve on the Pi, and a Grocy shopping-list tool);
+see §3b. The Pi again could not be reached from the office network (§2).
 **Feature is DEPLOYED and running on the Pi.** One visual check remains (§4a) and
 it needs a human at the physical panel — it cannot be closed over SSH.
 **A second, unstarted piece of work now lives on this branch: light mode (§4b).**
@@ -57,7 +58,7 @@ git branch --show-current                 # expect: feat/time-of-day-layouts
 git log --oneline -1                      # authoritative tip — NOT frozen here
 git rev-list --count origin/main..HEAD    # commits ahead of origin/main
 git status --porcelain                    # expect: empty
-git ls-remote origin refs/heads/feat/time-of-day-layouts   # EMPTY until pushed
+git ls-remote origin refs/heads/feat/time-of-day-layouts   # exists; expect 0	0 below
 ```
 
 ⚠️ **Multiple sessions share this checkout.** Re-run `git branch --show-current`
@@ -66,6 +67,11 @@ before every commit.
 **Stable PREFIX** — immutable, will not move:
 
 ```
+f0d69c8 docs(voice): record the failed 2.4GHz SSID migration and two diagnostic traps
+f940509 docs(voice): record Wyoming registration + the "Failed to connect" false alarm
+c09e191 feat(voice): local Wyoming stack for HA Assist (whisper/piper/openwakeword)
+e5597ab docs: pre-extraction Pi snapshot from the Phase 1 deploy
+fc95d8c feat(theme): Mist light theme + input_select switch
 70ddfdb docs: cold-open refreshed for the post-deploy state
 229f9ee fix(panel): time-of-day sensor broke if boundaries were only partly set
 a4188bf fix(panel): rebuild kitchen.yaml from the LIVE Pi file, not the repo copy
@@ -96,13 +102,20 @@ restarts precisely the loop this note exists to stop.
 
 ## 2. Empirical state
 
-**Local (verified 2026-09-08, still true — no code changed after):**
+**Local (tod-autonav tests + typecheck RE-VERIFIED 2026-09-24; the rest 2026-09-08,
+still true — no panel code changed after):**
 
 ```bash
 cd custom_cards/tod-autonav-card && npm test        # 14 passed (12 decision + 2 guard)
 cd custom_cards/tod-autonav-card && npm run typecheck   # exit 0
 cd custom_cards/screensaver-card && npm test        # 109 passed (untouched)
-npm run validate:yaml                               # exit 1 — see below
+npm run validate:yaml                               # exit 1 — see below (expected)
+
+# Grocy tool math, no Pi needed (passed 2026-09-24) — see §3b for the expected output
+python3 deploy/grocy/tools/fixture-server.py &
+GROCY_URL=http://127.0.0.1:9285 GROCY_KEY=fake \
+  python3 deploy/grocy/tools/week-shopping-list.py --days 7
+pkill -f fixture-server
 ```
 
 **`validate:yaml` exits 1 and that is EXPECTED.** The only two errors are
@@ -111,7 +124,12 @@ npm run validate:yaml                               # exit 1 — see below
 `#ba68c855` inside quoted style values as comments. The YAML is correct. **Do not
 "fix" those lines.** Line numbers shift; identify them by the hex pattern.
 
-**Pi (verified 21:46 local, 2026-09-08 — NOT re-checked since):**
+**Pi (verified 21:46 local, 2026-09-08 — NOT re-checked since for PANEL state.**
+ChoreOps/Grocy Pi work on 2026-09-21 is in §3b. Two attempts to reach the Pi on
+2026-09-21 and 2026-09-24 both failed from the office network — LAN *and* Tailscale.
+That is the documented `pi-unreachable-from-office` case, **not** a Pi fault: the
+default gateway was `10.48.73.1`, so `192.168.1.234` routed out the corporate
+interface. Check your own network before diagnosing anything.)
 
 | | |
 |---|---|
@@ -185,11 +203,117 @@ Three dashboard views the panel switches between on fixed clock boundaries:
 
 ---
 
+## 3b. Off-panel work that also lives on this branch
+
+⚠️ **Neither item is panel/light-mode work.** They rode along on this branch
+because it was checked out. Both are additive and touch no panel code, so they can
+move to main whenever convenient — no rush, no conflict risk.
+
+### ChoreOps: all 14 chores auto-approve at midnight (2026-09-21)
+
+**A deliberate REVERSAL of the 2026-09-03 decision.** All 14 chores went
+`clear_pending` → `auto_approve_pending`, so a claim a kid tapped is granted at the
+midnight rollover instead of dropped. Garrett's call — he wasn't getting to the
+approval queue and prefers "default to they were correct."
+
+**Applied on the Pi, not in the repo** — this is `.storage` state, so there is no
+commit for it. Backup: `.storage/choreops/choreops_data_01KXV33Q540SYEF1KFM54DCEDJ.bak-preautoapprove-20260921-082903`.
+
+Common misreading to avoid: this does **not** mean unclaimed chores get paid. Only
+chores a kid actually tapped are affected; untapped ones still reset to zero.
+
+Verified post-restart: all 14 read `auto_approve_pending` (survived HA's shutdown
+rewrite), 14 chores / 4 users / 4 rewards / 6 badges intact, Rowan+Wystan 4.0 each,
+adults' `point_periods` still `null`, 0 errors in the startup window, both points
+sensors numeric in the recorder DB.
+
+⚠️ The memory `chore-reset-and-missable-semantics` calls this setting a "leak
+CLOSED" — that text is now HISTORY. It is cross-referenced, but do not "fix" this
+back without asking.
+
+### Grocy: `week-shopping-list.py` (2026-09-21, commit `68431f1`)
+
+Decision: **use Grocy's own meal plan as-is, as a test** — not a committed
+architecture. Garrett asked about drag-and-drop; **there is none.** Grocy's meal
+plan is click-to-add per day. Setting that expectation matters.
+
+- `deploy/grocy/tools/week-shopping-list.py` — reads the meal plan, prints a list
+  with shared ingredients **summed**. Read-only by design; never writes
+  `shopping_list` (a past probe added 4 real rows to the household's live list).
+- `deploy/grocy/tools/fixture-server.py` — fake API built from the local library
+  export, so the math is testable with the Pi down. **Must run from the repo root.**
+- `deploy/grocy/tools/README.md` — why the summing bug exists, usage, caveats.
+
+Why it exists: Grocy's `add-not-fulfilled-products-to-shoppinglist` does not
+aggregate a product used by two planned recipes — it writes the first amount and
+skips the rest. Garlic is in 12 of the 24 library recipes and is bought as discrete
+heads, so a normal week is under-ordered.
+
+Re-verify the math in ~15 seconds (passed again 2026-09-24):
+
+```bash
+cd /Users/jdehart1/___Code_DEV/KitchenCOM      # MUST be repo root
+python3 deploy/grocy/tools/fixture-server.py &
+sleep 4
+GROCY_URL=http://127.0.0.1:9285 GROCY_KEY=fake \
+  python3 deploy/grocy/tools/week-shopping-list.py --days 7
+# expect: Garlic 5.00 Clove (Grocy would write 3.00), Olive oil 3.00 Tablespoon
+pkill -f fixture-server
+```
+
+🔴 **It has NEVER run against the real Pi.** The fixture proves the summing math,
+not the live API shapes. The first real run is the actual test — see §4c.
+
+---
+
 ## 4. The next move
 
-Two open items. **§4a** is a leftover from the deploy and needs eyes on the
-physical panel. **§4b** is new work the user wants to finish next session — if
-you are starting fresh and the panel is already known-good, **go straight to §4b.**
+Three open items, and **which one you can even attempt depends on the network you
+are on — check this FIRST:**
+
+```bash
+route -n get default | grep gateway     # 192.168.1.1 = home; 10.x = office/VPN
+```
+
+- **On the home network** → do **§4c** first. It is ~2 minutes, it is the only
+  item blocked purely by network, and it closes the loop on work already written.
+- **At the office / on the corporate 10.x** → the Pi is unreachable over BOTH LAN
+  and Tailscale (verified twice, 2026-09-21 and 2026-09-24). Do **§4b**, which is
+  pure local repo work. Do not spend time diagnosing the Pi; see §2.
+- **§4a** needs a human physically at the panel and cannot be closed over SSH.
+
+⚠️ **Tailscale does not stay up.** It was started on 2026-09-21 and was found
+`stopped` again on 2026-09-24. Starting it needs the existing flags preserved
+(`tailscale up --accept-routes`), NOT `--reset` — `--accept-dns=false` is
+deliberate. Even up, it did not reach the Pi from the office.
+
+---
+
+## 4c. First real run of the Grocy shopping list — NEEDS HOME NETWORK
+
+The one item blocked only by where the laptop is. ~2 minutes.
+
+```bash
+# key lives in the Pi's secrets.yaml as grocy_api_key
+ssh kitchencom 'sudo grep grocy_api_key /home/garrettdehart/homeassistant/secrets.yaml'
+
+cd /Users/jdehart1/___Code_DEV/KitchenCOM
+GROCY_URL=http://192.168.1.234:9283 GROCY_KEY=<key> \
+  python3 deploy/grocy/tools/week-shopping-list.py --days 7
+```
+
+**Expected:** either a summed list, or `No recipe meals planned ...` if Garrett has
+not yet planned a week in Grocy's UI (that is a valid pass — it proves the API
+reads work).
+
+**If it errors, that is the interesting result** — the fixture proved the math but
+never the live API shapes. Likely suspects: field names on `meal_plan` rows, or
+`recipes_pos` paging on a bigger library than the fixture's.
+
+**Then ask the question that decides the next build:** was the friction in
+*choosing* the meals, or in *getting the list right*? Choosing → a panel planning
+view. List → this tool is already the answer. Do not build either without asking;
+Garrett has not answered it yet.
 
 ---
 
@@ -278,6 +402,25 @@ or stay dark always? It runs full-screen in a dark kitchen at night. Findings-do
 
 ## 5. Carry-forwards
 
+**🔴 `week-shopping-list.py` has never touched the real Pi.** Verified only against
+`fixture-server.py`. Mitigation: it is read-only, so a bad run prints garbage rather
+than corrupting the household list. Fix trigger: §4c, first time on the home network.
+
+**The Grocy shopping list under-orders shared ingredients if you use Grocy's own
+button.** Unfixed upstream and not fixable — it is how the endpoint behaves. The
+tool is the workaround. **Garlic** (12 of 24 recipes, bought as discrete heads) is
+the one to eyeball every time; butter second. Salt and the oils share the bug
+harmlessly.
+
+**ChoreOps auto-approve has an unverified first rollover.** Set 2026-09-21; the
+midnight behaviour was never observed afterwards because the Pi went unreachable.
+Fix trigger: on the home network, confirm a tapped chore was granted (not dropped)
+at a midnight boundary — points sensor, not the file.
+
+**Tailscale will not be running.** See the warning in §4. It is not a fallback you
+can assume; from the office it did not reach the Pi even when up.
+
+
 **The boundary helpers are UNSET (`00:00:00`) and that is fine.** The sensor
 falls back per-boundary to 05:00 / 11:00 / 18:30. Setting all three is optional.
 **Setting only one or two used to break the sensor entirely** — an unset helper
@@ -341,6 +484,25 @@ In `/Users/jdehart1/.claude/projects/-Users-jdehart1----Code-DEV-KitchenCOM/memo
 - `calendar-card-only-three-views.md` — only dayGridMonth/dayGridDay/listWeek
 - `choreops-claim-service-vs-button.md` — the SERVICE is rejected in kiosk mode; use the button
 - `concurrent-sessions-branch-hazard.md` — verify the branch before every commit
+
+For the off-panel work on this branch (§3b):
+
+- `chore-auto-approve-at-midnight.md` — **the current ChoreOps state**, and why it
+  reverses the older memory below. Read both or you will "fix" it back.
+- `chore-reset-and-missable-semantics.md` — its "leak CLOSED" paragraph is now
+  HISTORY; cross-referenced, but the live state is the file above.
+- `meal-plan-workflow-grocy-as-is.md` — the as-is-as-a-test decision, no
+  drag-and-drop, and the unanswered choosing-vs-list question.
+- `grocy-shopping-list-no-aggregation.md` — the summing bug, quantified per product.
+- `grocy-library-imported-to-pi.md` — the library is LIVE; seeding is DONE, do not
+  re-run the importer thinking it is pending.
+- `grocy-servings-house-default.md` — mains are 6 servings (dinner + leftovers).
+- `grocy-api-write-endpoints.md` — verified endpoints, and the rule that probes must
+  never touch the real shopping list.
+- `choreops-full-reset-procedure.md` — **STOP HA before any `.storage` edit**, or the
+  shutdown rewrite silently clobbers it.
+- `vpn-hides-the-whole-lan.md` — a VPN captures all of 192.168.1.0/24; every host
+  reads as down while the internet still works.
 
 For the light-mode work (§4b) specifically:
 
