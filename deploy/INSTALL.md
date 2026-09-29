@@ -168,6 +168,29 @@ native Grocy UI is never shown on the kitchen screen.
 > (`sudo apt install chromium-browser`, or `ln -s $(which chromium) /usr/bin/chromium-browser`)
 > or change the script's `ExecStart` to call `chromium`.
 
+4. **Overnight renderer restart (required — leak mitigation).** Install as the
+   kiosk's own user (`garrettdehart`), NOT root, so the restart runs as the
+   process owner:
+
+   ```
+   crontab -e
+   # 0 4 * * * /home/garrettdehart/kitchencom/deploy/kiosk/restart-kiosk-renderer.sh
+   ```
+
+> **Why this is not optional:** the chromium renderer leaks decoded-image memory
+> while the screensaver cycles. Observed 2026-09-29: 1239MB RSS after 3d12h
+> uptime, which put the renderer in permanent memory pressure — it evicted and
+> re-decoded images continuously, making the panel **blink 2-3 photos/second**
+> and write ~168MB/s to the SD card. It is a slow leak with a ~3.5-day fuse, so
+> a panel that is fine today will do this again within the week.
+>
+> The script is threshold-guarded (restarts only above `RSS_LIMIT_MB`, default
+> 700; a healthy renderer settles ~250-300MB), so it is a no-op on nights when
+> nothing leaked. It logs to `~/kiosk-renderer-restart.log`.
+>
+> Do **not** run it interactively over SSH expecting output: `pkill` takes down
+> the SSH session's process group with chromium. Read the log instead.
+
 ## Phase E — Mobile
 - Family installs HA Companion app, signs in on the home network.
 
