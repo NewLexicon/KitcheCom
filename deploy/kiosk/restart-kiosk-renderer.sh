@@ -53,6 +53,11 @@ if [ "$peak" -lt "$RSS_LIMIT_MB" ]; then
 fi
 
 log "renderer peak ${peak}MB >= ${RSS_LIMIT_MB}MB; restarting kiosk chromium"
+# ⚠ Kill the MAIN process, never only the renderers. The supervisor loop in
+# start-kiosk-wayland.sh respawns only when the MAIN chromium exits, so a
+# tempting `pkill -f "chromium.*type=renderer"` leaves the main process alive
+# with ZERO renderers — the panel goes blank and nothing brings it back
+# (learned the hard way 2026-09-10). This pattern matches the main process.
 pkill -f '/usr/lib/chromium/chromium'
 
 # Confirm the supervisor actually brought it back, so a failed respawn shows up
