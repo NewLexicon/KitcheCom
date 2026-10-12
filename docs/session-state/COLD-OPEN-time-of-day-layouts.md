@@ -1,11 +1,12 @@
 # COLD OPEN — `feat/time-of-day-layouts`
 
-**Refreshed:** 2026-09-24 — two NON-panel work items landed on this branch since
-the last refresh (ChoreOps auto-approve on the Pi, and a Grocy shopping-list tool);
-see §3b. The Pi again could not be reached from the office network (§2).
+**Refreshed:** 2026-10-12 — a THIRD piece of work is now scoped on this branch:
+the **Morning layout rework** (§4d), designed and committed, not implemented.
 **Feature is DEPLOYED and running on the Pi.** One visual check remains (§4a) and
 it needs a human at the physical panel — it cannot be closed over SSH.
-**A second, unstarted piece of work now lives on this branch: light mode (§4b).**
+**Light mode (§4b) has PARTLY landed** — the `--kc-*` extraction is deployed, so
+the repo `kitchen.yaml` now carries 80 theme vars (this corrects the §4b framing
+of it as "NOT started"; see §4b's note).
 **The branch is now pushed; that long-standing warning is retired.**
 
 > Cut from `feat/choreops-chores` (base `189fbc9`), NOT from main.
@@ -67,6 +68,10 @@ before every commit.
 **Stable PREFIX** — immutable, will not move:
 
 ```
+8a1a524 docs(kiosk): warn against killing only the renderers
+749e7f9 fix(kiosk): restart the leaking chromium renderer overnight
+59a9402 docs(cold-open): fold 68431f1 into the frozen prefix
+9531c61 docs(cold-open): fold voice/grocy commits in, add the off-panel work
 68431f1 feat(grocy): week shopping list that sums shared ingredients
 f0d69c8 docs(voice): record the failed 2.4GHz SSID migration and two diagnostic traps
 f940509 docs(voice): record Wyoming registration + the "Failed to connect" false alarm
@@ -103,8 +108,9 @@ restarts precisely the loop this note exists to stop.
 
 ## 2. Empirical state
 
-**Local (tod-autonav tests + typecheck RE-VERIFIED 2026-09-24; the rest 2026-09-08,
-still true — no panel code changed after):**
+**Local (tod-autonav 14 + typecheck, and screensaver 109, ALL RE-VERIFIED
+2026-10-12; no panel code has changed since — the morning rework of §4d is
+design-only):**
 
 ```bash
 cd custom_cards/tod-autonav-card && npm test        # 14 passed (12 decision + 2 guard)
@@ -269,7 +275,7 @@ not the live API shapes. The first real run is the actual test — see §4c.
 
 ## 4. The next move
 
-Three open items, and **which one you can even attempt depends on the network you
+Four open items, and **which one you can even attempt depends on the network you
 are on — check this FIRST:**
 
 ```bash
@@ -282,6 +288,10 @@ route -n get default | grep gateway     # 192.168.1.1 = home; 10.x = office/VPN
   and Tailscale (verified twice, 2026-09-21 and 2026-09-24). Do **§4b**, which is
   pure local repo work. Do not spend time diagnosing the Pi; see §2.
 - **§4a** needs a human physically at the panel and cannot be closed over SSH.
+- **§4d (morning layout rework) is the live thread** — it is where the last
+  session stopped mid-conversation. It is blocked on **two user answers**, not on
+  the network (see §4d). If Garrett is present, ask those two questions first;
+  they take seconds and they unblock the plan. Writing YAML needs home network.
 
 ⚠️ **Tailscale does not stay up.** It was started on 2026-09-21 and was found
 `stopped` again on 2026-09-24. Starting it needs the existing flags preserved
@@ -315,6 +325,46 @@ never the live API shapes. Likely suspects: field names on `meal_plan` rows, or
 *choosing* the meals, or in *getting the list right*? Choosing → a panel planning
 view. List → this tool is already the answer. Do not build either without asking;
 Garrett has not answered it yet.
+
+---
+
+## 4d. Morning layout rework — DESIGNED, not implemented (2026-10-12)
+
+**Read first (absolute path):**
+`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/specs/2026-10-12-morning-layout-rework-design.md`
+
+Spec committed as `1bd7db2`. **No code written, no YAML touched.** Brainstorming
+reached the design-approved stage; the next step in the
+`superpowers:brainstorming` checklist is the **user spec review**, then
+`writing-plans`. **Hard gate: no implementation until the user approves.**
+
+**What was decided.** Morning goes from 3 columns to 2 stacked bands: a
+full-width chore band on top (one kid per column, each with a new header row —
+**name left, points right, both large**), and a support band beneath for
+calendar/weather/reminders. **The existing block chore tiles are KEPT as-is** —
+the user explicitly chose the current 104px tap-to-claim tiles over the slim
+list rows that were mocked up. The 32px `☀ Rowan — Morning` banners are replaced
+by the new headers.
+
+**Two decisions the user has NOT answered — do not guess:**
+
+1. **Which points number** — current balance (what they can spend; recommended)
+   vs `point_stat_points_earned_all_time` (what Afternoon shows).
+2. **Where Perspective goes** — drop from Morning, fourth card in the support
+   band, or tucked under Reminders.
+
+**Three traps recorded in the spec, repeated here because they bite:**
+
+- **`claim_button_eid` is the only working claim path.** The `claim_chore`
+  *service* rejects panel taps in kiosk mode. Do not "simplify" the tap action.
+- **The Sep 10 snapshot is stale for colors.** It has zero `--kc-` vars; the live
+  Pi file has them. Use the snapshot for layout/structure, re-read live for color.
+- **The two invisible cards must survive the rework.** `screensaver-card` feeds
+  the activity bridge behind `timer.kitchen_nav_defer`; `tod-autonav-card` does
+  the hour-based view switch. They render nothing and look droppable. They are not.
+
+**Needs the home network to deploy** (`nc -z -G 6 192.168.1.234 22`) and a human
+at the panel to judge tile fit at half-width.
 
 ---
 
@@ -352,7 +402,29 @@ three back to unset, which is equally correct (§5).
 
 ---
 
-## 4b. Light mode — scoped, NOT started
+## 4b. Light mode — PARTLY LANDED (this heading was stale)
+
+> ⚠️ **Corrected 2026-10-12.** This section used to say "scoped, NOT started."
+> That is wrong and was wrong before this session. Verify, don't trust the prose:
+>
+> ```bash
+> git log --oneline --all | grep -iE "theme|kc-"   # design, 10-task plan, extractions
+> git merge-base --is-ancestor fc95d8c HEAD && echo on-branch
+> grep -c "var(--kc-" homeassistant/dashboards/kitchen.yaml   # 80
+> ls homeassistant/themes/        # kitchencom.yaml + kitchencom-light.yaml
+> cat homeassistant/packages/theme.yaml   # input_select.kitchen_theme + automation
+> ```
+>
+> What exists: `59afbbb` design, `6f65cbc` 10-task plan, `044d008` 14 vars at dark
+> values, `232bd77`/`249ec9b` accent extractions, `fc95d8c` Mist light theme +
+> switch. What that means: **Phase 1 (extract) is largely done and the switch
+> exists.** For which of the 10 tasks remain, read
+> `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/plans/2026-09-10-light-mode.md`
+> rather than re-deriving scope. The four-decisions table below is still
+> accurate and still locked.
+>
+> The old text follows because its *findings* (the 54 literals, the pastel
+> hand-pick warning, the trough inversion) are still the useful part.
 
 **Read first (absolute path):**
 `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/session-state/2026-09-09-light-mode-step1-findings.md`
@@ -504,6 +576,17 @@ For the off-panel work on this branch (§3b):
   shutdown rewrite silently clobbers it.
 - `vpn-hides-the-whole-lan.md` — a VPN captures all of 192.168.1.0/24; every host
   reads as down while the internet still works.
+
+For the morning layout rework (§4d) specifically — all four are load-bearing:
+
+- `choreops-claim-service-vs-button.md` — **the one that will break the rework.**
+  The tiles' `claim_button_eid` tap is the only path that works from the kiosk.
+- `chore-cards-strip-kid-name.md` — the tiles strip the kid's name citing a column
+  header. The rework replaces that header, so the regex comment needs re-reading
+  in its new context (the new points header still names the kid, so it holds).
+- `kitchen-yaml-contested-file.md` — rebuild from the LIVE file, back it up first.
+- `markdown-card-strips-inline-css.md` — the new header must be a
+  `custom:button-card`; there is no card-mod on the Pi.
 
 For the light-mode work (§4b) specifically:
 
