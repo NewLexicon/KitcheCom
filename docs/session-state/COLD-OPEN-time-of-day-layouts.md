@@ -68,6 +68,7 @@ before every commit.
 **Stable PREFIX** — immutable, will not move:
 
 ```
+1bd7db2 design: morning layout rework — kid headers over block chore tiles
 8a1a524 docs(kiosk): warn against killing only the renderers
 749e7f9 fix(kiosk): restart the leaking chromium renderer overnight
 59a9402 docs(cold-open): fold 68431f1 into the frozen prefix
@@ -101,8 +102,15 @@ SHA, and stamping it is itself a commit, so the loop never converges. Ask
 
 Everything above the tip is frozen: as each close-out commit becomes history, it
 gets folded into the prefix and the tip stays delegated. `70ddfdb` was folded in
-on 2026-09-09 this way. **Do not "helpfully" stamp the current tip** — that
-restarts precisely the loop this note exists to stop.
+on 2026-09-09 this way, and `1bd7db2` on 2026-10-12. **Do not "helpfully" stamp
+the current tip** — that restarts precisely the loop this note exists to stop.
+
+**2026-10-12 close-out, stated plainly so nobody re-stamps it:** the session's
+own close-out commits (the cold-open update and this fix-up) are deliberately
+NOT in the prefix above. They cannot be — a commit cannot name its own SHA, and
+stamping it is itself another commit. The prefix is frozen through `1bd7db2`;
+everything after it lives in `git log --oneline`, which this document already
+calls authoritative. Same for the ahead-count in §1: run the command.
 
 ---
 
