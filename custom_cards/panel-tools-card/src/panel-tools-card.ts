@@ -202,12 +202,142 @@ export class PanelToolsCard extends LitElement {
     this._busy = false;
   }
 
-  private async _openPhotos(): Promise<void> {
-    this._mode = "photos";
+  private async _shell(service: string, data: Record<string, unknown>): Promise<ShellResult> {
+    try {
+      const res = await this.hass?.callService("shell_command", service, data, undefined, false, true);
+      return parseShellResponse(res);
+    } catch (e) {
+      return { ok: false, error: `Home Assistant refused: ${(e as Error)?.message ?? e}` };
+    }
   }
 
-  private _renderPhotos(): TemplateResult | typeof nothing {
-    return nothing;
+  private async _openPhotos(): Promise<void> {
+    const tab = this._mode === "photos" ? this._tab : "rotation";
+    const page = this._mode === "photos" ? this._page : 0;
+    this._mode = "photos";
+    this._clearPhotos();
+    this._tab = tab;
+    this._page = page;
+    const hass = this.hass;
+    if (!hass) return;
+    const gen = this._loadGen;
+    this._busy = true;
+    // Same walk as screensaver-card (shared media-browse), so the counts agree.
+    const [leaves, listing] = await Promise.all([
+      collectPlayable(
+        (id) => hass.callWS({ type: "media_source/browse_media", media_content_id: id }),
+        buildBrowseContentId(this._mediaPath),
+        () => gen !== this._loadGen,
+      ),
+      this._shell("kitchen_photo_list", {}),
+    ]);
+    if (gen !== this._loadGen) return;
+    const shown = leaves.filter((l) => isSupportedName(l.contentId));
+    this._tiles = shown.map((l) => ({ ...l, name: topLevelFilename(l.contentId, this._mediaPath) }));
+    if (listing.ok) {
+      this._hidden = listing.hidden ?? [];
+      const rotationNames = leaves
+        .map((l) => topLevelFilename(l.contentId, this._mediaPath))
+        .filter((n): n is string => n !== null);
+      this._skipped = findSkipped(listing.photos ?? [], rotationNames);
+    } else {
+      this._error = listing.error;
+    }
+    this._busy = false;
+    void this._resolvePage();
+  }
+
+  private _list(): Tile[] {
+    if (this._tab === "rotation") return this._tiles;
+    const root = buildBrowseContentId(HIDDEN_PATH);
+    return this._hidden.map((n): Tile => ({ contentId: `${root}/${n}`, kind: isVideoName(n) ? "video" : "image", name: n }));
+  }
+
+  /** Resolve URLs for the visible page only. Called after every page/tab change with
+   *  _urls already emptied, so off-screen images are released (renderer memory). */
+  private async _resolvePage(): Promise<void> {
+    const gen = this._loadGen;
+    const { items } = pageSlice(this._list(), this._page, PAGE_SIZE);
+    for (const t of items) {
+      if (t.kind !== "image" || this._urls[t.contentId]) continue;
+      try {
+        const res = await this.hass?.callWS({ type: "media_source/resolve_media", media_content_id: t.contentId });
+        if (gen !== this._loadGen) return;
+        if (res?.url) this._urls = { ...this._urls, [t.contentId]: res.url };
+      } catch {
+        // Tile stays a placeholder.
+      }
+    }
+  }
+
+  private _goto(tab: "rotation" | "hidden", page: number): void {
+    this._loadGen++;
+    this._tab = tab;
+    this._page = page;
+    this._urls = {};
+    this._selected = null;
+    void this._resolvePage();
+  }
+
+  private async _move(service: "kitchen_photo_hide" | "kitchen_photo_unhide", name: string): Promise<void> {
+    this._busy = true;
+    const r = await this._shell(service, { name_hex: hexEncodeUtf8(name) });
+    this._busy = false;
+    this._selected = null;
+    if (!r.ok) {
+      this._error = r.error;
+      return;
+    }
+    await this._openPhotos();
+  }
+
+  private _renderPhotos(): TemplateResult {
+    const list = this._list();
+    const { items, page, pages } = pageSlice(list, this._page, PAGE_SIZE);
+    const isHidden = this._tab === "hidden";
+    return html`
+      <div class="photos" role="dialog" aria-label="Photos">
+        <header>
+          <h2>Photos</h2>
+          <div class="seg">
+            <button class=${!isHidden ? "on" : ""} @click=${() => this._goto("rotation", 0)}>In rotation (${this._tiles.length})</button>
+            <button class=${isHidden ? "on" : ""} @click=${() => this._goto("hidden", 0)}>Hidden (${this._hidden.length})</button>
+          </div>
+          <button class="x" @click=${() => this._close()} aria-label="Close">✕</button>
+        </header>
+        ${this._skipped.length && !isHidden ? html`
+          <p class="note">Not shown on the panel (${this._skipped.length}): ${this._skipped.join(", ")}.
+            HEIC and other unsupported formats need converting to JPEG.</p>` : nothing}
+        ${this._error ? html`<p class="error">${this._error}</p>` : nothing}
+        ${this._busy && !list.length ? html`<p class="note">Loading…</p>` : nothing}
+        <div class="grid">
+          ${items.map((t) => {
+            const url = this._urls[t.contentId];
+            const selected = this._selected === t.contentId;
+            return html`
+              <div class="tile ${selected ? "sel" : ""}" @click=${() => { this._selected = selected ? null : t.contentId; }}>
+                ${t.kind === "video"
+                  ? html`<div class="ph">▶<small>${t.name ?? "video"}</small></div>`
+                  : url
+                    ? html`<img src=${url} loading="lazy" decoding="async" alt="" />`
+                    : html`<div class="ph">…</div>`}
+                ${selected
+                  ? t.name === null
+                    ? html`<div class="act"><small>In a subfolder — move it off-panel</small></div>`
+                    : html`<div class="act"><button ?disabled=${this._busy}
+                        @click=${(e: Event) => { e.stopPropagation(); void this._move(isHidden ? "kitchen_photo_unhide" : "kitchen_photo_hide", t.name!); }}>
+                        ${isHidden ? "Show again" : "Hide"}</button></div>`
+                  : nothing}
+              </div>`;
+          })}
+        </div>
+        ${pages > 1 ? html`
+          <footer class="stepper">
+            <button ?disabled=${page === 0} @click=${() => this._goto(this._tab, page - 1)}>‹</button>
+            <span>${page + 1} / ${pages}</span>
+            <button ?disabled=${page >= pages - 1} @click=${() => this._goto(this._tab, page + 1)}>›</button>
+          </footer>` : nothing}
+      </div>`;
   }
 
   // Phase B (Task 16) adds the wake layer here.
@@ -262,6 +392,26 @@ export class PanelToolsCard extends LitElement {
     .seg button.on { background: var(--kc-hero-fg, #4fc3f7); color: #000; }
     .stepper span { min-width: 90px; text-align: center; font-size: 20px; }
     .error { color: var(--kc-error, #ef5350); }
+    .photos { position: fixed; inset: 0; z-index: 9001; overflow-y: auto; padding: 16px 24px; box-sizing: border-box;
+      background: var(--kc-card-bg, var(--card-background-color, #1c1c1c));
+      color: var(--kc-card-fg, var(--primary-text-color, #fff)); }
+    .photos header { display: flex; align-items: center; gap: 16px; }
+    .photos h2 { margin: 0; font-size: 26px; flex: 0 0 auto; }
+    .photos header .seg { flex: 1; }
+    .note { opacity: 0.8; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px 0; }
+    .tile { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden;
+      background: var(--kc-tools-key, rgba(127, 127, 127, 0.2)); }
+    .tile.sel { outline: 3px solid var(--kc-hero-fg, #4fc3f7); }
+    .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ph { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; font-size: 32px; gap: 6px; }
+    .ph small { font-size: 12px; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .act { position: absolute; inset: auto 0 0 0; padding: 8px; display: flex; justify-content: center;
+      background: rgba(0, 0, 0, 0.6); color: #fff; }
+    .act button { height: 44px; padding: 0 20px; border-radius: 10px; border: none; font-size: 17px;
+      background: var(--kc-hero-fg, #4fc3f7); color: #000; }
+    footer.stepper { justify-content: center; }
   `;
 }
 
