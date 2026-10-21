@@ -1,0 +1,16 @@
+# Photos overlay transport — spec docs/superpowers/specs/2026-10-21-sleep-settings-photos-design.md §5
+#
+# The panel's photos overlay hides/unhides screensaver photos by MOVING files
+# between /config/media/photos and the SIBLING /config/media/photos-hidden (not a
+# subfolder: screensaver-card recurses, so photos/hidden/ would stay in rotation).
+#
+# name_hex is the UTF-8 filename as lowercase hex. With a template, HA shlex-splits
+# the rendered command and runs it WITHOUT a shell, so hex — nothing to split or
+# quote — is the only form every real filename survives. photo_move.py rejects
+# anything that is not exactly one lowercase-hex argument.
+#
+# The card calls these with return_response and reads stdout (one JSON object).
+shell_command:
+  kitchen_photo_list: "python3 /config/kitchencom/photo_move.py list"
+  kitchen_photo_hide: "python3 /config/kitchencom/photo_move.py hide {{ name_hex }}"
+  kitchen_photo_unhide: "python3 /config/kitchencom/photo_move.py unhide {{ name_hex }}"
