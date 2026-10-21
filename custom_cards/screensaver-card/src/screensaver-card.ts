@@ -1,5 +1,16 @@
 import { LitElement, html, css, nothing, type PropertyValues } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
+import {
+  SUPPORTED_EXTENSIONS, stripMediaUrlQuery, buildBrowseContentId, selectPlayableChildren,
+  selectSubdirectories, collectPlayable, MAX_RECURSION_DEPTH, MAX_BROWSE_FOLDERS,
+  type BrowseChild, type BrowseLeaf,
+} from "./media-browse";
+
+// Re-exported so existing tests and importers keep working unchanged.
+export {
+  SUPPORTED_EXTENSIONS, stripMediaUrlQuery, buildBrowseContentId, selectPlayableChildren,
+  selectSubdirectories, collectPlayable, MAX_RECURSION_DEPTH, MAX_BROWSE_FOLDERS,
+};
 
 // Pure idle-decision logic — the card's one piece of real, testable logic.
 // Reads input_boolean.kitchen_idle from hass (spec §5 reactive-card model, M-9).
@@ -14,84 +25,26 @@ export function isScreensaverActive(hass?: HassLike, idleEntity: string = IDLE_E
   return hass?.states?.[idleEntity]?.state === "on";
 }
 
-// Supported media extensions. Pi-5 codec note (M-8): HEVC/H.265 hardware decode is
-// limited on Pi 5 — validate video formats on real hardware. Conservative default set.
-const SUPPORTED = [".jpg", ".jpeg", ".png", ".webp", ".mp4", ".webm"];
-
 // Accepts bare filenames / basenames (e.g. "photo.jpg") or resolved media_source URLs
 // with a "?query"/"#fragment" suffix. Resolved: stripMediaUrlQuery strips query/fragment
 // before matching, so endsWith(ext) no longer silently drops e.g. "photo.jpg?token=…".
 export function selectDisplayMode(files: string[] | undefined | null): "media" | "fallback" {
   if (!files || files.length === 0) return "fallback";
   const usable = files.filter((f) =>
-    SUPPORTED.some((ext) => stripMediaUrlQuery(f).toLowerCase().endsWith(ext))
+    SUPPORTED_EXTENSIONS.some((ext) => stripMediaUrlQuery(f).toLowerCase().endsWith(ext))
   );
   return usable.length > 0 ? "media" : "fallback";
 }
 
-// Strip ?query and #fragment from a media URL/path so extension-matching works
-// on resolved media_source URLs (e.g. "photo.jpg?token=…"). Pure. (Closes the
-// deferral noted on selectDisplayMode below.)
-export function stripMediaUrlQuery(url: string): string {
-  const cut = url.search(/[?#]/);
-  return cut === -1 ? url : url.slice(0, cut);
-}
-
-// Build the media_source content id for HA's browse_media WS from a folder path.
-// Source contract: "local" is the source_dir_id; format media-source://media_source/local/<dir>.
-export function buildBrowseContentId(mediaPath: string): string {
-  const dir = (mediaPath || "media").replace(/^\/+|\/+$/g, "") || "media";
-  return `media-source://media_source/local/${dir}`;
-}
-
 // A playable media leaf the loop cycles. contentId feeds resolve_media; url/resolvedAt
 // are the lazy-resolve cache, stamped by the Lit glue loop (NOT here). See spec §2.
-export type MediaItem = {
-  contentId: string;
-  kind: "image" | "video";
+export type MediaItem = BrowseLeaf & {
   url?: string;
   resolvedAt?: number;
   /** Set lazily the first time the image decodes; undefined until then.
    *  Videos are never paired, so this stays undefined for them. */
   orientation?: Orientation;
 };
-
-type BrowseChild = {
-  media_content_id?: string;
-  media_class?: string;
-  can_play?: boolean;
-  can_expand?: boolean;
-};
-
-// Filter an HA browse_media tree to ordered playable image/video leaves (spec M-13).
-// Predicate (browse_media.py:106-120): can_expand === false && can_play === true.
-export function selectPlayableChildren(browseTree?: { children?: BrowseChild[] }): MediaItem[] {
-  const children = browseTree?.children ?? [];
-  const items: MediaItem[] = [];
-  for (const c of children) {
-    if (c.can_expand === false && c.can_play === true && c.media_content_id) {
-      if (c.media_class === "image" || c.media_class === "video") {
-        items.push({ contentId: c.media_content_id, kind: c.media_class });
-      }
-    }
-  }
-  return items;
-}
-
-// Parallel predicate to selectPlayableChildren (NOT a mirror): returns the
-// media_content_id strings of expandable subdirectories to recurse into. Dirs carry
-// no playable kind, hence string[] not MediaItem[]. Pure. (HA browse_media is lazy/
-// one-level — local_source.py:258-266 — so the glue browses each returned id.)
-export function selectSubdirectories(browseTree?: { children?: BrowseChild[] }): string[] {
-  const children = browseTree?.children ?? [];
-  const dirs: string[] = [];
-  for (const c of children) {
-    if (c.can_expand === true && c.media_content_id) {
-      dirs.push(c.media_content_id);
-    }
-  }
-  return dirs;
-}
 
 // Next loop index with wrap-around. count 0 => 0 (caller shows fallback instead).
 // Out-of-range current resets to 0 (defensive: items list may have shrunk).
@@ -366,12 +319,6 @@ type HassWS = HassLike & {
 // not only at itself.
 export const ACTIVITY_EVENTS = ["pointerdown", "pointermove", "keydown", "wheel"] as const;
 
-// Bounded recursive browse limits (I-1). HA browse_media is lazy/one-level, so the
-// glue walks subdirectories itself. Cap depth + total folder calls per activation so
-// a deep/wide media tree can't issue an unbounded number of WS calls.
-export const MAX_RECURSION_DEPTH = 3;     // root + 3 subfolder levels
-export const MAX_BROWSE_FOLDERS = 50;     // hard cap on browse_media calls per activation
-
 export class ScreensaverCard extends LitElement {
   static properties = {
     hass: { attribute: false },
@@ -470,30 +417,11 @@ export class ScreensaverCard extends LitElement {
   // out returning whatever was collected so far (the authoritative guard in _startLoop
   // discards it). Per-folder errors skip that folder rather than aborting the walk.
   private async _collectMedia(rootContentId: string, gen: number): Promise<MediaItem[]> {
-    const queue: { contentId: string; depth: number }[] = [{ contentId: rootContentId, depth: 0 }];
-    let foldersBrowsed = 0;
-    const items: MediaItem[] = [];
-    while (queue.length > 0 && foldersBrowsed < MAX_BROWSE_FOLDERS) {
-      const { contentId, depth } = queue.shift()!;
-      let tree: { children?: BrowseChild[] } | undefined;
-      try {
-        tree = await this.hass?.callWS?.({
-          type: "media_source/browse_media",
-          media_content_id: contentId,
-        });
-      } catch {
-        continue; // skip this folder on error, keep walking
-      }
-      foldersBrowsed++;
-      if (gen !== this._gen) return items;   // stale: stopped/restarted during browse
-      items.push(...selectPlayableChildren(tree));
-      if (depth < MAX_RECURSION_DEPTH) {
-        for (const id of selectSubdirectories(tree)) {
-          queue.push({ contentId: id, depth: depth + 1 });
-        }
-      }
-    }
-    return items;
+    return collectPlayable(
+      async (id) => this.hass?.callWS?.({ type: "media_source/browse_media", media_content_id: id }),
+      rootContentId,
+      () => gen !== this._gen,
+    );
   }
 
   private async _startLoop(): Promise<void> {
