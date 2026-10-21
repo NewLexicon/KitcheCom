@@ -403,6 +403,14 @@ BACK after `wlopm --on`? If not, Sleep Mode can't ship as designed. Also run
 `ssh kitchencom 'sudo docker exec homeassistant ls /config/media'` to settle photos/ vs media/.
 (2) user spec review (brainstorming hard gate), (3) `superpowers:writing-plans`.
 
+**Spec APPROVED 2026-10-21 after three review passes. Build plan written:**
+`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/plans/2026-10-21-sleep-settings-photos.md`
+20 tasks. **Phase A (Tasks 1–12: photos overlay + PIN'd drawer) ships whatever the touch test
+says**; Task 13 is the touch-test gate; Phase B (14–20) is Sleep Mode. Tasks 1–11 are
+laptop-only — start there. The plan's "Corrections to the spec" section has two items
+**awaiting Garrett**: (4) woken also clears when the screensaver re-engages; (5) theme
+`initial: Dark` resets the drawer's theme choice on every HA restart.
+
 **At-home session checklist (all four need Garrett on the home network):**
 1. **Disconnect the GSU VPN first.** It routes all of 192.168.1.0/24 into the tunnel, so the
    Pi reads as down even on home wifi. Then `nc -z -G 6 192.168.1.234 22`.
