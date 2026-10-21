@@ -394,8 +394,13 @@ times, theme, screensaver delay) and 🖼 (full-screen photos overlay: see + hid
 A review pass was folded in; its "editable start times change tod-autonav" claim was
 checked and is WRONG — the helpers already exist and the card only reads the sensor.
 
-**Next, in order:** (1) the §7 panel test in the spec — is the ViewSonic touch device
-still listed by `libinput list-devices` with the output off via `wlopm --off '*'`?
+Two review passes folded in (`927b774`, then the commit after it in `git log`): the screen
+fails ON (ExecStopPost + 5-min HA-unreachable rule), filenames travel hex-encoded, the wake
+layer owns the tap above the screensaver.
+
+**Next, in order:** (1) the §7 panel test in the spec, **including step 6** — does touch come
+BACK after `wlopm --on`? If not, Sleep Mode can't ship as designed. Also run
+`ssh kitchencom 'sudo docker exec homeassistant ls /config/media'` to settle photos/ vs media/.
 (2) user spec review (brainstorming hard gate), (3) `superpowers:writing-plans`.
 
 **Traps:** hidden photos go to sibling `/config/media/photos-hidden/`, NOT a subfolder —
