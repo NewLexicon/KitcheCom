@@ -47,6 +47,13 @@ rm -rf "$DEV_CONFIG/packages" "$DEV_CONFIG/themes"
 cp -R "$REPO_ROOT/homeassistant/packages" "$DEV_CONFIG/packages"
 cp -R "$REPO_ROOT/homeassistant/themes"   "$DEV_CONFIG/themes"
 
+# Photos overlay (2026-10-21): shell_command runs /config/kitchencom/photo_move.py,
+# and the script works on /config/media/photos and the SIBLING photos-hidden.
+rm -rf "$DEV_CONFIG/kitchencom"
+cp -R "$REPO_ROOT/homeassistant/kitchencom" "$DEV_CONFIG/kitchencom"
+rm -f "$DEV_CONFIG/kitchencom/test_photo_move.py"
+mkdir -p "$DEV_CONFIG/media/photos" "$DEV_CONFIG/media/photos-hidden"
+
 # Packages that reference secrets we don't provide would abort HA startup. Only
 # the Grocy package is under test here; drop the rest from the dev config.
 find "$DEV_CONFIG/packages" -type f ! -name 'grocy_recipes.yaml' -delete
