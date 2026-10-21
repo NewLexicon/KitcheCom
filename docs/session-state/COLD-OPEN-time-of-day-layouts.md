@@ -68,6 +68,9 @@ before every commit.
 **Stable PREFIX** — immutable, will not move:
 
 ```
+927b774 design: sleep mode, PIN'd settings drawer, photos overlay
+41d16c1 docs(cold-open): cold-start fix-ups — fold 1bd7db2, name the stamping trap
+cbc132a docs(cold-open): add the morning rework, correct the stale light-mode heading
 1bd7db2 design: morning layout rework — kid headers over block chore tiles
 8a1a524 docs(kiosk): warn against killing only the renderers
 749e7f9 fix(kiosk): restart the leaking chromium renderer overnight
@@ -102,13 +105,13 @@ SHA, and stamping it is itself a commit, so the loop never converges. Ask
 
 Everything above the tip is frozen: as each close-out commit becomes history, it
 gets folded into the prefix and the tip stays delegated. `70ddfdb` was folded in
-on 2026-09-09 this way, and `1bd7db2` on 2026-10-12. **Do not "helpfully" stamp
+on 2026-09-09 this way, `1bd7db2` on 2026-10-12, and `cbc132a`..`927b774` on 2026-10-21. **Do not "helpfully" stamp
 the current tip** — that restarts precisely the loop this note exists to stop.
 
 **2026-10-12 close-out, stated plainly so nobody re-stamps it:** the session's
 own close-out commits (the cold-open update and this fix-up) are deliberately
 NOT in the prefix above. They cannot be — a commit cannot name its own SHA, and
-stamping it is itself another commit. The prefix is frozen through `1bd7db2`;
+stamping it is itself another commit. The prefix is frozen through `1bd7db2` (2026-10-21: now through `927b774`);
 everything after it lives in `git log --oneline`, which this document already
 calls authoritative. Same for the ahead-count in §1: run the command.
 
@@ -300,6 +303,9 @@ route -n get default | grep gateway     # 192.168.1.1 = home; 10.x = office/VPN
   session stopped mid-conversation. It is blocked on **two user answers**, not on
   the network (see §4d). If Garrett is present, ask those two questions first;
   they take seconds and they unblock the plan. Writing YAML needs home network.
+- **§4e (sleep / settings drawer / photos overlay)** — designed 2026-10-21, spec
+  committed. Blocked on a **2-minute touch-while-off test at the panel** (needs
+  home network + Garrett at the panel), then the user spec review, then a plan.
 
 ⚠️ **Tailscale does not stay up.** It was started on 2026-09-21 and was found
 `stopped` again on 2026-09-24. Starting it needs the existing flags preserved
@@ -373,6 +379,30 @@ by the new headers.
 
 **Needs the home network to deploy** (`nc -z -G 6 192.168.1.234 22`) and a human
 at the panel to judge tile fit at half-width.
+
+---
+
+## 4e. Sleep Mode, PIN'd Settings drawer, Photos overlay — DESIGNED (2026-10-21)
+
+**Read first (absolute path):**
+`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/specs/2026-10-21-sleep-settings-photos-design.md`
+
+Spec committed as `927b774`. **No code, no YAML.** Borrowed from a commercial family
+display Garrett saw elsewhere (photo was a HEIC in ~/Downloads — not kept). One new
+bundled `panel-tools-card` with ⚙ (PIN → slide-over drawer: sleep window, view start
+times, theme, screensaver delay) and 🖼 (full-screen photos overlay: see + hide).
+A review pass was folded in; its "editable start times change tod-autonav" claim was
+checked and is WRONG — the helpers already exist and the card only reads the sensor.
+
+**Next, in order:** (1) the §7 panel test in the spec — is the ViewSonic touch device
+still listed by `libinput list-devices` with the output off via `wlopm --off '*'`?
+(2) user spec review (brainstorming hard gate), (3) `superpowers:writing-plans`.
+
+**Traps:** hidden photos go to sibling `/config/media/photos-hidden/`, NOT a subfolder —
+the screensaver recurses (`screensaver-card.ts:85`). The wake tap must land on a
+transparent catch layer, or waking on Morning claims a chore. A reboot during sleep
+re-lights the screen (`start-kiosk-wayland.sh:31`); the Pi service must reconcile on start.
+Photos path conflict between memory notes (`photos/` vs `media/`) — confirm on the Pi.
 
 ---
 
