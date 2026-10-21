@@ -93,6 +93,8 @@ def run(argv, photos_dir, hidden_dir):
         return {"ok": False, "error": str(e)}
     except OSError as e:
         return {"ok": False, "error": f"file error: {e.strerror}"}
+    except Exception as e:  # noqa: BLE001 — the contract is one JSON object, always
+        return {"ok": False, "error": f"unexpected error: {e}"}
 
 
 def main(argv):
@@ -101,7 +103,9 @@ def main(argv):
         os.environ.get("KC_PHOTOS_DIR", DEFAULT_PHOTOS),
         os.environ.get("KC_HIDDEN_DIR", DEFAULT_HIDDEN),
     )
-    print(json.dumps(out, ensure_ascii=False))
+    # ensure_ascii: a non-UTF-8 name on disk comes back from listdir surrogate-escaped,
+    # and printing that raw to a strict-UTF-8 stdout would crash instead of answering.
+    print(json.dumps(out, ensure_ascii=True))
     return 0
 
 

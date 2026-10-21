@@ -54,9 +54,14 @@ cp -R "$REPO_ROOT/homeassistant/kitchencom" "$DEV_CONFIG/kitchencom"
 rm -f "$DEV_CONFIG/kitchencom/test_photo_move.py"
 mkdir -p "$DEV_CONFIG/media/photos" "$DEV_CONFIG/media/photos-hidden"
 
-# Packages that reference secrets we don't provide would abort HA startup. Only
-# the Grocy package is under test here; drop the rest from the dev config.
-find "$DEV_CONFIG/packages" -type f ! -name 'grocy_recipes.yaml' -delete
+# Keep only the packages under test. Others (calendar, quotes) need integrations or
+# data the rig doesn't have. Of the kept ones, only grocy_recipes.yaml uses !secret,
+# and dev-setup generates that secret below. 2026-10-21: photos/screensaver/theme/
+# time_of_day added for the panel-tools-card checks (plan Task 8); add sleep.yaml
+# here when Phase B lands.
+find "$DEV_CONFIG/packages" -type f \
+  ! -name 'grocy_recipes.yaml' ! -name 'photos.yaml' ! -name 'screensaver.yaml' \
+  ! -name 'theme.yaml' ! -name 'time_of_day.yaml' -delete
 find "$DEV_CONFIG/packages" -type f -name '.calendar-verify.py' -delete 2>/dev/null || true
 
 echo "==> Copying card modules into www/"
