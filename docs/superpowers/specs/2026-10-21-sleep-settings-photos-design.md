@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-21
 **Branch:** `feat/time-of-day-layouts`
-**Status:** design agreed in brainstorming + one review pass; **panel test (§7) gates the build**
+**Status:** design agreed in brainstorming + three review passes; ready for the build plan; **panel test (§7) gates the build**
 
 ---
 
@@ -88,11 +88,20 @@ HA runs in Docker and cannot drive the display, so a small Pi script owns `wlopm
     `StartLimitIntervalSec=600`). Without them, a service that crashes during sleep flickers
     the screen all night: crash → ExecStopPost on → restart → reconcile off → crash. With
     the limit, a broken service gives up and stays stopped, and ExecStopPost leaves the screen **on**.
+  - ⚠️ `StartLimitBurst` / `StartLimitIntervalSec` go in **`[Unit]`**, not `[Service]`. In the
+    wrong section systemd ignores them silently and the flicker loop comes back.
+  - **Once the limit is hit, Sleep Mode is off until a reboot or
+    `systemctl --user reset-failed <unit>`.** That's the right way to fail, but the panel gives
+    no sign of it. The install doc must say how to spot it (`systemctl --user status`) and
+    how to recover.
   - If HA has been unreachable (or auth fails) for **5 minutes** while the output is off,
     turn it on and keep it on until HA is back and says sleep.
   - Rule of thumb for every unclear case: **the screen comes on.**
 - **Fallback, only if §7 shows it's needed:** watch local touch input (libinput/evdev) and
-  turn the output on directly, still reporting the wake to HA.
+  turn the output on directly. Chromium never sees that tap, so the wake layer never runs, and
+  the script must do its job through the HA API: **set `input_boolean.kitchen_sleep_woken`
+  on** and **press `input_button.kitchen_activity`**. Otherwise the screen comes on but the
+  screensaver stays up and the sleep sensor turns it straight back off.
 
 ## 4. Settings drawer
 
@@ -188,6 +197,12 @@ touch controller — then nothing receives the tap.
 Run over SSH with Garrett at the panel to tap. Leave ~1 min in standby before step 2 — the
 monitor may take a moment to drop into standby and cut touch power.
 
+⚠️ **Make every test tap harmless.** During the test `kitchen_should_sleep` is off, so the wake
+layer is NOT there. A tap on the dark screen lands on whatever is underneath — on Morning, a
+chore tile. **Before step 1, turn `input_boolean.kitchen_idle` on** so the screensaver is
+definitely covering the dashboard (or run the test on a view with nothing tappable under the
+test spot).
+
 0. Baseline: `libinput list-devices` with the screen on — note the touch device's name.
 1. `wlopm --off '*'`, wait ~1 min
 2. `libinput list-devices` — is the touch device **still listed**?
@@ -205,8 +220,9 @@ Outcomes:
 - **6 fails → Sleep Mode cannot ship as designed, whatever 2–4 showed.** Reconsider (e.g.
   dimming instead of output-off, if the panel supports it).
 - 2–4 and 6 pass → design as written.
-- 2–3 pass, 4 fails → evdev fallback (§3).
-- 2 fails, 6 passes → no tap-to-wake; the panel wakes at sleep end only.
+- 2–3 pass, 4 fails → evdev fallback (§3), with the script making both wake service calls.
+- **2 or 3 fails**, 6 passes → no tap-to-wake; the panel wakes at sleep end only. (Listed but
+  silent is the same as gone.)
 
 ## 8. Out of scope
 
