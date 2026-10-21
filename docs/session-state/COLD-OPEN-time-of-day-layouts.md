@@ -403,6 +403,16 @@ BACK after `wlopm --on`? If not, Sleep Mode can't ship as designed. Also run
 `ssh kitchencom 'sudo docker exec homeassistant ls /config/media'` to settle photos/ vs media/.
 (2) user spec review (brainstorming hard gate), (3) `superpowers:writing-plans`.
 
+**At-home session checklist (all four need Garrett on the home network):**
+1. **Disconnect the GSU VPN first.** It routes all of 192.168.1.0/24 into the tunnel, so the
+   Pi reads as down even on home wifi. Then `nc -z -G 6 192.168.1.234 22`.
+2. Spec §7 touch test, steps 0–6 — watch `input_button.kitchen_activity` for step 4, and
+   step 6 (touch returns after `--on`) is make-or-break.
+3. `ssh kitchencom 'sudo docker exec homeassistant ls /config/media'` → then correct whichever
+   of `screensaver-photos-folder-and-formats.md` / `screensaver-media-mount-boundary.md` is stale.
+4. Whether the wake layer really stacks above the screensaver overlay — panel-only; can be
+   checked once a prototype layer exists.
+
 **Traps:** hidden photos go to sibling `/config/media/photos-hidden/`, NOT a subfolder —
 the screensaver recurses (`screensaver-card.ts:85`). The wake tap must land on a
 transparent catch layer, or waking on Morning claims a chore. A reboot during sleep

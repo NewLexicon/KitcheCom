@@ -84,6 +84,10 @@ HA runs in Docker and cannot drive the display, so a small Pi script owns `wlopm
   the screen is off, the panel must not stay dark until someone reboots it:
   - systemd unit has `Restart=always` **and** `ExecStopPost=wlopm --on '*'` — ExecStopPost
     runs however the service exits, crash included.
+  - **Plus `RestartSec=30` and a start limit** (`StartLimitBurst=5` in
+    `StartLimitIntervalSec=600`). Without them, a service that crashes during sleep flickers
+    the screen all night: crash → ExecStopPost on → restart → reconcile off → crash. With
+    the limit, a broken service gives up and stays stopped, and ExecStopPost leaves the screen **on**.
   - If HA has been unreachable (or auth fails) for **5 minutes** while the output is off,
     turn it on and keep it on until HA is back and says sleep.
   - Rule of thumb for every unclear case: **the screen comes on.**
@@ -144,6 +148,12 @@ Moving files needs something running inside the HA container:
   (`[0-9a-f]` only — nothing to split or quote); the script decodes it, then applies the
   bare-filename checks above. Every real filename works, including spaces, quotes and
   apostrophes ("Rowan's birthday.jpg"). On any rejection the overlay shows the error.
+- **Hex means UTF-8 bytes.** Card: `TextEncoder` → bytes → hex. Script:
+  `bytes.fromhex(arg).decode('utf-8')`. Hex-encoding JS char codes breaks on accents and emoji.
+- **Derive the filename from the media-source id exactly as `screensaver-card` does**, and
+  decode percent-encoding exactly once. If either side leaves it percent-encoded (or decodes
+  twice), the move fails on a perfectly valid file. Test with a filename containing a space
+  and an apostrophe.
 - Unhide on a name collision → add a suffix, never overwrite.
 - Operates on the **real container path** `/config/media/photos` (`configuration.yaml:14-17`:
   `media_dirs.local: /config/media`, `media_path: photos`), not the `media-source://` id.
