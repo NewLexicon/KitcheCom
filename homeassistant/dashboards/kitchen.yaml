@@ -53,6 +53,12 @@ views:
             shuffle: true
           - type: custom:tod-autonav-card
             view: morning
+          # ⚙ settings drawer + 🖼 photos overlay (spec 2026-10-21). Renders two
+          # small fixed corner icons; takes no grid space. The PIN is kid-proof,
+          # NOT secure — it is in git and readable by the panel user.
+          - type: custom:panel-tools-card
+            pin: "0510"
+            media_path: photos
 
       # ---- Column 2: weather + reminders -----------------------------------
       - type: grid
@@ -461,6 +467,12 @@ views:
           # Lists, so opening those manually is never overridden.
           - type: custom:tod-autonav-card
             view: afternoon
+          # ⚙ settings drawer + 🖼 photos overlay (spec 2026-10-21). Renders two
+          # small fixed corner icons; takes no grid space. The PIN is kid-proof,
+          # NOT secure — it is in git and readable by the panel user.
+          - type: custom:panel-tools-card
+            pin: "0510"
+            media_path: photos
       # ---- Column 2: Rowan --------------------------------------------------
       - type: grid
         cards:
@@ -2313,6 +2325,12 @@ views:
             shuffle: true
           - type: custom:tod-autonav-card
             view: evening
+          # ⚙ settings drawer + 🖼 photos overlay (spec 2026-10-21). Renders two
+          # small fixed corner icons; takes no grid space. The PIN is kid-proof,
+          # NOT secure — it is in git and readable by the panel user.
+          - type: custom:panel-tools-card
+            pin: "0510"
+            media_path: photos
 
       # ---- Column 2: reminders ---------------------------------------------
       - type: grid

@@ -49,6 +49,7 @@ native Grocy UI is never shown on the kitchen screen.
    (Settings → Dashboards → Resources), type **module**:
    - `/local/mealplan-card.js`
    - `/local/shopping-card.js`
+   - `/local/panel-tools-card.js?v=1`
 
    > **Each card is a self-contained bundle** — `lit` and the shared helpers are inlined,
    > so there is **no `shared.js`** to copy (there was, before 2026-08-11). Every `dist/*.js`
@@ -83,6 +84,21 @@ native Grocy UI is never shown on the kitchen screen.
    > ```
    > Keep `$P/Local Storage` — the HA login lives there. Then confirm the change in the BROWSER
    > console, not just by md5 on the Pi: server-side checks cannot prove a browser-side outcome.
+
+### Photos overlay script (panel-tools-card, 2026-10-21)
+
+The overlay moves photos with `shell_command` → `/config/kitchencom/photo_move.py`.
+Deploy the script (NOT its test) into the HA config dir and restart HA:
+
+    scp homeassistant/kitchencom/photo_move.py kitchencom:/home/garrettdehart/homeassistant/kitchencom/
+    scp homeassistant/packages/photos.yaml kitchencom:/home/garrettdehart/homeassistant/packages/
+
+Hidden photos live in `/config/media/photos-hidden/` — a SIBLING of `photos/`, never a
+subfolder (the screensaver recurses into subfolders). Restoring a photo by hand is just
+moving it back.
+
+After the first deploy, set `input_number.kitchen_screensaver_minutes` to **30**: with no
+restored state it starts at its minimum, 5.
 
 6. **Add the cards** to a dashboard:
    ```yaml
