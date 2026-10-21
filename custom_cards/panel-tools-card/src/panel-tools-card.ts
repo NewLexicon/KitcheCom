@@ -47,7 +47,11 @@ export class PanelToolsCard extends LitElement {
   hass?: Hass;
   private _cfgPin = "";
   private _mediaPath = "photos";
+  // Two counters, deliberately separate: _loadGen cancels a whole overlay load (close,
+  // reopen, reload after a move); _pageGen cancels only per-page URL resolves. Sharing
+  // one let a page change abandon an in-flight load and stick on "Loading…".
   private _loadGen = 0;
+  private _pageGen = 0;
 
   _mode: Mode = "closed";
   _pin = "";
@@ -130,7 +134,7 @@ export class PanelToolsCard extends LitElement {
         <div class="pin-pad">
           ${digits.map((d) => d === ""
             ? html`<span></span>`
-            : html`<button @click=${() => (d === "⌫" ? (this._pin = this._pin.slice(0, -1)) : this._pressDigit(d))}>${d}</button>`)}
+            : html`<button @click=${() => (d === "⌫" ? ((this._pin = this._pin.slice(0, -1)), (this._pinError = false)) : this._pressDigit(d))}>${d}</button>`)}
         </div>
       </div>`;
   }
@@ -192,6 +196,7 @@ export class PanelToolsCard extends LitElement {
   // ── Photos (Task 10 fills these in) ──────────────────────────────────────────
   private _clearPhotos(): void {
     this._loadGen++;
+    this._pageGen++;
     this._tiles = [];
     this._hidden = [];
     this._skipped = [];
@@ -256,13 +261,13 @@ export class PanelToolsCard extends LitElement {
   /** Resolve URLs for the visible page only. Called after every page/tab change with
    *  _urls already emptied, so off-screen images are released (renderer memory). */
   private async _resolvePage(): Promise<void> {
-    const gen = this._loadGen;
+    const gen = this._pageGen;
     const { items } = pageSlice(this._list(), this._page, PAGE_SIZE);
     for (const t of items) {
       if (t.kind !== "image" || this._urls[t.contentId]) continue;
       try {
         const res = await this.hass?.callWS({ type: "media_source/resolve_media", media_content_id: t.contentId });
-        if (gen !== this._loadGen) return;
+        if (gen !== this._pageGen) return;
         if (res?.url) this._urls = { ...this._urls, [t.contentId]: res.url };
       } catch {
         // Tile stays a placeholder.
@@ -271,7 +276,7 @@ export class PanelToolsCard extends LitElement {
   }
 
   private _goto(tab: "rotation" | "hidden", page: number): void {
-    this._loadGen++;
+    this._pageGen++;
     this._tab = tab;
     this._page = page;
     this._urls = {};
@@ -280,8 +285,11 @@ export class PanelToolsCard extends LitElement {
   }
 
   private async _move(service: "kitchen_photo_hide" | "kitchen_photo_unhide", name: string): Promise<void> {
+    const gen = this._loadGen;
     this._busy = true;
     const r = await this._shell(service, { name_hex: hexEncodeUtf8(name) });
+    // Closed (or the screensaver engaged) while the move ran: don't reopen the overlay.
+    if (gen !== this._loadGen) return;
     this._busy = false;
     this._selected = null;
     if (!r.ok) {
