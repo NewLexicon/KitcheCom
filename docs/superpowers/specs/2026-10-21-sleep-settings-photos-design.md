@@ -58,6 +58,16 @@ layer above everything**. A tap on it sets the woken override and does **nothing
 With the screen dark a finger lands on whatever is underneath — on Morning that is a chore
 tile, so without this layer waking the panel could claim a chore.
 
+**The screensaver is almost certainly up too** — the sleep window is long past the 30-min
+idle timeout, so `input_boolean.kitchen_idle` is on and `screensaver-card`'s full-screen
+overlay is showing. The wake layer must sit **above the screensaver overlay** and **owns the
+tap**: it sets the woken override, presses the existing activity button
+(`input_button.kitchen_activity`, which clears idle exactly as a normal screensaver tap does),
+and stops the event there. One tap = screen on + screensaver dismissed + dashboard showing;
+nothing beneath receives it. Both cards are separate shadow roots inside HA's card wrappers,
+so **verify the stacking on the real panel** — a transformed ancestor can trap a
+`position: fixed` layer below the screensaver's.
+
 ### Pi side (new user service)
 HA runs in Docker and cannot drive the display, so a small Pi script owns `wlopm`:
 - **Subscribes to HA's websocket** for `binary_sensor.kitchen_should_sleep` changes and runs
@@ -70,6 +80,13 @@ HA runs in Docker and cannot drive the display, so a small Pi script owns `wlopm
 - Runs as a **systemd user service** in the labwc session's environment
   (`WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`) — the same environment problem the 4am restart
   script had to solve. Long-lived HA token stored on the Pi, not in the repo.
+- **Fail on, never off.** If the service dies, loses HA, or its token stops working while
+  the screen is off, the panel must not stay dark until someone reboots it:
+  - systemd unit has `Restart=always` **and** `ExecStopPost=wlopm --on '*'` — ExecStopPost
+    runs however the service exits, crash included.
+  - If HA has been unreachable (or auth fails) for **5 minutes** while the output is off,
+    turn it on and keep it on until HA is back and says sleep.
+  - Rule of thumb for every unclear case: **the screen comes on.**
 - **Fallback, only if §7 shows it's needed:** watch local touch input (libinput/evdev) and
   turn the output on directly, still reporting the wake to HA.
 
@@ -77,8 +94,10 @@ HA runs in Docker and cannot drive the display, so a small Pi script owns `wlopm
 
 Behind a 4-digit parent PIN. The PIN lives in the card's config in `kitchen.yaml`.
 **Kid-proof, not secure** — it is checked in the browser, and the kiosk's non-admin `Panel`
-user can read it. That trade-off was chosen deliberately (alternatives considered: theme
-open/rest PIN'd, admin-only via phone, no gate).
+user can read it. **It is also committed to git**, because `kitchen.yaml` is tracked in this
+repo. Same trade-off: fine for kid-proofing, so never reuse a real PIN here. That trade-off
+was chosen deliberately (alternatives considered: theme open/rest PIN'd, admin-only via
+phone, no gate).
 
 Contents:
 
@@ -106,6 +125,8 @@ range and test the restart path explicitly.
 - Rotation includes `.mp4` / `.webm` (`screensaver-card.ts:19`) — those get a placeholder
   tile, not a player.
 - **Tap → hide.** Hidden photos are listed in the same overlay with an unhide control.
+- **Hide/unhide is NOT behind the PIN** — chosen deliberately 2026-10-21. A kid can hide a
+  sibling's photos; it is fully reversible from the same overlay, so a parent just unhides.
 - **Reuse `screensaver-card`'s browse logic** (`selectPlayableChildren`, `selectSubdirectories`)
   so the overlay and the screensaver cannot disagree about what is in rotation.
 
@@ -117,10 +138,20 @@ Hidden files go to **`/config/media/photos-hidden/`**.
 Moving files needs something running inside the HA container:
 - `shell_command` calling a fixed script that takes a **bare filename only** — reject any
   `/`, `..`, or leading dot; resolve and verify the result is inside the expected folder.
+- **The filename travels hex-encoded.** With a template, HA renders the command and splits it
+  shell-style (`shlex.split`), then runs it without a shell. Quoting `"{{ name }}"` survives
+  spaces but breaks on a filename containing a quote. So the card sends the name as **hex**
+  (`[0-9a-f]` only — nothing to split or quote); the script decodes it, then applies the
+  bare-filename checks above. Every real filename works, including spaces, quotes and
+  apostrophes ("Rowan's birthday.jpg"). On any rejection the overlay shows the error.
 - Unhide on a name collision → add a suffix, never overwrite.
 - Operates on the **real container path** `/config/media/photos` (`configuration.yaml:14-17`:
   `media_dirs.local: /config/media`, `media_path: photos`), not the `media-source://` id.
-  ⚠️ Two memory notes disagree (`photos/` vs `media/`) — **confirm on the Pi before building.**
+  ⚠️ Two memory notes disagree: `screensaver-photos-folder-and-formats.md` (2026-09-04) says
+  `photos/`, while `screensaver-media-mount-boundary.md` records the older `media/media/`
+  layout from the original 2026-08-17 fix. `photos/` is most likely current. **Confirm on the
+  Pi before building**: `ssh kitchencom 'sudo docker exec homeassistant ls /config/media'`,
+  then correct the stale note.
 - Means a `configuration.yaml` change + HA restart; new entities can take 60–90 s to appear
   (memory `ha-yaml-entities-appear-late.md`) — don't misread that as a dropped config.
 
@@ -144,14 +175,28 @@ The real risk is the **ViewSonic**, not Chromium: TD1655 touch already needs a h
 at all (memory `viewsonic-touch-needs-hub.md`), and in standby the monitor may cut power to its
 touch controller — then nothing receives the tap.
 
-1. `wlopm --off '*'`
+Run over SSH with Garrett at the panel to tap. Leave ~1 min in standby before step 2 — the
+monitor may take a moment to drop into standby and cut touch power.
+
+0. Baseline: `libinput list-devices` with the screen on — note the touch device's name.
+1. `wlopm --off '*'`, wait ~1 min
 2. `libinput list-devices` — is the touch device **still listed**?
 3. `libinput debug-events` while tapping — do events arrive?
-4. Only then: does Chromium receive the tap?
+4. Does Chromium receive the tap? The screen is dark, so you can't watch it — check HA
+   instead: tap the screensaver, then see whether `input_button.kitchen_activity`'s state (its
+   last-pressed timestamp) changed, via the HA API or Developer Tools on a phone.
 5. `wlopm --on '*'`
+6. **`libinput list-devices` again, then tap a harmless control.** Does touch **come back**
+   after wake? The ViewSonic's touch only enumerates through a hub; if standby drops the device
+   and wake doesn't restore it, every sleep night would leave the panel touch-dead until a
+   replug or reboot.
 
-Outcomes: 2–4 pass → design as written. 2–3 pass, 4 fails → evdev fallback (§3).
-2 fails → no tap-to-wake; panel wakes at sleep end only (or reconsider dimming vs. off).
+Outcomes:
+- **6 fails → Sleep Mode cannot ship as designed, whatever 2–4 showed.** Reconsider (e.g.
+  dimming instead of output-off, if the panel supports it).
+- 2–4 and 6 pass → design as written.
+- 2–3 pass, 4 fails → evdev fallback (§3).
+- 2 fails, 6 passes → no tap-to-wake; the panel wakes at sleep end only.
 
 ## 8. Out of scope
 
