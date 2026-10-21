@@ -16,7 +16,9 @@ input_select:
     options:
       - Dark
       - Light
-    initial: Dark
+    # No `initial:` (removed 2026-10-21): it reset a Light choice made from the
+    # panel's settings drawer back to Dark on every HA restart. input_select
+    # restores its last state; the apply automation re-applies it on start.
     icon: mdi:theme-light-dark
 
 automation:

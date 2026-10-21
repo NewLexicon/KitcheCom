@@ -20,8 +20,24 @@ input_boolean:
     name: Kitchen Screensaver Enabled
     icon: mdi:television-play
 
+input_number:
+  # Screensaver delay, editable from the panel's settings drawer (2026-10-21).
+  # No `initial:` so the value survives restarts. ⚠ An input_number with no
+  # restored state starts at `min` — set it to 30 once right after first deploy
+  # (plan Task 12), or the screensaver drops to 5 minutes.
+  kitchen_screensaver_minutes:
+    name: Screensaver delay
+    min: 5
+    max: 120
+    step: 5
+    unit_of_measurement: min
+    mode: slider
+    icon: mdi:timer-sand
+
 timer:
   kitchen_inactivity:
+    # Fallback only. Every timer.start below passes a duration from
+    # input_number.kitchen_screensaver_minutes; this value applies only if one doesn't.
     duration: "00:30:00"   # 2026-09-01: 30 min — the panel stays up through breakfast
 
 automation:
@@ -58,6 +74,12 @@ automation:
       - service: timer.start
         target:
           entity_id: timer.kitchen_inactivity
+        data:
+          # Clamped to the helper's own range; an unknown state falls back to 30.
+          duration: >
+            {% set m = states('input_number.kitchen_screensaver_minutes') | float(30) | int %}
+            {% set m = [5, [m, 120] | min] | max %}
+            {{ '%02d:%02d:00' % (m // 60, m % 60) }}
 
   - alias: "Kitchen — wake on activity ping (M-10 browser->HA bridge)"
     mode: restart
@@ -73,6 +95,12 @@ automation:
       - service: timer.start
         target:
           entity_id: timer.kitchen_inactivity
+        data:
+          # Clamped to the helper's own range; an unknown state falls back to 30.
+          duration: >
+            {% set m = states('input_number.kitchen_screensaver_minutes') | float(30) | int %}
+            {% set m = [5, [m, 120] | min] | max %}
+            {{ '%02d:%02d:00' % (m // 60, m % 60) }}
 
   - alias: "Kitchen — start inactivity timer on HA startup"
     trigger:
@@ -89,6 +117,12 @@ automation:
       - service: timer.start
         target:
           entity_id: timer.kitchen_inactivity
+        data:
+          # Clamped to the helper's own range; an unknown state falls back to 30.
+          duration: >
+            {% set m = states('input_number.kitchen_screensaver_minutes') | float(30) | int %}
+            {% set m = [5, [m, 120] | min] | max %}
+            {{ '%02d:%02d:00' % (m // 60, m % 60) }}
 
 input_button:
   kitchen_activity:
