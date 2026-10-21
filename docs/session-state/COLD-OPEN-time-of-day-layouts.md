@@ -1,5 +1,9 @@
 # COLD OPEN — `feat/time-of-day-layouts`
 
+**Refreshed 2026-10-21 evening:** **Phase A (Photos overlay + PIN'd Settings drawer) is
+DEPLOYED on the Pi and verified at the panel by Garrett** (plan Task 12 — §4e). **Next move:
+plan Task 13, the panel touch test (spec §7)** — the gate for Phase B (Sleep Mode).
+
 **Refreshed:** 2026-10-12 — a THIRD piece of work is now scoped on this branch:
 the **Morning layout rework** (§4d), designed and committed, not implemented.
 **Feature is DEPLOYED and running on the Pi.** One visual check remains (§4a) and
@@ -68,6 +72,7 @@ before every commit.
 **Stable PREFIX** — immutable, will not move:
 
 ```
+6017ef3 docs(cold-open): Tasks 1-11 built; Task 12 deploy is next
 a6e28c1 fix(panel-tools): photos overlay stuck on Loading, reopening after close
 00177e1 feat(panel): place panel-tools-card on the time views; install steps
 d573059 feat(panel-tools): photos overlay with paging, hide/unhide and skipped-file note
@@ -133,6 +138,13 @@ calls authoritative. Same for the ahead-count in §1: run the command.
 ---
 
 ## 2. Empirical state
+
+**2026-10-21 evening (Task 12 deploy):** re-ran screensaver-card **113** and panel-tools-card
+**33** before shipping; both `dist/` bundles deployed and md5-matched on the Pi
+(`/home/garrettdehart/homeassistant/www/`, served at `screensaver-card.js?v=12`,
+`panel-tools-card.js?v=1`). Dev-HA rig (port 8124) was **re-onboarded from scratch** — its
+`.storage` was gone; login is still `dev` / `devdev123` (onboarded via
+`/api/onboarding/users`, not the UI).
 
 **2026-10-21 (after Tasks 1–11):** screensaver-card **113** passed + typecheck clean (its
 `node_modules` lacked `@types/node` until a fresh `npm install` — typecheck failed TS2307 before
@@ -324,9 +336,9 @@ route -n get default | grep gateway     # 192.168.1.1 = home; 10.x = office/VPN
   session stopped mid-conversation. It is blocked on **two user answers**, not on
   the network (see §4d). If Garrett is present, ask those two questions first;
   they take seconds and they unblock the plan. Writing YAML needs home network.
-- **§4e (sleep / settings drawer / photos overlay)** — designed 2026-10-21, spec
-  committed. Blocked on a **2-minute touch-while-off test at the panel** (needs
-  home network + Garrett at the panel), then the user spec review, then a plan.
+- **§4e (sleep / settings drawer / photos overlay)** — **Phase A DEPLOYED + verified
+  2026-10-21.** Next: plan **Task 13** (touch test, home network + Garrett at the panel),
+  which gates Phase B Tasks 14–20.
 
 ⚠️ **Tailscale does not stay up.** It was started on 2026-09-21 and was found
 `stopped` again on 2026-09-24. Starting it needs the existing flags preserved
@@ -448,9 +460,35 @@ What landed, and the review catches that changed it:
 - `dev-setup.sh` used to delete every package but Grocy; now keeps photos/screensaver/theme/
   time_of_day (`087087f`). Add `sleep.yaml` there in Phase B.
 
-**Not done (needs Docker Desktop running):** Task 8 Steps 4–5 and Task 10 Step 5 — the dev-HA
-rig checks of the shell_command chain, the timer duration template, and a card smoke test. Run
-them before Task 12 if Docker is available; otherwise Task 12's panel checks cover them live.
+**✅ Dev-rig checks DONE 2026-10-21 evening** (Task 8 Steps 4–5, Task 10 Step 5): list/hide/
+unhide round-trip with `Rowan's "best" day.jpg`; minutes=45 → `timer.kitchen_inactivity`
+duration `0:45:00`; Playwright click-through (HEIC listed as not shown, hide → Hidden tab →
+Show again, wrong PIN refused, drawer +/theme/time-picker all write their entities, `kitchen_idle`
+on closes AND re-locks the drawer). Dev rig's view times read 00:00 — no restored state there; not a bug.
+
+**✅ Task 12 DEPLOYED + VERIFIED 2026-10-21 evening.**
+- Pi photos confirmed at `/config/media/photos` (212 files then); container `python3` =
+  `/usr/local/bin/python3`. `photos-hidden/` pre-created as `garrettdehart`.
+- Pi packages had NOT drifted — the diff was exactly this branch's changes. Backups:
+  `packages/{screensaver,theme}.yaml.bak-prephotos-<stamp>`, `www/screensaver-card.js.bak-prephotos-<stamp>`,
+  `.storage/lovelace_resources.bak-prephotos-<stamp>`. New: `packages/photos.yaml`, `kitchencom/photo_move.py`.
+- Resources edited with HA STOPPED: screensaver `?v=11→12`, added `panel-tools-card.js?v=1`.
+- `kitchen.yaml` via `deploy-dashboard.sh` (live matched baseline; diff = the 3 card blocks).
+  Snapshot `docs/pi-snapshots/kitchen.yaml.live-20261021-193833` committed.
+- Kiosk Service Worker + caches cleared (kiosk = OS user `garrettdehart`, profile `~/.config/chromium/Default`).
+- **Garrett at the panel:** PIN, drawer, theme, delay +/−, time picker by touch, photos overlay,
+  icon placement on all three views — all OK. Screensaver engaged on the 5-min delay
+  (`kitchen_idle` on 23:50:35 UTC) and **cycles photos** → refactor regression check passed.
+- **Delay set to 30** (`input_number.kitchen_screensaver_minutes` = 30.0 at 23:58 UTC, recorder).
+- **Garrett deliberately hid 20 photos** with the new overlay (192 in rotation). Not a bug —
+  don't "restore" them.
+- No HA API token for the Pi exists on the Mac; read state from the recorder DB
+  (`/config/home-assistant_v2.db`, `states` ⋈ `states_meta`) via `docker exec … python3`.
+
+**NEXT: Task 13 — touch test** (plan line ~1870, spec §7 in
+`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/specs/2026-10-21-sleep-settings-photos-design.md`).
+Needs home network + Garrett at the panel. Step 6 (touch returns after `wlopm --on`) decides
+whether Phase B ships. At-home items 1 and 3 below are now DONE; 2 is Task 13.
 
 **At-home session checklist (all four need Garrett on the home network):**
 1. **Disconnect the GSU VPN first.** It routes all of 192.168.1.0/24 into the tunnel, so the
