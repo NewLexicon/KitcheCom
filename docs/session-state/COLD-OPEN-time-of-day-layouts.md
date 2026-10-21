@@ -68,6 +68,21 @@ before every commit.
 **Stable PREFIX** — immutable, will not move:
 
 ```
+a6e28c1 fix(panel-tools): photos overlay stuck on Loading, reopening after close
+00177e1 feat(panel): place panel-tools-card on the time views; install steps
+d573059 feat(panel-tools): photos overlay with paging, hide/unhide and skipped-file note
+7b2ad36 feat(panel-tools): corner icons, PIN pad and settings drawer
+087087f fix: dev rig stages the panel packages; photo script never crashes on odd names
+0b80f18 chore(dev-ha): stage the photo script and media folders in the dev rig
+1ac8f9b feat(screensaver): delay comes from an input_number the drawer can set; theme survives restarts
+ec89574 feat(photos): shell_command transport for the photos overlay
+7c44d77 feat(photos): container-side hide/unhide/list script with hex filenames
+ff43b7d feat(panel-tools): PIN, paging, skipped-file, settings and response logic
+8b46f4e feat(panel-tools): filename and UTF-8 hex logic for photo moves
+fc62c76 chore(panel-tools): scaffold bundled card package with dist guard
+f14c7b2 plan: PIN 0510, drop theme initial, woken clears on idle (Garrett 2026-10-21)
+4c04905 refactor(screensaver): extract media-browse so the photos overlay shares it
+f8fe939 plan: sleep mode, settings drawer, photos overlay — Phase A first
 927b774 design: sleep mode, PIN'd settings drawer, photos overlay
 41d16c1 docs(cold-open): cold-start fix-ups — fold 1bd7db2, name the stamping trap
 cbc132a docs(cold-open): add the morning rework, correct the stale light-mode heading
@@ -111,13 +126,19 @@ the current tip** — that restarts precisely the loop this note exists to stop.
 **2026-10-12 close-out, stated plainly so nobody re-stamps it:** the session's
 own close-out commits (the cold-open update and this fix-up) are deliberately
 NOT in the prefix above. They cannot be — a commit cannot name its own SHA, and
-stamping it is itself another commit. The prefix is frozen through `1bd7db2` (2026-10-21: now through `927b774`);
+stamping it is itself another commit. The prefix is frozen through `1bd7db2` (2026-10-21: now through `a6e28c1`; the commits between `927b774` and `f8fe939` are docs-only cold-open/spec revisions, see `git log`);
 everything after it lives in `git log --oneline`, which this document already
 calls authoritative. Same for the ahead-count in §1: run the command.
 
 ---
 
 ## 2. Empirical state
+
+**2026-10-21 (after Tasks 1–11):** screensaver-card **113** passed + typecheck clean (its
+`node_modules` lacked `@types/node` until a fresh `npm install` — typecheck failed TS2307 before
+that, not a code problem); panel-tools-card **33** + typecheck clean; tod-autonav **14** +
+typecheck clean; `python3 -m pytest homeassistant/kitchencom deploy/quotes -q` → **53** passed;
+`npm run validate:yaml` printed no errors.
 
 **Local (tod-autonav 14 + typecheck, and screensaver 109, ALL RE-VERIFIED
 2026-10-12; no panel code has changed since — the morning rework of §4d is
@@ -403,13 +424,33 @@ BACK after `wlopm --on`? If not, Sleep Mode can't ship as designed. Also run
 `ssh kitchencom 'sudo docker exec homeassistant ls /config/media'` to settle photos/ vs media/.
 (2) user spec review (brainstorming hard gate), (3) `superpowers:writing-plans`.
 
-**Spec APPROVED 2026-10-21 after three review passes. Build plan written:**
+**Spec APPROVED 2026-10-21. Plan:**
 `/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/plans/2026-10-21-sleep-settings-photos.md`
-20 tasks. **Phase A (Tasks 1–12: photos overlay + PIN'd drawer) ships whatever the touch test
-says**; Task 13 is the touch-test gate; Phase B (14–20) is Sleep Mode. Tasks 1–11 are
-laptop-only — start there. The plan's "Corrections to the spec" section has two items
-**awaiting Garrett**: (4) woken also clears when the screensaver re-engages; (5) theme
-`initial: Dark` resets the drawer's theme choice on every HA restart.
+(20 tasks: Phase A 1–12 photos + PIN'd drawer; Task 13 touch-test gate; Phase B 14–20 sleep).
+
+**✅ Tasks 1–11 BUILT 2026-10-21** (`4c04905`..`a6e28c1`, subagent-driven, each batch
+reviewed). **Next move: Task 12 (deploy Phase A) — needs home network, VPN off, Garrett at
+the panel.** Garrett's decisions, all folded into the plan: PIN `0510` (committed to git,
+accepted); woken clears when the screensaver re-engages; theme `initial: Dark` REMOVED.
+
+What landed, and the review catches that changed it:
+- `screensaver-card` now imports `src/media-browse.ts` (shared with the new card). Behavior
+  unchanged (113 tests) — but its `dist/` must be **redeployed with a bumped `?v=`** in Task 12,
+  and the screensaver must be re-checked at the panel (regression check for the refactor).
+- New `custom_cards/panel-tools-card` (33 tests). Review found two plan-code bugs, fixed in
+  `a6e28c1`: one generation counter served both overlay load and page resolves (overlay stuck
+  on "Loading…"), and a hide finishing after close reopened the overlay.
+- `homeassistant/kitchencom/photo_move.py` (23 tests) + `packages/photos.yaml`. Security review:
+  no hole; hardened in `087087f` (ensure_ascii + catch-all so it always answers JSON).
+- `screensaver.yaml`: `input_number.kitchen_screensaver_minutes`; there were **3** timer.starts,
+  not the 4 the plan guessed — all 3 now take the duration. **After first deploy, set it to 30**
+  (with no restored state it starts at 5).
+- `dev-setup.sh` used to delete every package but Grocy; now keeps photos/screensaver/theme/
+  time_of_day (`087087f`). Add `sleep.yaml` there in Phase B.
+
+**Not done (needs Docker Desktop running):** Task 8 Steps 4–5 and Task 10 Step 5 — the dev-HA
+rig checks of the shell_command chain, the timer duration template, and a card smoke test. Run
+them before Task 12 if Docker is available; otherwise Task 12's panel checks cover them live.
 
 **At-home session checklist (all four need Garrett on the home network):**
 1. **Disconnect the GSU VPN first.** It routes all of 192.168.1.0/24 into the tunnel, so the
