@@ -1117,6 +1117,7 @@ git commit -m "feat(photos): shell_command transport for the photos overlay"
 
 **Files:**
 - Modify: `homeassistant/packages/screensaver.yaml` (the `timer:` block ~line 23, and each of the 4 `timer.start` actions targeting `timer.kitchen_inactivity`)
+- Modify: `homeassistant/packages/theme.yaml` (remove `initial: Dark` — Garrett approved 2026-10-21)
 
 - [ ] **Step 1: Add the helper**
 
@@ -1164,17 +1165,28 @@ Find them: `grep -n "timer.start" homeassistant/packages/screensaver.yaml`. Expe
             {{ '%02d:%02d:00' % (m // 60, m % 60) }}
 ```
 
-- [ ] **Step 3: Lint**
+- [ ] **Step 3: Stop the theme resetting on restart (approved 2026-10-21)**
+
+In `homeassistant/packages/theme.yaml`, delete the line `    initial: Dark` under
+`input_select.kitchen_theme`, and put this comment in its place at the same indent:
+
+```yaml
+    # No `initial:` (removed 2026-10-21): it reset a Light choice made from the
+    # panel's settings drawer back to Dark on every HA restart. input_select
+    # restores its last state; the apply automation re-applies it on start.
+```
+
+- [ ] **Step 4: Lint**
 
 Run: `npm run validate:yaml`
 Expected: clean.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git branch --show-current
-git add homeassistant/packages/screensaver.yaml
-git commit -m "feat(screensaver): delay comes from an input_number the drawer can set"
+git add homeassistant/packages/screensaver.yaml homeassistant/packages/theme.yaml
+git commit -m "feat(screensaver): delay comes from an input_number the drawer can set; theme survives restarts"
 ```
 
 ---
@@ -1760,9 +1772,9 @@ git commit -m "feat(panel-tools): photos overlay with paging, hide/unhide and sk
 - Modify: `homeassistant/dashboards/kitchen.yaml` (three time views, next to each `custom:screensaver-card`: lines ~50, ~454, ~2310)
 - Modify: `deploy/INSTALL.md` (card resources section, ~line 43–75)
 
-- [ ] **Step 1: Ask Garrett for the PIN**
+- [ ] **Step 1: The PIN**
 
-Don't invent one. Tell him it gets **committed to git** (kitchen.yaml is tracked), so it should be a code he uses nowhere else.
+Garrett chose **`0510`** on 2026-10-21, knowing it is committed to git (kitchen.yaml is tracked).
 
 - [ ] **Step 2: Add the card to the three time views**
 
@@ -1773,7 +1785,7 @@ Directly after each `- type: custom:tod-autonav-card` block on the Morning, Afte
           # small fixed corner icons; takes no grid space. The PIN is kid-proof,
           # NOT secure — it is in git and readable by the panel user.
           - type: custom:panel-tools-card
-            pin: "<Garrett's 4 digits, quoted>"
+            pin: "0510"
             media_path: photos
 ```
 
