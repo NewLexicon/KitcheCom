@@ -406,7 +406,8 @@ BACK after `wlopm --on`? If not, Sleep Mode can't ship as designed. Also run
 **At-home session checklist (all four need Garrett on the home network):**
 1. **Disconnect the GSU VPN first.** It routes all of 192.168.1.0/24 into the tunnel, so the
    Pi reads as down even on home wifi. Then `nc -z -G 6 192.168.1.234 22`.
-2. Spec §7 touch test, steps 0–6 — watch `input_button.kitchen_activity` for step 4, and
+2. Spec §7 touch test, steps 0–6 — **turn `input_boolean.kitchen_idle` on first** so no test
+   tap can land on a chore tile; watch `input_button.kitchen_activity` for step 4, and
    step 6 (touch returns after `--on`) is make-or-break.
 3. `ssh kitchencom 'sudo docker exec homeassistant ls /config/media'` → then correct whichever
    of `screensaver-photos-folder-and-formats.md` / `screensaver-media-mount-boundary.md` is stale.
