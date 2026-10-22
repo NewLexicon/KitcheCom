@@ -3,8 +3,10 @@
 **Refreshed 2026-10-21 evening:** **Phase A (Photos overlay + PIN'd Settings drawer) is
 DEPLOYED on the Pi and verified at the panel by Garrett** (plan Task 12 — §4e).
 **2026-10-22: Task 13 touch test RUN — output-off does not stick** (labwc re-enables the
-ViewSonic ~10 s after `wlopm --off`). **Phase B is PAUSED for a redesign ("black, not off").
-Next move: get Garrett's design decision** — see §4e and spec §7 "Result".
+ViewSonic ~10 s after `wlopm --off`). Garrett chose **"black, not off" (approach B)**: spec §3
+rewritten + reviewed + approved; **plan Phase B rewritten as Tasks 14–17. Next move: execute
+plan Task 14** (`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/plans/2026-10-21-sleep-settings-photos.md`,
+search `### Task 14`). Tasks 14–16 are laptop-only (14 needs Docker); 17 needs home network + Garrett.
 
 **Refreshed:** 2026-10-12 — a THIRD piece of work is now scoped on this branch:
 the **Morning layout rework** (§4d), designed and committed, not implemented.
@@ -494,10 +496,11 @@ output back on — proven with kanshi killed. Touch survives (step 6 PASS); step
 Re-asserting off would flash every ~10 s. kanshi was restarted as ONE process (boot had two
 duplicates; a reboot restores both — harmless, its `config` is empty).
 
-**NEXT: Garrett's design decision for sleep — "black, not off".** Candidates: full-screen black
-layer (touch stays live → tap-to-wake trivial), optionally + DDC/CI brightness-down
-(`ddcutil` NOT installed; `/dev/i2c-13`/`-14` exist; TD1655 DDC support untested). Then
-re-brainstorm Phase B and rewrite plan Tasks 14–20. At-home items 1–3 below are all DONE.
+**✅ DECIDED 2026-10-22: "black, not off", approach B** — during the sleep window the idle
+*screensaver* shows plain black (no Pi service, no wlopm, no token, no wake layer, no woken flag).
+Night wake = **2 min** (Garrett). Glow accepted; DDC dimming out of scope. Spec §3 has the design,
+its Tests subsection and failure modes (incl. an unconfirmed night-restart race that Task 17
+step 5 tests). **NEXT: plan Task 14.** At-home items 1–3 below are all DONE.
 
 **Carry-forward:** kernel logged `mmc0: Card stuck being busy! __mmc_poll_for_busy` at
 2026-10-21 19:37 local (during the HA stop/start). One-off so far; if it recurs, suspect the
