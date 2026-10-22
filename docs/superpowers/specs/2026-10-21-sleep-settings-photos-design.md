@@ -111,6 +111,31 @@ woken flag**.
 - HA restart at night → startup automation clears idle → lit for 2 min → black again.
 - 4am chromium renderer restart → the page reloads into a sleeping card. A brief load flash,
   nothing worse; with no images decoded overnight the restart will rarely fire anyway.
+- **Possible: an HA restart at night lights the panel for the FULL delay, not 2 minutes.**
+  Template entities may first render after `homeassistant: start` fires, so the startup
+  automation (`:105`) can read `binary_sensor.kitchen_sleep_window` as `unknown` and fall back
+  to `kitchen_screensaver_minutes`. Safe (fails on), but not the 2 minutes above. Unconfirmed:
+  **the deploy task tests it** (window including now → restart HA → read
+  `timer.kitchen_inactivity`'s duration). If it reads the full delay, add a short `delay`
+  before that automation's `timer.start`.
+
+### Tests
+- **`displayState`** (pure function, unit tests): idle off → `off`; idle on + sleep `"on"` →
+  `sleeping`; idle on + sleep `"off"` → `photos`; **fail on** — sleep entity missing,
+  `unavailable` or `unknown` → `photos`.
+- **Card lifecycle** (unit tests against the element):
+  - while `sleeping` there is **no `<img>`** (and no `.fallback`, no clock) in the shadow DOM;
+  - **the sleep sensor flips while not idle → no change** (no loop start, nothing rendered);
+  - **a resolve already in flight when sleep begins lands afterwards → still no `<img>`**
+    (the `_gen` guard, via `_stopLoop()`);
+  - idle turning on inside the window never starts the media browse (`callWS` not called).
+- **Window template**, on the dev-HA rig: a normal window (e.g. 09:00→17:00), one that wraps
+  midnight (22:00→06:00), `start == end` (e.g. 08:00→08:00 → never on), and **00:00→00:00**
+  (→ never on); plus enabled off → off.
+- **Night wake duration**, on the dev rig: window on → press `kitchen_activity` →
+  `timer.kitchen_inactivity` duration `0:02:00`; window off → the configured minutes.
+- **At the panel:** set a window opening in 2 minutes with the panel idle → photos turn black;
+  a tap wakes it → black again 2 minutes later. Plus the restart test above.
 
 ## 4. Settings drawer
 
@@ -257,7 +282,7 @@ designed (wlopm output-off) cannot ship; Phase B is paused for a redesign.
 **Route:** redesign sleep as **"black, not off"** — a full-screen black layer (touch stays
 live, so tap-to-wake is trivial), optionally plus DDC/CI brightness-down (`ddcutil` not
 installed yet; `/dev/i2c-13`, `/dev/i2c-14` exist; whether the TD1655 honours DDC over this
-link is untested). Needs Garrett's design decision before Tasks 14–20 are rewritten.
+link is untested). **Decided 2026-10-22: approach B — the screensaver goes black; see §3.**
 
 ## 8. Out of scope
 
