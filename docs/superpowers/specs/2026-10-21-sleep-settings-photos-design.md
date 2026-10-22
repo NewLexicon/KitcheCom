@@ -224,6 +224,29 @@ Outcomes:
 - **2 or 3 fails**, 6 passes → no tap-to-wake; the panel wakes at sleep end only. (Listed but
   silent is the same as gone.)
 
+### Result — run 2026-10-22 00:03–00:10 UTC and 11:15 UTC, Garrett at the panel
+
+**An outcome the list above did not anticipate: output-off does not STICK.** Phase B as
+designed (wlopm output-off) cannot ship; Phase B is paused for a redesign.
+
+- Step 0: touch = `G2Touch Multi-Touch`, `/dev/input/event5` (behind the RTS5411 hub).
+- `wlopm --off '*'` succeeds and reports `off` — then **~9.5 s later the ViewSonic drops and
+  re-announces itself** (two `drm` `change` uevents on `card1`, caught with
+  `udevadm monitor --kernel --subsystem-match=drm`), and the output reads `on` again.
+  Reproduced 3×. Garrett: the screen **never visibly went dark** — the monitor never reached
+  standby inside that window.
+- **It is labwc (0.9.2), not kanshi:** with both kanshi processes killed, the same ~10 s
+  off→on happened, with the same 2 drm events. kanshi's active `config` is empty anyway.
+- Step 2: touch device still listed while off. Steps 3–4: inconclusive — no taps landed in the
+  ~10 s window; `input_button.kitchen_activity` unchanged.
+- **Step 6: PASS** — touch works normally afterwards. No touch-dead panel.
+- Re-asserting `off` after each hotplug would flash the screen on every ~10 s — not viable.
+
+**Route:** redesign sleep as **"black, not off"** — a full-screen black layer (touch stays
+live, so tap-to-wake is trivial), optionally plus DDC/CI brightness-down (`ddcutil` not
+installed yet; `/dev/i2c-13`, `/dev/i2c-14` exist; whether the TD1655 honours DDC over this
+link is untested). Needs Garrett's design decision before Tasks 14–20 are rewritten.
+
 ## 8. Out of scope
 
 Nav rail; photo delete; "Sleep now"; uploading photos from the panel; the Morning rework

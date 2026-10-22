@@ -1,8 +1,10 @@
 # COLD OPEN — `feat/time-of-day-layouts`
 
 **Refreshed 2026-10-21 evening:** **Phase A (Photos overlay + PIN'd Settings drawer) is
-DEPLOYED on the Pi and verified at the panel by Garrett** (plan Task 12 — §4e). **Next move:
-plan Task 13, the panel touch test (spec §7)** — the gate for Phase B (Sleep Mode).
+DEPLOYED on the Pi and verified at the panel by Garrett** (plan Task 12 — §4e).
+**2026-10-22: Task 13 touch test RUN — output-off does not stick** (labwc re-enables the
+ViewSonic ~10 s after `wlopm --off`). **Phase B is PAUSED for a redesign ("black, not off").
+Next move: get Garrett's design decision** — see §4e and spec §7 "Result".
 
 **Refreshed:** 2026-10-12 — a THIRD piece of work is now scoped on this branch:
 the **Morning layout rework** (§4d), designed and committed, not implemented.
@@ -485,10 +487,21 @@ on closes AND re-locks the drawer). Dev rig's view times read 00:00 — no resto
 - No HA API token for the Pi exists on the Mac; read state from the recorder DB
   (`/config/home-assistant_v2.db`, `states` ⋈ `states_meta`) via `docker exec … python3`.
 
-**NEXT: Task 13 — touch test** (plan line ~1870, spec §7 in
-`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/specs/2026-10-21-sleep-settings-photos-design.md`).
-Needs home network + Garrett at the panel. Step 6 (touch returns after `wlopm --on`) decides
-whether Phase B ships. At-home items 1 and 3 below are now DONE; 2 is Task 13.
+**✅ Task 13 RUN 2026-10-22 — Phase B (Tasks 14–20) CANNOT ship as written.** Full result in
+spec §7 "Result" (`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/specs/2026-10-21-sleep-settings-photos-design.md`):
+`wlopm --off` holds ~9.5 s, then the ViewSonic hotplugs (2 drm uevents) and **labwc** turns the
+output back on — proven with kanshi killed. Touch survives (step 6 PASS); steps 3–4 inconclusive.
+Re-asserting off would flash every ~10 s. kanshi was restarted as ONE process (boot had two
+duplicates; a reboot restores both — harmless, its `config` is empty).
+
+**NEXT: Garrett's design decision for sleep — "black, not off".** Candidates: full-screen black
+layer (touch stays live → tap-to-wake trivial), optionally + DDC/CI brightness-down
+(`ddcutil` NOT installed; `/dev/i2c-13`/`-14` exist; TD1655 DDC support untested). Then
+re-brainstorm Phase B and rewrite plan Tasks 14–20. At-home items 1–3 below are all DONE.
+
+**Carry-forward:** kernel logged `mmc0: Card stuck being busy! __mmc_poll_for_busy` at
+2026-10-21 19:37 local (during the HA stop/start). One-off so far; if it recurs, suspect the
+Pi 5's SD card before anything else.
 
 **At-home session checklist (all four need Garrett on the home network):**
 1. **Disconnect the GSU VPN first.** It routes all of 192.168.1.0/24 into the tunnel, so the
