@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveConfig } from "../src/screensaver-card";
+import { resolveConfig, SLEEP_ENTITY } from "../src/screensaver-card";
 
 describe("resolveConfig", () => {
   it("applies all defaults for empty config", () => {
@@ -15,6 +15,7 @@ describe("resolveConfig", () => {
       // woken is worse than one that pings HA occasionally.
       activityEntity: "input_button.kitchen_activity",
       activityBridge: true,
+      sleepEntity: "binary_sensor.kitchen_sleep_window",
     });
   });
   it("honors provided overrides", () => {
@@ -46,5 +47,18 @@ describe("resolveConfig", () => {
     expect(resolveConfig({ ken_burns_intensity: -0.5 }).kenBurnsIntensity).toBe(0);
     expect(resolveConfig({ ken_burns_intensity: 2 }).kenBurnsIntensity).toBe(1);
     expect(resolveConfig({ ken_burns_intensity: 0.3 }).kenBurnsIntensity).toBe(0.3);
+  });
+});
+
+describe("resolveConfig sleep_entity", () => {
+  it("defaults to the kitchen sleep window", () => {
+    expect(resolveConfig({}).sleepEntity).toBe(SLEEP_ENTITY);
+  });
+  it("accepts an override", () => {
+    expect(resolveConfig({ sleep_entity: "binary_sensor.den_sleep" }).sleepEntity).toBe("binary_sensor.den_sleep");
+  });
+  it("ignores an empty or non-string value", () => {
+    expect(resolveConfig({ sleep_entity: "" }).sleepEntity).toBe(SLEEP_ENTITY);
+    expect(resolveConfig({ sleep_entity: 3 }).sleepEntity).toBe(SLEEP_ENTITY);
   });
 });

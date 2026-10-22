@@ -25,6 +25,24 @@ export function isScreensaverActive(hass?: HassLike, idleEntity: string = IDLE_E
   return hass?.states?.[idleEntity]?.state === "on";
 }
 
+// Sleep Mode (spec §3, "black, not off"): during the sleep window the idle
+// screensaver shows plain black instead of photos. The display itself stays on —
+// wlopm output-off doesn't stick on the ViewSonic (spec §7 Result).
+export const SLEEP_ENTITY = "binary_sensor.kitchen_sleep_window";
+
+export type DisplayState = "off" | "photos" | "sleeping";
+
+/** What the overlay should show. Fail ON: a missing / unavailable / unknown sleep
+ *  entity is NOT sleeping, so the panel shows photos rather than going black. */
+export function displayState(
+  hass?: HassLike,
+  idleEntity: string = IDLE_ENTITY,
+  sleepEntity: string = SLEEP_ENTITY,
+): DisplayState {
+  if (!isScreensaverActive(hass, idleEntity)) return "off";
+  return hass?.states?.[sleepEntity]?.state === "on" ? "sleeping" : "photos";
+}
+
 // Accepts bare filenames / basenames (e.g. "photo.jpg") or resolved media_source URLs
 // with a "?query"/"#fragment" suffix. Resolved: stripMediaUrlQuery strips query/fragment
 // before matching, so endsWith(ext) no longer silently drops e.g. "photo.jpg?token=…".
@@ -169,6 +187,7 @@ export type ScreensaverConfig = {
   kenBurnsIntensity: number;
   activityEntity: string;
   activityBridge: boolean;
+  sleepEntity: string;
 };
 
 const PHOTO_DURATION_FLOOR = 2;
@@ -222,6 +241,8 @@ export function resolveConfig(raw: Record<string, unknown> = {}): ScreensaverCon
     // On by default: a panel that cannot be woken is worse than one that pings
     // HA occasionally. Opt out only if a second display should observe nothing.
     activityBridge: raw.activity_bridge === undefined ? true : Boolean(raw.activity_bridge),
+    sleepEntity:
+      typeof raw.sleep_entity === "string" && raw.sleep_entity ? raw.sleep_entity : SLEEP_ENTITY,
   };
 }
 
@@ -322,7 +343,7 @@ export const ACTIVITY_EVENTS = ["pointerdown", "pointermove", "keydown", "wheel"
 export class ScreensaverCard extends LitElement {
   static properties = {
     hass: { attribute: false },
-    _active: { state: true },
+    _display: { state: true },
     _mode: { state: true },
     _currentUrl: { state: true },
     _currentKind: { state: true },
@@ -332,7 +353,7 @@ export class ScreensaverCard extends LitElement {
   hass?: HassWS;
   private _cfg: ScreensaverConfig = resolveConfig({});
   private _rawConfig: Record<string, unknown> = {};
-  private _active = false;
+  private _display: DisplayState = "off";
   private _mode: "media" | "fallback" = "fallback";
   private _items: MediaItem[] = [];
   private _index = 0;
@@ -404,10 +425,13 @@ export class ScreensaverCard extends LitElement {
 
   updated(changed: PropertyValues): void {
     if (changed.has("hass")) {
-      const active = isScreensaverActive(this.hass, this._cfg.idleEntity);
-      if (active !== this._active) {
-        this._active = active;
-        active ? this._startLoop() : this._stopLoop();
+      const next = displayState(this.hass, this._cfg.idleEntity, this._cfg.sleepEntity);
+      if (next !== this._display) {
+        this._display = next;
+        // Only "photos" runs the slideshow. Going to "sleeping" ALWAYS goes through
+        // _stopLoop(): its _gen++ is what makes an in-flight browse/resolve discard
+        // its result instead of drawing an image on the black screen.
+        next === "photos" ? this._startLoop() : this._stopLoop();
       }
     }
   }
@@ -453,7 +477,7 @@ export class ScreensaverCard extends LitElement {
   }
 
   private async _advance(): Promise<void> {
-    if (!this._active || this._items.length === 0) return;
+    if (this._display !== "photos" || this._items.length === 0) return;
     const gen = this._gen;
     const next = nextMediaIndex(this._index < 0 ? this._items.length - 1 : this._index, this._items.length);
     // I-2 wrap-detect: on a full pass (wrapped to 0) reshuffle the same MediaItem refs
@@ -607,7 +631,7 @@ export class ScreensaverCard extends LitElement {
   }
 
   private _skip(): void {
-    if (this._active) this._timer = setTimeout(() => this._advance(), 0);
+    if (this._display === "photos") this._timer = setTimeout(() => this._advance(), 0);
   }
 
   private _stopLoop(): void {
@@ -641,7 +665,11 @@ export class ScreensaverCard extends LitElement {
   }
 
   render() {
-    if (!this._active) return nothing;
+    if (this._display === "off") return nothing;
+    // Sleeping (spec §3): the same fixed black overlay, and nothing in it — no
+    // media, no fallback gradient, no clock. The activity bridge is window-level,
+    // so a tap still wakes the panel.
+    if (this._display === "sleeping") return html`<div class="overlay"></div>`;
     return html`
       <div class="overlay" style=${styleMap({ "--kb-intensity": String(this._cfg.kenBurnsIntensity) })}>
         ${this._mode === "media" && this._currentUrls.length
