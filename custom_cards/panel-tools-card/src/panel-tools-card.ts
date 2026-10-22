@@ -2,7 +2,7 @@ import { LitElement, html, css, nothing, type PropertyValues, type TemplateResul
 import { buildBrowseContentId, collectPlayable } from "../../screensaver-card/src/media-browse";
 import {
   ENTITIES, HIDDEN_PATH, PAGE_SIZE, checkPin, findSkipped, fromTimeInput, hexEncodeUtf8,
-  isSupportedName, isValidPin, isVideoName, pageSlice, parseShellResponse, stepMinutes,
+  isSupportedName, isValidPin, isVideoName, pageSlice, parseShellResponse, showSleepHint, stepMinutes,
   toTimeInput, topLevelFilename, type ShellResult,
 } from "./logic";
 
@@ -152,9 +152,24 @@ export class PanelToolsCard extends LitElement {
       </label>`;
   }
 
-  // Phase B (Task 16) adds the Sleep section here.
-  protected _renderSleepSection(): TemplateResult | typeof nothing {
-    return nothing;
+  // Sleep (spec §3): during the window, once idle, the screensaver shows black.
+  private _renderSleepSection(): TemplateResult {
+    const on = this._state(ENTITIES.sleepEnabled) === "on";
+    const set = (value: boolean) =>
+      this._call("input_boolean", value ? "turn_on" : "turn_off", {}, ENTITIES.sleepEnabled);
+    return html`
+      <section>
+        <h3>Sleep</h3>
+        <div class="seg">
+          <button class=${on ? "" : "on"} @click=${() => set(false)}>Off</button>
+          <button class=${on ? "on" : ""} @click=${() => set(true)}>On</button>
+        </div>
+        ${this._timeRow("From", ENTITIES.sleepStart)}
+        ${this._timeRow("To", ENTITIES.sleepEnd)}
+        ${showSleepHint(this._state(ENTITIES.screensaverEnabled))
+          ? html`<p class="hint">Sleep needs the screensaver switched on.</p>`
+          : nothing}
+      </section>`;
   }
 
   private _renderDrawer(): TemplateResult {
@@ -348,14 +363,8 @@ export class PanelToolsCard extends LitElement {
       </div>`;
   }
 
-  // Phase B (Task 16) adds the wake layer here.
-  protected _renderWakeLayer(): TemplateResult | typeof nothing {
-    return nothing;
-  }
-
   render(): TemplateResult {
     return html`
-      ${this._renderWakeLayer()}
       ${this._mode === "closed" ? html`
         <div class="corner">
           <button @click=${() => void this._openPhotos()} aria-label="Photos">🖼</button>
@@ -398,6 +407,7 @@ export class PanelToolsCard extends LitElement {
     .seg button, .stepper button { min-width: 64px; height: 48px; border-radius: 10px; border: none; font-size: 18px;
       background: var(--kc-tools-key, rgba(127, 127, 127, 0.2)); }
     .seg button.on { background: var(--kc-hero-fg, #4fc3f7); color: #000; }
+    .hint { margin: 8px 0 0; font-size: 15px; color: var(--secondary-text-color, #9aa4b2); }
     .stepper span { min-width: 90px; text-align: center; font-size: 20px; }
     .error { color: var(--kc-error, #ef5350); }
     .photos { position: fixed; inset: 0; z-index: 9001; overflow-y: auto; padding: 16px 24px; box-sizing: border-box;

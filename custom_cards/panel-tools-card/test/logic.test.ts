@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { topLevelFilename, hexEncodeUtf8, isSupportedName, isVideoName, isValidPin, checkPin, pageSlice, findSkipped, stepMinutes, toTimeInput, fromTimeInput, parseShellResponse } from "../src/logic";
+import { topLevelFilename, hexEncodeUtf8, isSupportedName, isVideoName, isValidPin, checkPin, pageSlice, findSkipped, stepMinutes, toTimeInput, fromTimeInput, parseShellResponse, showSleepHint, ENTITIES } from "../src/logic";
 
 const ROOT = "media-source://media_source/local/photos";
 
@@ -143,5 +143,27 @@ describe("parseShellResponse", () => {
   it("turns garbage or a missing response into an error, never a throw", () => {
     expect(parseShellResponse(wrap("Traceback ...")).ok).toBe(false);
     expect(parseShellResponse(undefined).ok).toBe(false);
+  });
+});
+
+describe("showSleepHint", () => {
+  it("is shown when the screensaver switch is off — sleep can't work without idle", () => {
+    expect(showSleepHint("off")).toBe(true);
+  });
+  it("is shown when the switch is missing or unavailable", () => {
+    expect(showSleepHint(undefined)).toBe(true);
+    expect(showSleepHint("unavailable")).toBe(true);
+  });
+  it("is hidden when the screensaver switch is on", () => {
+    expect(showSleepHint("on")).toBe(false);
+  });
+});
+
+describe("sleep entity ids", () => {
+  it("match the HA sleep package and the screensaver safety switch", () => {
+    expect(ENTITIES.sleepEnabled).toBe("input_boolean.kitchen_sleep_enabled");
+    expect(ENTITIES.sleepStart).toBe("input_datetime.kitchen_sleep_start");
+    expect(ENTITIES.sleepEnd).toBe("input_datetime.kitchen_sleep_end");
+    expect(ENTITIES.screensaverEnabled).toBe("input_boolean.kitchen_screensaver_enabled");
   });
 });

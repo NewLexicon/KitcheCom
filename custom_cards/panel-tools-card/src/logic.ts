@@ -112,4 +112,15 @@ export const ENTITIES = {
   eveningStart: "input_datetime.kitchen_evening_start",
   theme: "input_select.kitchen_theme",
   screensaverMinutes: "input_number.kitchen_screensaver_minutes",
+  screensaverEnabled: "input_boolean.kitchen_screensaver_enabled",
+  sleepEnabled: "input_boolean.kitchen_sleep_enabled",
+  sleepStart: "input_datetime.kitchen_sleep_start",
+  sleepEnd: "input_datetime.kitchen_sleep_end",
 } as const;
+
+/** Sleep only works once the panel goes idle, and go-idle is gated on the
+ *  screensaver safety switch (screensaver.yaml). Anything but "on" means a sleep
+ *  setting would silently do nothing — so say so in the drawer (spec §3/§4). */
+export function showSleepHint(screensaverEnabled: string | undefined): boolean {
+  return screensaverEnabled !== "on";
+}
