@@ -4,9 +4,10 @@
 DEPLOYED on the Pi and verified at the panel by Garrett** (plan Task 12 — §4e).
 **2026-10-22: Task 13 touch test RUN — output-off does not stick** (labwc re-enables the
 ViewSonic ~10 s after `wlopm --off`). Garrett chose **"black, not off" (approach B)**: spec §3
-rewritten + reviewed + approved; **plan Phase B rewritten as Tasks 14–17. Next move: execute
-plan Task 14** (`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/plans/2026-10-21-sleep-settings-photos.md`,
-search `### Task 14`). Tasks 14–16 are laptop-only (14 needs Docker); 17 needs home network + Garrett.
+rewritten + reviewed + approved; plan Phase B rewritten as Tasks 14–17. **Tasks 14–16 BUILT +
+reviewed 2026-10-22** (`f5a7d99`, `2603dc7`, `9d6c6c0`). **Next move: plan Task 17 — deploy Phase B
+and verify at the panel** (`/Users/jdehart1/___Code_DEV/KitchenCOM/docs/superpowers/plans/2026-10-21-sleep-settings-photos.md`,
+search `### Task 17`). Needs home network (VPN off) + Garrett at the panel.
 
 **Refreshed:** 2026-10-12 — a THIRD piece of work is now scoped on this branch:
 the **Morning layout rework** (§4d), designed and committed, not implemented.
@@ -142,6 +143,10 @@ calls authoritative. Same for the ahead-count in §1: run the command.
 ---
 
 ## 2. Empirical state
+
+**2026-10-22 (Tasks 14–16):** screensaver-card **130**, panel-tools-card **37**, tod-autonav **14**
+(all typecheck clean); pytest **53**; `npm run validate:yaml` now **exits 0** (the two kitchen.yaml
+false positives below no longer fire — re-check before relying on that).
 
 **2026-10-21 evening (Task 12 deploy):** re-ran screensaver-card **113** and panel-tools-card
 **33** before shipping; both `dist/` bundles deployed and md5-matched on the Pi
@@ -501,6 +506,21 @@ duplicates; a reboot restores both — harmless, its `config` is empty).
 Night wake = **2 min** (Garrett). Glow accepted; DDC dimming out of scope. Spec §3 has the design,
 its Tests subsection and failure modes (incl. an unconfirmed night-restart race that Task 17
 step 5 tests). **NEXT: plan Task 14.** At-home items 1–3 below are all DONE.
+
+**✅ Tasks 14–16 BUILT 2026-10-22** (subagent-driven; each reviewed on the main thread):
+- `f5a7d99` HA: `packages/sleep.yaml` (helpers + plain-template `binary_sensor.kitchen_sleep_window`,
+  raw times), 2-min night wake in the wake + startup automations, `sleep.yaml` staged in the dev rig,
+  `deploy/homeassistant/dev-token.py`, `check-sleep-window.py` (**9/9 PASS** on the rig),
+  `deploy/tools/ha-recorder-state.py` (read Pi state from the recorder with no token).
+- `2603dc7` screensaver-card: `displayState()` off/photos/sleeping, `sleep_entity` config, black
+  render. 130 tests. **Mutation-checked**: breaking the `_stopLoop` path, the black render, or
+  fail-on each fails the intended test.
+- `9d6c6c0` panel-tools-card: drawer Sleep section (Off/On, From, To, screensaver-off hint);
+  orphaned `_renderWakeLayer` hook removed. 37 tests.
+- **Dev-rig browser smoke test PASSED:** hint toggles with the screensaver switch; On writes the
+  helper and the window sensor flips instantly; idle in window → empty black overlay (0 img, no
+  clock/gradient); window closes → photos + clock; a click wakes it with timer `0:02:00`.
+- Not yet on the Pi. Task 17 deploys at `screensaver-card.js?v=13`, `panel-tools-card.js?v=2`.
 
 **Carry-forward:** kernel logged `mmc0: Card stuck being busy! __mmc_poll_for_busy` at
 2026-10-21 19:37 local (during the HA stop/start). One-off so far; if it recurs, suspect the
