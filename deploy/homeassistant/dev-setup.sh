@@ -57,11 +57,11 @@ mkdir -p "$DEV_CONFIG/media/photos" "$DEV_CONFIG/media/photos-hidden"
 # Keep only the packages under test. Others (calendar, quotes) need integrations or
 # data the rig doesn't have. Of the kept ones, only grocy_recipes.yaml uses !secret,
 # and dev-setup generates that secret below. 2026-10-21: photos/screensaver/theme/
-# time_of_day added for the panel-tools-card checks (plan Task 8); add sleep.yaml
-# here when Phase B lands.
+# time_of_day added for the panel-tools-card checks (plan Task 8); sleep.yaml
+# added with Phase B (Task 14).
 find "$DEV_CONFIG/packages" -type f \
   ! -name 'grocy_recipes.yaml' ! -name 'photos.yaml' ! -name 'screensaver.yaml' \
-  ! -name 'theme.yaml' ! -name 'time_of_day.yaml' -delete
+  ! -name 'theme.yaml' ! -name 'time_of_day.yaml' ! -name 'sleep.yaml' -delete
 find "$DEV_CONFIG/packages" -type f -name '.calendar-verify.py' -delete 2>/dev/null || true
 
 echo "==> Copying card modules into www/"

@@ -96,11 +96,14 @@ automation:
         target:
           entity_id: timer.kitchen_inactivity
         data:
-          # Clamped to the helper's own range; an unknown state falls back to 30.
+          # Night wake (spec §3): inside the sleep window a tap (or an HA restart)
+          # lights the panel for 2 minutes, not the full delay. Otherwise clamped to
+          # the helper's own range; an unknown state falls back to 30.
           duration: >
-            {% set m = states('input_number.kitchen_screensaver_minutes') | float(30) | int %}
-            {% set m = [5, [m, 120] | min] | max %}
-            {{ '%02d:%02d:00' % (m // 60, m % 60) }}
+            {% if is_state('binary_sensor.kitchen_sleep_window', 'on') %}00:02:00{% else %}
+            {%- set m = states('input_number.kitchen_screensaver_minutes') | float(30) | int %}
+            {%- set m = [5, [m, 120] | min] | max %}
+            {{- '%02d:%02d:00' % (m // 60, m % 60) }}{% endif %}
 
   - alias: "Kitchen — start inactivity timer on HA startup"
     trigger:
@@ -118,11 +121,14 @@ automation:
         target:
           entity_id: timer.kitchen_inactivity
         data:
-          # Clamped to the helper's own range; an unknown state falls back to 30.
+          # Night wake (spec §3): inside the sleep window a tap (or an HA restart)
+          # lights the panel for 2 minutes, not the full delay. Otherwise clamped to
+          # the helper's own range; an unknown state falls back to 30.
           duration: >
-            {% set m = states('input_number.kitchen_screensaver_minutes') | float(30) | int %}
-            {% set m = [5, [m, 120] | min] | max %}
-            {{ '%02d:%02d:00' % (m // 60, m % 60) }}
+            {% if is_state('binary_sensor.kitchen_sleep_window', 'on') %}00:02:00{% else %}
+            {%- set m = states('input_number.kitchen_screensaver_minutes') | float(30) | int %}
+            {%- set m = [5, [m, 120] | min] | max %}
+            {{- '%02d:%02d:00' % (m // 60, m % 60) }}{% endif %}
 
 input_button:
   kitchen_activity:

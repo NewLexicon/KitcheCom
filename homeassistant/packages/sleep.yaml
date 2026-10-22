@@ -1,0 +1,56 @@
+# Sleep Mode — spec docs/superpowers/specs/2026-10-21-sleep-settings-photos-design.md §3
+# ("black, not off", revised 2026-10-22).
+#
+# During the sleep window the idle screensaver shows plain black instead of
+# photos: screensaver-card reads binary_sensor.kitchen_sleep_window. Nothing here
+# touches the display — `wlopm --off` does not stick on this ViewSonic (labwc
+# relights it ~10 s later, spec §7 Result).
+#
+# Sleep needs the screensaver: go-idle is gated on
+# input_boolean.kitchen_screensaver_enabled (screensaver.yaml), so with that
+# switch off the panel never idles and therefore never sleeps.
+
+input_boolean:
+  # No `initial:` — restores across restarts. Off until set in the drawer.
+  kitchen_sleep_enabled:
+    name: Sleep mode
+    icon: mdi:sleep
+
+input_datetime:
+  kitchen_sleep_start:
+    name: Sleep starts
+    has_date: false
+    has_time: true
+  kitchen_sleep_end:
+    name: Sleep ends
+    has_date: false
+    has_time: true
+
+template:
+  # A PLAIN template sensor, deliberately NOT trigger-based like time_of_day.yaml:
+  # HA re-renders it every minute (it uses now()) AND immediately when a helper it
+  # reads changes, so a drawer edit takes effect at once.
+  - binary_sensor:
+      - name: Kitchen sleep window
+        unique_id: kitchen_sleep_window
+        icon: mdi:weather-night
+        # RAW times, no fallback (unlike time_of_day.yaml:61-63): 00:00 is a real
+        # choice, start == end is an EMPTY window (00:00 -> 00:00 included), and an
+        # unavailable helper means not sleeping.
+        state: >
+          {% set s = state_attr('input_datetime.kitchen_sleep_start', 'timestamp') %}
+          {% set e = state_attr('input_datetime.kitchen_sleep_end', 'timestamp') %}
+          {% if not is_state('input_boolean.kitchen_sleep_enabled', 'on') or s is none or e is none %}
+            false
+          {% else %}
+            {% set s = (s | int) // 60 %}
+            {% set e = (e | int) // 60 %}
+            {% set n = now().hour * 60 + now().minute %}
+            {% if s == e %}
+              false
+            {% elif s < e %}
+              {{ s <= n and n < e }}
+            {% else %}
+              {{ n >= s or n < e }}
+            {% endif %}
+          {% endif %}
