@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-21
 **Branch:** `feat/time-of-day-layouts`
-**Status:** design agreed in brainstorming + three review passes; ready for the build plan; **panel test (§7) gates the build**
+**Status:** Phase A (§4–§5) BUILT + DEPLOYED 2026-10-21. **§3 Sleep Mode REVISED 2026-10-22** to "black, not off" after the §7 panel test; revised design approved by Garrett and reviewed.
 
 ---
 
@@ -11,8 +11,8 @@
 Borrowed from a commercial family display (Skylight-style) seen elsewhere. Three of
 its functional pieces fill real gaps in ours:
 
-- **Sleep Mode** — the panel has an idle screensaver but nothing that turns the
-  display off overnight.
+- **Sleep Mode** — the panel has an idle screensaver but nothing that darkens it
+  overnight.
 - **A Photos page** — "why am I only seeing some photos?" has come up before
   (see memory `screensaver-photos-folder-and-formats.md`); nothing on the panel shows
   what is actually in rotation or what was skipped.
@@ -42,66 +42,75 @@ so the screensaver does not fire while someone is adjusting things.
 Bundled like the other cards (memory `cards-must-be-bundled.md` — bare `lit` imports make a
 card unloadable). No HACS / card-mod / browser_mod on the Pi.
 
-## 3. Sleep Mode
+## 3. Sleep Mode — "black, not off" (revised 2026-10-22)
 
-### HA side (new package)
-- `input_boolean.kitchen_sleep_enabled`
-- `input_datetime.kitchen_sleep_start`, `input_datetime.kitchen_sleep_end` (time only;
-  window may wrap midnight — reuse the wrap logic pattern in `time_of_day.yaml`)
-- a "woken" override (e.g. `input_boolean.kitchen_sleep_woken`) — set by a wake tap,
-  cleared at the next sleep start
-- `binary_sensor.kitchen_should_sleep` (template) = enabled AND inside window AND NOT woken
+**Revised after the §7 panel test.** The original design switched the display off from a Pi
+service (`wlopm`). On this hardware that cannot work: about 10 s after `wlopm --off` the
+ViewSonic hotplugs and labwc switches the output back on (§7 "Result"). Garrett chose
+**"black, not off"**, approach B: **during the sleep window the idle screensaver shows plain
+black instead of photos.** The backlight stays on, so black glows faintly; Garrett accepted
+that. There is **no Pi-side service, no `wlopm`, no HA token on the Pi, no wake layer, and no
+woken flag**.
 
-### Wake tap must not press anything
-While `kitchen_should_sleep` is on, `panel-tools-card` draws a **full-screen transparent
-layer above everything**. A tap on it sets the woken override and does **nothing else**.
-With the screen dark a finger lands on whatever is underneath — on Morning that is a chore
-tile, so without this layer waking the panel could claim a chore.
+### Behaviour
+- Sleep shows only when the panel is **already idle**: `kitchen_idle` on AND
+  `binary_sensor.kitchen_sleep_window` on. It never blacks out a panel that is in use.
+- The window opens while photos are showing → black right away. The window closes while the
+  screen is black (morning) → photos resume.
+- **A tap wakes it exactly as a screensaver tap does today.** `screensaver-card` already
+  presses `input_button.kitchen_activity` on any input; the wake automation clears idle, and
+  the screensaver overlay swallows the tap, so no chore tile is pressed.
+- **The night wake is short.** While the window is on, the timer restarts at **2 minutes**,
+  not at `kitchen_screensaver_minutes` (Garrett, 2026-10-22). Someone getting water at 2am
+  doesn't light the kitchen for half an hour. Any further touch restarts the 2 minutes.
+- **Sleep needs the screensaver.** The go-idle automation is gated on
+  `input_boolean.kitchen_screensaver_enabled` (`screensaver.yaml:53-55`). With that switch off,
+  `kitchen_idle` never turns on, so the panel never sleeps. The drawer says so (§4).
 
-**The screensaver is almost certainly up too** — the sleep window is long past the 30-min
-idle timeout, so `input_boolean.kitchen_idle` is on and `screensaver-card`'s full-screen
-overlay is showing. The wake layer must sit **above the screensaver overlay** and **owns the
-tap**: it sets the woken override, presses the existing activity button
-(`input_button.kitchen_activity`, which clears idle exactly as a normal screensaver tap does),
-and stops the event there. One tap = screen on + screensaver dismissed + dashboard showing;
-nothing beneath receives it. Both cards are separate shadow roots inside HA's card wrappers,
-so **verify the stacking on the real panel** — a transformed ancestor can trap a
-`position: fixed` layer below the screensaver's.
+### HA side — new `packages/sleep.yaml`, plus a template change in `screensaver.yaml`
+- `input_boolean.kitchen_sleep_enabled`, and `input_datetime.kitchen_sleep_start` /
+  `kitchen_sleep_end` (time only). **No `initial:`** on any of them, so they restore across
+  restarts. On first deploy sleep is off until it's turned on in the drawer.
+- `binary_sensor.kitchen_sleep_window`: a **plain template binary_sensor, not trigger-based.**
+  HA re-renders it every minute (it uses `now()`) **and immediately when any referenced helper
+  changes**, so a drawer change takes effect at once. On when enabled AND now is inside
+  [start, end):
+  - `start < end`: start ≤ now < end. `start > end` (wraps midnight, e.g. 22:00→06:00):
+    now ≥ start OR now < end.
+  - **`start == end` → empty window, never on.** That includes 00:00→00:00.
+  - **Raw values, no fallback.** Unlike `time_of_day.yaml:61-63`, a 0 timestamp is NOT
+    treated as "unset": 00:00 is a real time someone may pick. An unavailable helper → off.
+- `screensaver.yaml`: the **wake automation** (`:84`) and the **HA-startup automation**
+  (`:105`) choose their `timer.start` duration by the window: `00:02:00` when
+  `binary_sensor.kitchen_sleep_window` is on, otherwise the clamped
+  `kitchen_screensaver_minutes` as now. The startup case matters because an HA restart at
+  night forces `kitchen_idle` off (`:114`). The "screensaver enabled" automation
+  (`:68`) is left alone: someone switching the screensaver on is awake anyway.
 
-### Pi side (new user service)
-HA runs in Docker and cannot drive the display, so a small Pi script owns `wlopm`:
-- **Subscribes to HA's websocket** for `binary_sensor.kitchen_should_sleep` changes and runs
-  `wlopm --off '*'` / `--on '*'` immediately. Not polling — a 30 s poll means a kid taps a
-  black screen and waits.
-- **Reconciles on start and on every reconnect.** A reboot during the sleep window runs
-  `start-kiosk-wayland.sh:31` (`wlopm --on`) and lights the screen; the service must put it
-  back. (Checked: the 4am renderer restart does *not* do this — it kills chromium and the
-  supervisor loop at line 69 respawns it without re-running line 31.)
-- Runs as a **systemd user service** in the labwc session's environment
-  (`WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`) — the same environment problem the 4am restart
-  script had to solve. Long-lived HA token stored on the Pi, not in the repo.
-- **Fail on, never off.** If the service dies, loses HA, or its token stops working while
-  the screen is off, the panel must not stay dark until someone reboots it:
-  - systemd unit has `Restart=always` **and** `ExecStopPost=wlopm --on '*'` — ExecStopPost
-    runs however the service exits, crash included.
-  - **Plus `RestartSec=30` and a start limit** (`StartLimitBurst=5` in
-    `StartLimitIntervalSec=600`). Without them, a service that crashes during sleep flickers
-    the screen all night: crash → ExecStopPost on → restart → reconcile off → crash. With
-    the limit, a broken service gives up and stays stopped, and ExecStopPost leaves the screen **on**.
-  - ⚠️ `StartLimitBurst` / `StartLimitIntervalSec` go in **`[Unit]`**, not `[Service]`. In the
-    wrong section systemd ignores them silently and the flicker loop comes back.
-  - **Once the limit is hit, Sleep Mode is off until a reboot or
-    `systemctl --user reset-failed <unit>`.** That's the right way to fail, but the panel gives
-    no sign of it. The install doc must say how to spot it (`systemctl --user status`) and
-    how to recover.
-  - If HA has been unreachable (or auth fails) for **5 minutes** while the output is off,
-    turn it on and keep it on until HA is back and says sleep.
-  - Rule of thumb for every unclear case: **the screen comes on.**
-- **Fallback, only if §7 shows it's needed:** watch local touch input (libinput/evdev) and
-  turn the output on directly. Chromium never sees that tap, so the wake layer never runs, and
-  the script must do its job through the HA API: **set `input_boolean.kitchen_sleep_woken`
-  on** and **press `input_button.kitchen_activity`**. Otherwise the screen comes on but the
-  screensaver stays up and the sleep sensor turns it straight back off.
+### `screensaver-card` — a sleeping state
+- New config key `sleep_entity`, default `binary_sensor.kitchen_sleep_window`.
+- A pure function **`displayState(hass, cfg) → "off" | "photos" | "sleeping"`** replaces the
+  boolean `_active`: idle off → `off`; idle on and sleep entity exactly `"on"` → `sleeping`;
+  otherwise `photos`. **Fail on:** a missing, `unavailable` or `unknown` sleep entity means
+  NOT sleeping, so it shows photos.
+- `updated()` reacts only to **changes** of that value:
+  - → `photos`: `_startLoop()`.
+  - → `sleeping` or `off`: `_stopLoop()`, which bumps `_gen`, clears timers and empties the
+    current URLs. Going to `sleeping` **always** goes through `_stopLoop()`, so the existing
+    generation guard discards any browse/resolve already in flight.
+  - Idle turning on inside the window goes straight to `sleeping` and **never calls
+    `_startLoop()`**: no media browse and no image decode at night.
+- `_advance()` / `_skip()` check `state === "photos"`, not `_active`, so a late callback
+  cannot put an `<img>` on screen while sleeping.
+- `render()` for `sleeping`: the same fixed black `.overlay` (z-index 9999), with **no media,
+  no `.fallback` gradient and no clock**. The activity bridge stays attached, so a tap wakes it.
+
+### Failure modes — every unclear case shows something, never a stuck black screen in use
+- Sleep sensor missing or unavailable → photos (fail on).
+- Inactivity timer wedged, or screensaver switch off → never idle → never sleeps (fails on).
+- HA restart at night → startup automation clears idle → lit for 2 min → black again.
+- 4am chromium renderer restart → the page reloads into a sleeping card. A brief load flash,
+  nothing worse; with no images decoded overnight the restart will rarely fire anyway.
 
 ## 4. Settings drawer
 
@@ -116,7 +125,7 @@ Contents:
 
 | Control | Entity | New? |
 |---|---|---|
-| Sleep on/off, From, To | §3 helpers | new |
+| Sleep on/off, From, To — top of the drawer. **When `input_boolean.kitchen_screensaver_enabled` is off, show a hint** ("Sleep needs the screensaver on") so a sleep setting can't silently do nothing | §3 helpers | new |
 | Morning / Afternoon / Evening start | `input_datetime.kitchen_{morning,afternoon,evening}_start` | **exists** |
 | Theme | `input_select.kitchen_theme` | **exists** |
 | Screensaver delay | new `input_number`; restart of `timer.kitchen_inactivity` reads it instead of the hardcoded `duration: "00:30:00"` (`screensaver.yaml:25`) | new |
@@ -190,6 +199,9 @@ unregister the service worker after a card deploy; a human at the panel verifies
 
 ## 7. Panel test — gates the build
 
+> **2026-10-22: run, and it changed the design.** The output-off approach failed (see "Result"
+> below); §3 was rewritten as "black, not off". The steps are kept as the record of what was run.
+
 The real risk is the **ViewSonic**, not Chromium: TD1655 touch already needs a hub to enumerate
 at all (memory `viewsonic-touch-needs-hub.md`), and in standby the monitor may cut power to its
 touch controller — then nothing receives the tap.
@@ -250,4 +262,5 @@ link is untested). Needs Garrett's design decision before Tasks 14–20 are rewr
 ## 8. Out of scope
 
 Nav rail; photo delete; "Sleep now"; uploading photos from the panel; the Morning rework
-(separate spec, two open decisions of its own).
+(separate spec, two open decisions of its own); **turning the display off or dimming it via
+DDC/CI** (§7 Result; Garrett accepted the backlight glow 2026-10-22); a clock while sleeping.
